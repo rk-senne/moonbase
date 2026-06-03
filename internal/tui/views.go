@@ -60,7 +60,12 @@ func (a App) renderDashboard() string {
 	body := lipgloss.JoinHorizontal(lipgloss.Top, sidebar, "  ", mainContent)
 
 	// Status bar
-	statusBar := a.renderStatusBar("[?] HELP  [↑↓] SELECT  [enter] DOSSIER  [m] MISSION  [T] THEME  [q] DISCONNECT")
+	var statusBar string
+	if a.searching {
+		statusBar = a.renderStatusBar("/ " + a.searchInput.View() + "  [enter] SELECT  [esc] CANCEL")
+	} else {
+		statusBar = a.renderStatusBar("[?] HELP  [↑↓] SELECT  [enter] DOSSIER  [m] MISSION  [T] THEME  [q] DISCONNECT")
+	}
 
 	return lipgloss.JoinVertical(lipgloss.Left, header, body, statusBar)
 }
@@ -121,8 +126,81 @@ func (a App) renderDossier() string {
 
 func (a App) renderPipeline() string {
 	header := a.renderHeader("MISSION ACTIVE")
-	body := "\n\n  No active mission.\n  Press [m] to brief a new mission.\n"
-	statusBar := a.renderStatusBar("[m] NEW MISSION  [esc] BACK")
+	sidebarWidth := 26
+	mainWidth := a.width - sidebarWidth - 4
+
+	// Phase list sidebar
+	var phases strings.Builder
+	phases.WriteString(lipgloss.NewStyle().Foreground(ColorBrand).Bold(true).Render("◆ PIPELINE") + "\n")
+	phases.WriteString(lipgloss.NewStyle().Foreground(ColorDim).Render("──────────────") + "\n\n")
+
+	if a.pipelineState == nil {
+		phases.WriteString(lipgloss.NewStyle().Foreground(ColorDim).Render(" No active mission") + "\n")
+	} else {
+		for _, phase := range a.pipelineState.Phases {
+			badge := BadgeWaiting
+			style := StyleInactive
+			switch phase.Status {
+			case 2: // Complete
+				badge = BadgePass
+				style = lipgloss.NewStyle().Foreground(ColorActive)
+			case 1: // Running
+				badge = a.spinner.View()
+				style = StyleActive
+			case 4: // Failed
+				badge = BadgeFail
+				style = lipgloss.NewStyle().Foreground(ColorError)
+			case 3: // Skipped
+				badge = "⊘"
+				style = StyleInactive
+			}
+			line := fmt.Sprintf(" %s %d. %s", badge, phase.Number, phase.Name)
+			phases.WriteString(style.Render(line) + "\n")
+			if phase.Duration != "" {
+				phases.WriteString(StyleInactive.Render(fmt.Sprintf("      %s", phase.Duration)) + "\n")
+			}
+		}
+	}
+
+	phaseSidebar := StyleSidebar.Width(sidebarWidth).Render(phases.String())
+
+	// Main panel: live output
+	var main strings.Builder
+	titleStyle := lipgloss.NewStyle().Foreground(ColorInfo).Bold(true)
+
+	if a.pipelineState != nil && a.pipelineState.Task != "" {
+		main.WriteString(titleStyle.Render(fmt.Sprintf("─ MISSION: %s ", a.pipelineState.Task)))
+		main.WriteString(strings.Repeat("─", mainWidth-len(a.pipelineState.Task)-14) + "\n\n")
+	} else {
+		main.WriteString(titleStyle.Render("─ AWAITING MISSION ") + strings.Repeat("─", mainWidth-22) + "\n\n")
+	}
+
+	// Streaming output lines
+	maxLines := a.height - 12
+	if maxLines < 5 {
+		maxLines = 5
+	}
+	start := 0
+	if len(a.pipelineOutput) > maxLines {
+		start = len(a.pipelineOutput) - maxLines
+	}
+	for i := start; i < len(a.pipelineOutput); i++ {
+		line := a.pipelineOutput[i]
+		if len(line) > mainWidth-4 {
+			line = line[:mainWidth-4]
+		}
+		main.WriteString(" " + line + "\n")
+	}
+
+	if len(a.pipelineOutput) == 0 {
+		main.WriteString(lipgloss.NewStyle().Foreground(ColorDim).Render(" Press [m] to brief a new mission.\n"))
+		main.WriteString(lipgloss.NewStyle().Foreground(ColorDim).Render(" The KND Council will execute the full pipeline.\n"))
+	}
+
+	mainPanel := StylePanel.Width(mainWidth).Render(main.String())
+	body := lipgloss.JoinHorizontal(lipgloss.Top, phaseSidebar, "  ", mainPanel)
+
+	statusBar := a.renderStatusBar("[n] NEXT  [r] RETRY  [s] SKIP  [m] NEW MISSION  [esc] BACK")
 	return lipgloss.JoinVertical(lipgloss.Left, header, body, statusBar)
 }
 
@@ -168,8 +246,8 @@ func (a App) renderHelp() string {
   ─────────────────────                  • clipboard (fallback)
   d          Git diff
   g          Git status                 ◆ THE KND WAY
-  ?          This manual                ──────────────────────
-                                        Sector V = core pipeline.
+  T          Cycle theme                ──────────────────────
+  ?          This manual                Sector V = core pipeline.
                                         Specialists = cross-cutting.
                                         Council = full lifecycle.
 

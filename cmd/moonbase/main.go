@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -18,6 +19,12 @@ func main() {
 			runInstall()
 		case "list":
 			runList()
+		case "deploy":
+			if len(os.Args) < 3 {
+				fmt.Fprintln(os.Stderr, "Usage: moonbase deploy <numbuh>")
+				os.Exit(1)
+			}
+			runDeploy(os.Args[2])
 		case "help", "--help", "-h":
 			runHelp()
 		default:
@@ -134,6 +141,7 @@ func runHelp() {
 USAGE:
   moonbase              Launch the TUI dashboard
   moonbase list         Show operative roster
+  moonbase deploy <n>   Deploy operative by numbuh (e.g. deploy 4)
   moonbase install      Symlink agents to ~/.kiro/agents/
   moonbase help         This message
 
@@ -142,9 +150,60 @@ INSIDE THE TUI:
   0-9                   Jump to operative
   enter                 Open dossier / deploy
   c                     Copy prompt to clipboard
+  /                     Search operatives
   m                     New mission
+  T                     Cycle theme
+  d / g                 Git diff / status
   ?                     Operations manual
   q                     Quit`)
+}
+
+func runDeploy(numbuh string) {
+	// Map numbuh to agent filename
+	agentFile := fmt.Sprintf("./agents/numbuh-%s.json", numbuh)
+	if numbuh == "council" || numbuh == "k" {
+		agentFile = "./agents/knd-council.json"
+	} else if numbuh == "z" || numbuh == "Z" {
+		agentFile = "./agents/sector-z.json"
+	}
+
+	data, err := os.ReadFile(agentFile)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Agent not found: numbuh-%s\n", numbuh)
+		os.Exit(1)
+	}
+
+	// Extract agent name
+	var agent struct {
+		Name   string `json:"name"`
+		Prompt string `json:"prompt"`
+	}
+	if err := json.Unmarshal(data, &agent); err != nil {
+		fmt.Fprintf(os.Stderr, "Invalid agent config: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("🌙 Deploying %s...\n", agent.Name)
+
+	// Try kiro-cli
+	if kiro, err := exec.LookPath("kiro-cli"); err == nil {
+		cmd := exec.Command(kiro, "chat", "--agent", agent.Name)
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		cmd.Run()
+		return
+	}
+
+	// Fallback: copy prompt to clipboard
+	clip := exec.Command("pbcopy")
+	clip.Stdin = strings.NewReader(agent.Prompt)
+	if err := clip.Run(); err == nil {
+		fmt.Println("✓ Prompt copied to clipboard (kiro-cli not found)")
+	} else {
+		fmt.Println("Prompt:")
+		fmt.Println(agent.Prompt[:min(200, len(agent.Prompt))] + "...")
+	}
 }
 
 func envExists(key string) bool {
