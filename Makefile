@@ -2,7 +2,7 @@ APP_NAME := moonbase
 BUILD_DIR := bin
 MAIN := cmd/moonbase/main.go
 
-.PHONY: run build test clean install release
+.PHONY: run build test clean install setup release
 
 run:
 	go run $(MAIN)
@@ -15,6 +15,12 @@ test:
 
 clean:
 	rm -rf $(BUILD_DIR)
+
+setup: build
+	mkdir -p $(HOME)/.local/bin
+	ln -sf $(CURDIR)/$(BUILD_DIR)/$(APP_NAME) $(HOME)/.local/bin/$(APP_NAME)
+	@echo "✓ moonbase linked to ~/.local/bin/moonbase"
+	@echo "  Make sure ~/.local/bin is in your PATH"
 
 install: build
 	cp $(BUILD_DIR)/$(APP_NAME) /usr/local/bin/$(APP_NAME)

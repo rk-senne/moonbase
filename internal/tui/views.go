@@ -2,6 +2,8 @@ package tui
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -10,13 +12,24 @@ import (
 func (a App) renderBoot() string {
 	var b strings.Builder
 
-	// Center vertically
+	// Data cascade effect for first 3 frames
+	if a.bootStep < 3 {
+		cascadeH := a.height / 3
+		cascade := GenerateCascade(a.width, cascadeH, a.bootStep)
+		cascadeStyled := lipgloss.NewStyle().Foreground(ColorActive).Render(cascade)
+		b.WriteString(cascadeStyled)
+		b.WriteString("\n")
+	}
+
+	// Center vertically (less padding during cascade)
 	padding := (a.height - 20) / 2
+	if a.bootStep < 3 {
+		padding = 2
+	}
 	for i := 0; i < padding; i++ {
 		b.WriteString("\n")
 	}
 
-	// Logo
 	logo := lipgloss.NewStyle().Foreground(ColorBrand).Bold(true).Render(kndLogo)
 	b.WriteString(lipgloss.PlaceHorizontal(a.width, lipgloss.Center, logo))
 	b.WriteString("\n")
@@ -25,12 +38,19 @@ func (a App) renderBoot() string {
 	b.WriteString(lipgloss.PlaceHorizontal(a.width, lipgloss.Center, subtitle))
 	b.WriteString("\n\n")
 
-	// Boot messages with progress
 	for i := 0; i < a.bootStep && i < len(bootMessages); i++ {
 		style := lipgloss.NewStyle().Foreground(ColorActive)
 		if i == a.bootStep-1 {
-			line := fmt.Sprintf("  %s %s", a.spinner.View(), bootMessages[i])
-			b.WriteString(lipgloss.PlaceHorizontal(a.width, lipgloss.Center, style.Render(line)))
+			msg := bootMessages[i]
+			// Typewriter on the final message
+			if i == len(bootMessages)-1 {
+				revealed := a.anim.TypewriterText(msg)
+				line := fmt.Sprintf("  %s %s", a.spinner.View(), revealed)
+				b.WriteString(lipgloss.PlaceHorizontal(a.width, lipgloss.Center, style.Render(line)))
+			} else {
+				line := fmt.Sprintf("  %s %s", a.spinner.View(), msg)
+				b.WriteString(lipgloss.PlaceHorizontal(a.width, lipgloss.Center, style.Render(line)))
+			}
 		} else {
 			line := fmt.Sprintf("  ✓ %s", bootMessages[i])
 			b.WriteString(lipgloss.PlaceHorizontal(a.width, lipgloss.Center, lipgloss.NewStyle().Foreground(ColorDim).Render(line)))
@@ -42,44 +62,81 @@ func (a App) renderBoot() string {
 }
 
 func (a App) renderDashboard() string {
-	sidebarWidth := 26
-	mainWidth := a.width - sidebarWidth - 4
+	headerH := 1
+	statusH := 1
+	bodyH := a.height - headerH - statusH - 1
 
-	// Header
 	header := a.renderHeader("ONLINE")
 
-	// Sidebar
-	sidebar := a.renderSidebar(sidebarWidth)
+	var body string
+	if a.width >= 140 {
+		body = a.render3Col(bodyH)
+	} else if a.width >= 80 {
+		body = a.render2Col(bodyH)
+	} else {
+		body = a.render1Col(bodyH)
+	}
 
-	// Main panels
-	intelPanel := a.renderIntelFeed(mainWidth)
-	statusPanel := a.renderSystemStatus(mainWidth)
-	mainContent := lipgloss.JoinVertical(lipgloss.Left, intelPanel, statusPanel)
-
-	// Join sidebar + main
-	body := lipgloss.JoinHorizontal(lipgloss.Top, sidebar, "  ", mainContent)
-
-	// Status bar
 	var statusBar string
 	if a.searching {
 		statusBar = a.renderStatusBar("/ " + a.searchInput.View() + "  [enter] SELECT  [esc] CANCEL")
+	} else if a.browsing {
+		statusBar = a.renderStatusBar("[↑↓] NAV  [enter] OPEN  [backspace] BACK  [e] EDIT  [`] TERMINAL  [esc] EXIT")
+	} else if a.termActive {
+		statusBar = a.renderStatusBar("[enter] RUN  [`] FILE BROWSER  [esc] EXIT")
 	} else {
-		statusBar = a.renderStatusBar("[?] HELP  [↑↓] SELECT  [enter] DOSSIER  [m] MISSION  [T] THEME  [q] DISCONNECT")
+		statusBar = a.renderStatusBar("[?] HELP  [↑↓] NAV  [enter] DOSSIER  [m] MISSION  [p] PROJECTS  [W] DOCS  [`] KND  [q] QUIT")
 	}
 
 	return lipgloss.JoinVertical(lipgloss.Left, header, body, statusBar)
 }
 
+func (a App) render3Col(h int) string {
+	sideW := 24
+	rightW := 30
+	mainW := a.width - sideW - rightW - 6
+	if mainW < 20 {
+		// Fall back to 2col if not enough space
+		return a.render2Col(h)
+	}
+
+	sidebar := a.renderSidebar(sideW, h)
+	main := a.renderMainPanel(mainW, h)
+	right := a.renderRightPanel(rightW, h)
+
+	return lipgloss.JoinHorizontal(lipgloss.Top, sidebar, " ", main, " ", right)
+}
+
+func (a App) render2Col(h int) string {
+	sideW := 24
+	mainW := a.width - sideW - 3
+	if mainW < 20 {
+		mainW = 20
+	}
+
+	sidebar := a.renderSidebar(sideW, h)
+	main := a.renderMainPanel(mainW, h)
+
+	return lipgloss.JoinHorizontal(lipgloss.Top, sidebar, " ", main)
+}
+
+func (a App) render1Col(h int) string {
+	return a.renderMainPanel(a.width-2, h)
+}
+
 func (a App) renderDossier() string {
-	sidebarWidth := 26
-	mainWidth := a.width - sidebarWidth - 4
+	sidebarWidth := 24
+	bodyH := a.height - 3
 
 	header := a.renderHeader("OPERATIVE DOSSIER")
-	sidebar := a.renderSidebar(sidebarWidth)
+	sidebar := a.renderSidebar(sidebarWidth, bodyH)
 
 	agent := a.registry.Get(a.selected)
 
-	// Dossier content
+	// Right column: portrait + stats
+	portraitW := 20
+	mainWidth := a.width - sidebarWidth - portraitW - 5
+
 	var d strings.Builder
 	nameStyle := lipgloss.NewStyle().Foreground(ColorBrand).Bold(true)
 	labelStyle := lipgloss.NewStyle().Foreground(ColorInfo)
@@ -94,18 +151,18 @@ func (a App) renderDossier() string {
 	if agent.KeyboardShortcut != "" {
 		d.WriteString(fmt.Sprintf("  Shortcut:  %s\n", agent.KeyboardShortcut))
 	}
-
-	// Spawn hook
 	if hooks, ok := agent.Hooks["agentSpawn"]; ok && len(hooks) > 0 {
-		d.WriteString(fmt.Sprintf("  Spawn:     %s\n", hooks[0].Command))
+		cmd := hooks[0].Command
+		if len(cmd) > mainWidth-12 {
+			cmd = cmd[:mainWidth-12] + "..."
+		}
+		d.WriteString(fmt.Sprintf("  Spawn:     %s\n", cmd))
 	}
 	d.WriteString("\n")
 
-	// Personality (extract from prompt - last paragraph)
 	d.WriteString(labelStyle.Render("  ─── PERSONALITY ─────────────────────────") + "\n")
 	personality := extractPersonality(agent.Prompt)
 	if personality != "" {
-		// Word wrap
 		wrapped := wordWrap(personality, mainWidth-6)
 		for _, line := range strings.Split(wrapped, "\n") {
 			d.WriteString(fmt.Sprintf("  %s\n", dimStyle.Render(line)))
@@ -114,22 +171,38 @@ func (a App) renderDossier() string {
 	d.WriteString("\n")
 
 	d.WriteString(labelStyle.Render("  ─── ACTIONS ─────────────────────────────") + "\n")
-	d.WriteString("  [enter] Deploy operative    [c] Copy prompt\n")
-	d.WriteString("  [esc] Back to dashboard\n")
+	d.WriteString("  [enter] Deploy    [c] Copy prompt\n")
+	d.WriteString("  [t] Spawn hook    [esc] Back\n")
 
 	dossierPanel := StylePanel.Width(mainWidth).Render(d.String())
-	body := lipgloss.JoinHorizontal(lipgloss.Top, sidebar, "  ", dossierPanel)
-	statusBar := a.renderStatusBar("[enter] DEPLOY  [c] COPY PROMPT  [esc] BACK  [↑↓] NAVIGATE")
+
+	// Portrait panel
+	var p strings.Builder
+	portrait := PortraitFor(agent.Name)
+	portraitStyled := lipgloss.NewStyle().Foreground(ColorBrand).Render(portrait)
+	p.WriteString(labelStyle.Render("  ╭─ PORTRAIT ─╮") + "\n")
+	p.WriteString(portraitStyled + "\n")
+	p.WriteString(labelStyle.Render("  ╰────────────╯") + "\n")
+
+	portraitPanel := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(ColorDim).
+		Padding(0, 1).
+		Width(portraitW).
+		Render(p.String())
+
+	mainBody := lipgloss.JoinHorizontal(lipgloss.Top, dossierPanel, " ", portraitPanel)
+	body := lipgloss.JoinHorizontal(lipgloss.Top, sidebar, " ", mainBody)
+	statusBar := a.renderStatusBar("[enter] DEPLOY  [c] COPY  [t] SPAWN HOOK  [esc] BACK  [↑↓] NAV")
 
 	return lipgloss.JoinVertical(lipgloss.Left, header, body, statusBar)
 }
 
 func (a App) renderPipeline() string {
 	header := a.renderHeader("MISSION ACTIVE")
-	sidebarWidth := 26
-	mainWidth := a.width - sidebarWidth - 4
+	sidebarWidth := 24
+	mainWidth := a.width - sidebarWidth - 3
 
-	// Phase list sidebar
 	var phases strings.Builder
 	phases.WriteString(lipgloss.NewStyle().Foreground(ColorBrand).Bold(true).Render("◆ PIPELINE") + "\n")
 	phases.WriteString(lipgloss.NewStyle().Foreground(ColorDim).Render("──────────────") + "\n\n")
@@ -141,64 +214,61 @@ func (a App) renderPipeline() string {
 			badge := BadgeWaiting
 			style := StyleInactive
 			switch phase.Status {
-			case 2: // Complete
+			case 2:
 				badge = BadgePass
 				style = lipgloss.NewStyle().Foreground(ColorActive)
-			case 1: // Running
+			case 1:
 				badge = a.spinner.View()
 				style = StyleActive
-			case 4: // Failed
+			case 4:
 				badge = BadgeFail
 				style = lipgloss.NewStyle().Foreground(ColorError)
-			case 3: // Skipped
+			case 3:
 				badge = "⊘"
-				style = StyleInactive
 			}
 			line := fmt.Sprintf(" %s %d. %s", badge, phase.Number, phase.Name)
 			phases.WriteString(style.Render(line) + "\n")
-			if phase.Duration != "" {
-				phases.WriteString(StyleInactive.Render(fmt.Sprintf("      %s", phase.Duration)) + "\n")
-			}
 		}
 	}
 
 	phaseSidebar := StyleSidebar.Width(sidebarWidth).Render(phases.String())
 
-	// Main panel: live output
 	var main strings.Builder
 	titleStyle := lipgloss.NewStyle().Foreground(ColorInfo).Bold(true)
+	dimStyle := lipgloss.NewStyle().Foreground(ColorDim)
 
 	if a.pipelineState != nil && a.pipelineState.Task != "" {
 		main.WriteString(titleStyle.Render(fmt.Sprintf("─ MISSION: %s ", a.pipelineState.Task)))
-		main.WriteString(strings.Repeat("─", mainWidth-len(a.pipelineState.Task)-14) + "\n\n")
+		main.WriteString(strings.Repeat("─", max(1, mainWidth-len(a.pipelineState.Task)-14)) + "\n\n")
 	} else {
-		main.WriteString(titleStyle.Render("─ AWAITING MISSION ") + strings.Repeat("─", mainWidth-22) + "\n\n")
+		main.WriteString(titleStyle.Render("─ AWAITING MISSION ") + strings.Repeat("─", max(1, mainWidth-22)) + "\n\n")
 	}
 
-	// Streaming output lines
+	// Render agent chat bubbles
 	maxLines := a.height - 12
 	if maxLines < 5 {
 		maxLines = 5
 	}
 	start := 0
-	if len(a.pipelineOutput) > maxLines {
-		start = len(a.pipelineOutput) - maxLines
+	if len(a.pipelineChat) > maxLines {
+		start = len(a.pipelineChat) - maxLines
 	}
-	for i := start; i < len(a.pipelineOutput); i++ {
-		line := a.pipelineOutput[i]
-		if len(line) > mainWidth-4 {
-			line = line[:mainWidth-4]
+	for i := start; i < len(a.pipelineChat); i++ {
+		msg := a.pipelineChat[i]
+		if msg.Agent == "" {
+			// System message
+			main.WriteString(" " + dimStyle.Render(msg.Content) + "\n")
+		} else {
+			// Agent chat bubble
+			color := agentColor(msg.Agent)
+			nameStyle := lipgloss.NewStyle().Foreground(color).Bold(true)
+			msgStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#DDDDDD"))
+			main.WriteString(" " + nameStyle.Render(msg.Agent+":") + " " + msgStyle.Render(msg.Content) + "\n")
 		}
-		main.WriteString(" " + line + "\n")
-	}
-
-	if len(a.pipelineOutput) == 0 {
-		main.WriteString(lipgloss.NewStyle().Foreground(ColorDim).Render(" Press [m] to brief a new mission.\n"))
-		main.WriteString(lipgloss.NewStyle().Foreground(ColorDim).Render(" The KND Council will execute the full pipeline.\n"))
 	}
 
 	mainPanel := StylePanel.Width(mainWidth).Render(main.String())
-	body := lipgloss.JoinHorizontal(lipgloss.Top, phaseSidebar, "  ", mainPanel)
+	body := lipgloss.JoinHorizontal(lipgloss.Top, phaseSidebar, " ", mainPanel)
 
 	statusBar := a.renderStatusBar("[n] NEXT  [r] RETRY  [s] SKIP  [m] NEW MISSION  [esc] BACK")
 	return lipgloss.JoinVertical(lipgloss.Left, header, body, statusBar)
@@ -233,145 +303,347 @@ func (a App) renderHelp() string {
   0-9        Jump to operative           n         Next phase
   enter      Open dossier / deploy       r         Retry phase
   esc        Back / close                s         Skip phase
-  /          Search operatives           l         View log
-  q          Disconnect from Moonbase
+  /          Search operatives           H         Mission history
+  tab        Cycle panel focus
+  q          Disconnect
 
-  ◆ OPERATIVE ACTIONS                   ◆ AI BACKENDS
+  ◆ VIEWS                               ◆ TOOLS
   ─────────────────────                  ──────────────────────
-  enter      Deploy with current AI      Supported:
-  c          Copy prompt to clipboard    • kiro-cli (native)
-  t          Run spawn hook              • codex (OpenAI CLI)
-                                         • openai / anthropic (API)
-  ◆ SYSTEM                               • ollama (local)
-  ─────────────────────                  • clipboard (fallback)
-  d          Git diff
-  g          Git status                 ◆ THE KND WAY
-  T          Cycle theme                ──────────────────────
-  ?          This manual                Sector V = core pipeline.
-                                        Specialists = cross-cutting.
-                                        Council = full lifecycle.
+  p          Project navigator           L         lazygit
+  W          Document viewer             B         btop
+  C          Open COMMS (chat)           V         nvim
+  ?          This manual                 tab       TERMINAL (in main)
+  T          Cycle theme
 
-                                        "We fight for kids everywhere."`
+  ◆ COMMS (CHAT)                        ◆ SYSTEM
+  ─────────────────────                  ──────────────────────
+  enter      Send message                P         Create PR (personal)
+  ctrl+f     Attach file                 d         Git diff
+  ctrl+s     Snippet picker              g         Git status
+  @name      Switch agent                w         Toggle file watcher
+  >name      Relay last response to agent
+  >>name msg Relay custom message to agent
+  esc        Back to dossier
+
+  ◆ THE KND WAY
+  ──────────────────────
+  Sector V = core pipeline.  Specialists = cross-cutting.
+  Council = full lifecycle.  "We fight for kids everywhere."`
 
 	body := lipgloss.NewStyle().Foreground(ColorInfo).Render(help)
 	statusBar := a.renderStatusBar("[esc] CLOSE MANUAL")
 	return lipgloss.JoinVertical(lipgloss.Left, header, "\n"+body+"\n", statusBar)
 }
 
-// --- Components ---
+// === COMPONENTS ===
 
 func (a App) renderHeader(status string) string {
-	left := "░░░ K.N.D. MOONBASE ░░░ TACTICAL OPERATIONS NETWORK"
-	right := fmt.Sprintf("░░░ %s ░░░", status)
-	gap := a.width - len(left) - len(right)
-	if gap < 0 {
-		gap = 1
+	left := "░░░ K.N.D. MOONBASE ░░░"
+	mid := "TACTICAL OPERATIONS NETWORK"
+	right := fmt.Sprintf("[%s] ░░░ %s ░░░", a.clock, status)
+
+	// NERV-style ALERT flash when threat is HIGH/CRITICAL
+	if a.gitDiffLines > 200 && a.blink {
+		alert := " ⚠ ALERT "
+		mid = alert + mid
 	}
-	full := left + strings.Repeat("░", gap) + right
+
+	gap1 := (a.width - len(left) - len(mid) - len(right)) / 2
+	gap2 := a.width - len(left) - len(mid) - len(right) - gap1
+	if gap1 < 1 {
+		gap1 = 1
+	}
+	if gap2 < 1 {
+		gap2 = 1
+	}
+
+	// CRT scanline sweep — a bright character sweeps across the fill area
+	fill1 := a.anim.RenderScanline(gap1)
+	fill2 := a.anim.RenderScanline(gap2)
+	full := left + fill1 + mid + fill2 + right
+
+	// Use alert-colored header when threat is high
+	if a.gitDiffLines > 200 {
+		alertHeader := lipgloss.NewStyle().
+			Background(lipgloss.Color("#1a0000")).
+			Foreground(ColorError).
+			Bold(true).
+			Padding(0, 1).
+			Width(a.width)
+		if a.blink {
+			return alertHeader.Render(full)
+		}
+	}
 
 	return StyleHeader.Width(a.width).Render(full)
 }
 
-func (a App) renderSidebar(width int) string {
+func (a App) renderSidebar(width int, maxH int) string {
+	borderColor := ColorDim
+	if a.focus == FocusSidebar {
+		borderColor = ColorActive
+	}
+
 	var s strings.Builder
-
 	s.WriteString(lipgloss.NewStyle().Foreground(ColorBrand).Bold(true).Render("◆ OPERATIVES") + "\n")
-	s.WriteString(lipgloss.NewStyle().Foreground(ColorDim).Render("──────────────") + "\n\n")
+	s.WriteString(lipgloss.NewStyle().Foreground(ColorDim).Render("──────────────────") + "\n")
 
-	s.WriteString(lipgloss.NewStyle().Foreground(ColorInfo).Render("SECTOR V") + "\n")
+	s.WriteString(lipgloss.NewStyle().Foreground(ColorInfo).Render(" SECTOR V") + "\n")
 
 	allAgents := a.registry.All()
 	for i, agent := range allAgents {
 		badge := BadgeInactive
 		style := StyleInactive
 		if i == a.cursor {
-			badge = BadgeActive
+			badge = a.anim.PulseBadge()
 			style = StyleActive
 		}
 
-		// Shorten name for sidebar
 		shortName := agent.Name
-		if len(shortName) > 14 {
-			shortName = shortName[:14]
+		if len(shortName) > width-5 {
+			shortName = shortName[:width-5]
 		}
 
-		line := fmt.Sprintf(" %s %s", badge, shortName)
-		s.WriteString(style.Render(line) + "\n")
+		s.WriteString(style.Render(fmt.Sprintf(" %s %s", badge, shortName)) + "\n")
 
-		// Add specialist header after sector v
 		if i == 5 {
-			s.WriteString("\n" + lipgloss.NewStyle().Foreground(ColorInfo).Render("SPECIALISTS") + "\n")
+			s.WriteString(lipgloss.NewStyle().Foreground(ColorInfo).Render(" SPECIALISTS") + "\n")
 		}
 	}
 
+	// Tools section
 	s.WriteString("\n")
-	s.WriteString(lipgloss.NewStyle().Foreground(ColorBrand).Bold(true).Render("◆ AI BACKEND") + "\n")
-	s.WriteString(lipgloss.NewStyle().Foreground(ColorDim).Render("──────────────") + "\n")
+	s.WriteString(lipgloss.NewStyle().Foreground(ColorBrand).Bold(true).Render("◆ TOOLS") + "\n")
+	s.WriteString(lipgloss.NewStyle().Foreground(ColorDim).Render("──────────────────") + "\n")
+	tools := []string{"lazygit", "docker", "btop", "nvim", "tmux", "fish"}
+	for _, tool := range tools {
+		mark := "✗"
+		st := StyleInactive
+		if _, err := exec.LookPath(tool); err == nil {
+			mark = "✓"
+			st = lipgloss.NewStyle().Foreground(ColorActive)
+		}
+		s.WriteString(st.Render(fmt.Sprintf(" %s %s", mark, tool)) + "\n")
+	}
+
+	// Backend section
+	s.WriteString("\n")
+	s.WriteString(lipgloss.NewStyle().Foreground(ColorBrand).Bold(true).Render("◆ BACKEND") + "\n")
+	s.WriteString(lipgloss.NewStyle().Foreground(ColorDim).Render("──────────────────") + "\n")
 	for _, b := range a.backends {
 		mark := "✗"
-		style := StyleInactive
+		st := StyleInactive
 		if b.Available() {
-			mark = "✓"
-			style = lipgloss.NewStyle().Foreground(ColorActive)
+			mark = "●"
+			st = lipgloss.NewStyle().Foreground(ColorActive)
+			if a.blink {
+				mark = "◉"
+			}
 		}
-		s.WriteString(style.Render(fmt.Sprintf(" %s %s", mark, b.Name())) + "\n")
+		s.WriteString(st.Render(fmt.Sprintf(" %s %s", mark, b.Name())) + "\n")
 	}
 
-	return StyleSidebar.Width(width).Render(s.String())
+	return lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder()).
+		BorderForeground(borderColor).
+		Padding(0, 1).
+		Width(width).
+		Height(maxH).
+		Render(s.String())
 }
 
-func (a App) renderIntelFeed(width int) string {
+func (a App) renderMainPanel(width int, maxH int) string {
+	// KND file browser mode
+	if a.browsing && a.fileBrowser != nil {
+		return a.renderFileBrowser(width, maxH)
+	}
+
+	// Terminal/Intel mode
+	borderColor := ColorInfo
+	if a.focus == FocusMain {
+		borderColor = ColorActive
+	}
+
 	var s strings.Builder
-	title := lipgloss.NewStyle().Foreground(ColorInfo).Bold(true).Render("─ INTEL FEED ")
-	s.WriteString(title + strings.Repeat("─", width-16) + "\n")
 
-	// Show last entries that fit
-	maxEntries := 8
-	start := 0
-	if len(a.intel) > maxEntries {
-		start = len(a.intel) - maxEntries
+	cwdShort := a.cwd
+	home, _ := os.UserHomeDir()
+	if strings.HasPrefix(cwdShort, home) {
+		cwdShort = "~" + cwdShort[len(home):]
+	}
+	title := lipgloss.NewStyle().Foreground(ColorInfo).Bold(true).Render("─ TERMINAL ")
+	cwd := lipgloss.NewStyle().Foreground(ColorDim).Render(cwdShort + " ")
+	s.WriteString(title + cwd + strings.Repeat("─", max(1, width-len(cwdShort)-14)) + "\n")
+
+	maxLines := maxH - 4
+	if maxLines < 4 {
+		maxLines = 4
 	}
 
-	if len(a.intel) == 0 {
-		s.WriteString(lipgloss.NewStyle().Foreground(ColorDim).Render(" Awaiting intel...") + "\n")
-	}
-
-	for i := start; i < len(a.intel); i++ {
-		entry := a.intel[i]
+	var lines []string
+	for _, entry := range a.intel {
 		timeStyle := lipgloss.NewStyle().Foreground(ColorDim)
-		s.WriteString(fmt.Sprintf(" %s  %s\n", timeStyle.Render(entry.Time), entry.Message))
+		msg := entry.Message
+		if len(msg) > width-10 {
+			msg = msg[:width-10]
+		}
+		lines = append(lines, fmt.Sprintf(" %s  %s", timeStyle.Render(entry.Time), msg))
+	}
+	for _, line := range a.termOutput {
+		lines = append(lines, " "+line)
 	}
 
-	return StylePanel.Width(width).Render(s.String())
+	if len(lines) == 0 {
+		s.WriteString(lipgloss.NewStyle().Foreground(ColorDim).Render(" Type commands below. [`] for file browser.") + "\n")
+	}
+
+	start := 0
+	if len(lines) > maxLines {
+		start = len(lines) - maxLines
+	}
+	for i := start; i < len(lines); i++ {
+		line := lines[i]
+		if len(line) > width-4 {
+			line = line[:width-4]
+		}
+		s.WriteString(line + "\n")
+	}
+
+	if a.termActive {
+		prompt := lipgloss.NewStyle().Foreground(ColorActive).Bold(true).Render(" $ ")
+		s.WriteString(prompt + a.termInput.View())
+	}
+
+	return lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(borderColor).
+		Padding(0, 1).
+		Width(width).
+		Height(maxH).
+		Render(s.String())
 }
 
-func (a App) renderSystemStatus(width int) string {
+func (a App) renderRightPanel(width int, maxH int) string {
+	borderColor := ColorDim
+	if a.focus == FocusRight {
+		borderColor = ColorActive
+	}
+
 	var s strings.Builder
-	title := lipgloss.NewStyle().Foreground(ColorInfo).Bold(true).Render("─ SYSTEM STATUS ")
-	s.WriteString(title + strings.Repeat("─", width-19) + "\n")
+	labelStyle := lipgloss.NewStyle().Foreground(ColorInfo).Bold(true)
+	dimStyle := lipgloss.NewStyle().Foreground(ColorDim)
+
+	// System Status
+	radar := lipgloss.NewStyle().Foreground(ColorActive).Render(a.anim.RenderRadar())
+	s.WriteString(labelStyle.Render("─ SYSTEM STATUS ") + radar + " " + strings.Repeat("─", max(1, width-21)) + "\n")
 
 	gitStyle := lipgloss.NewStyle().Foreground(ColorActive)
 	if !a.gitClean {
 		gitStyle = lipgloss.NewStyle().Foreground(ColorWarning)
 	}
+	s.WriteString(fmt.Sprintf(" GIT    %s %s\n", gitStyle.Render(a.gitBranch), a.gitStatus()))
 
-	s.WriteString(fmt.Sprintf(" GIT     %s %s\n", gitStyle.Render(a.gitBranch), a.gitStatus()))
-
-	dockerStatus := lipgloss.NewStyle().Foreground(ColorDim).Render("not running")
+	dockerStatus := dimStyle.Render("not running")
 	if a.dockerCount > 0 {
-		dockerStatus = lipgloss.NewStyle().Foreground(ColorActive).Render(fmt.Sprintf("● %d containers", a.dockerCount))
+		dockerStatus = lipgloss.NewStyle().Foreground(ColorActive).Render(fmt.Sprintf("● %d up", a.dockerCount))
 	}
-	s.WriteString(fmt.Sprintf(" DOCKER  %s\n", dockerStatus))
-	s.WriteString(fmt.Sprintf(" AGENTS  %d loaded\n", a.registry.Count()))
+	s.WriteString(fmt.Sprintf(" DOCKER %s\n", dockerStatus))
+	s.WriteString(fmt.Sprintf(" AGENTS %d loaded\n", a.registry.Count()))
+	s.WriteString("\n")
 
-	return StylePanel.Width(width).Render(s.String())
+	// Threat Level
+	s.WriteString(labelStyle.Render("─ THREAT LEVEL ") + strings.Repeat("─", max(1, width-18)) + "\n")
+	s.WriteString(" " + a.renderThreatGauge(width-4) + "\n\n")
+
+	// Mission History
+	s.WriteString(labelStyle.Render("─ MISSION HISTORY ") + strings.Repeat("─", max(1, width-21)) + "\n")
+	for i, m := range a.missions {
+		if i >= 5 {
+			break
+		}
+		s.WriteString(fmt.Sprintf(" %s #%d %s\n", m.Status, len(a.missions)-i, m.Name))
+	}
+	if len(a.missions) == 0 {
+		s.WriteString(dimStyle.Render(" No missions yet.") + "\n")
+	}
+
+	// Recent Files from watcher
+	s.WriteString("\n")
+	s.WriteString(labelStyle.Render("─ RECENT FILES ") + strings.Repeat("─", max(1, width-18)) + "\n")
+	if a.fileWatcher != nil && a.fileWatcher.Running() {
+		recent := a.fileWatcher.Recent()
+		if len(recent) == 0 {
+			s.WriteString(dimStyle.Render(" watching...") + "\n")
+		}
+		for i := len(recent) - 1; i >= 0 && i >= len(recent)-5; i-- {
+			f := recent[i]
+			ts := f.Time.Format("15:04")
+			name := f.Path
+			if len(name) > width-10 {
+				name = name[:width-10]
+			}
+			s.WriteString(fmt.Sprintf(" %s %s\n", dimStyle.Render(ts), name))
+		}
+	} else {
+		s.WriteString(dimStyle.Render(" [w] to start") + "\n")
+	}
+
+	return lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(borderColor).
+		Padding(0, 1).
+		Width(width).
+		Height(maxH).
+		Render(s.String())
+}
+
+func (a App) renderThreatGauge(width int) string {
+	// Map git diff lines to threat level
+	level := "LOW"
+	color := ColorActive
+	filled := 2
+
+	switch {
+	case a.gitDiffLines > 500:
+		level = "CRITICAL"
+		color = ColorError
+		filled = 10
+	case a.gitDiffLines > 200:
+		level = "HIGH"
+		color = ColorError
+		filled = 8
+	case a.gitDiffLines > 50:
+		level = "MEDIUM"
+		color = ColorWarning
+		filled = 5
+	case a.gitDiffLines > 10:
+		level = "LOW"
+		color = ColorActive
+		filled = 3
+	}
+
+	barW := width - len(level) - 2
+	if barW < 5 {
+		barW = 5
+	}
+	if filled > barW {
+		filled = barW
+	}
+
+	bar := strings.Repeat("█", filled) + strings.Repeat("░", barW-filled)
+	return lipgloss.NewStyle().Foreground(color).Render(bar+" "+level)
 }
 
 func (a App) renderStatusBar(keys string) string {
-	return StyleStatusBar.Width(a.width).Render("  " + keys)
+	uptime := fmt.Sprintf("▲ %s", a.uptime())
+	gap := a.width - len(keys) - len(uptime) - 4
+	if gap < 1 {
+		return StyleStatusBar.Width(a.width).Render("  " + keys)
+	}
+	return StyleStatusBar.Width(a.width).Render("  " + keys + strings.Repeat(" ", gap) + uptime)
 }
 
-// --- Utilities ---
+// === UTILITIES ===
 
 func extractPersonality(prompt string) string {
 	lines := strings.Split(prompt, "\\n")
@@ -380,7 +652,6 @@ func extractPersonality(prompt string) string {
 			return line
 		}
 	}
-	// Try actual newlines
 	lines = strings.Split(prompt, "\n")
 	for _, line := range lines {
 		if strings.Contains(line, "Personality:") {

@@ -1,14 +1,18 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/f5508037/moonbase/internal/history"
 	"github.com/f5508037/moonbase/internal/tui"
 )
 
@@ -25,11 +29,44 @@ func main() {
 				os.Exit(1)
 			}
 			runDeploy(os.Args[2])
+		case "export":
+			if len(os.Args) < 3 {
+				fmt.Fprintln(os.Stderr, "Usage: moonbase export <mission-id>")
+				os.Exit(1)
+			}
+			id, _ := strconv.Atoi(os.Args[2])
+			fmt.Println(history.Export(id))
+		case "snippet":
+			runSnippet()
 		case "help", "--help", "-h":
 			runHelp()
 		default:
 			fmt.Fprintf(os.Stderr, "Unknown command: %s\nRun 'moonbase help' for usage.\n", os.Args[1])
 			os.Exit(1)
+		}
+		return
+	}
+
+	// Pipe mode: if stdin is not a TTY, read it and deploy
+	if !isTerminal() {
+		input, _ := io.ReadAll(os.Stdin)
+		task := strings.TrimSpace(string(input))
+		if task != "" {
+			fmt.Printf("🌙 Pipe mode — task: %s\n", task)
+			fmt.Println("Deploy to kiro-cli with knd-council...")
+			if kiro, err := exec.LookPath("kiro-cli"); err == nil {
+				cmd := exec.Command(kiro, "chat", "--agent", "knd-council")
+				cmd.Stdin = strings.NewReader(task)
+				cmd.Stdout = os.Stdout
+				cmd.Stderr = os.Stderr
+				cmd.Run()
+			} else {
+				// Copy task to clipboard
+				clip := exec.Command("pbcopy")
+				clip.Stdin = strings.NewReader(task)
+				clip.Run()
+				fmt.Println("✓ Task copied to clipboard")
+			}
 		}
 		return
 	}
@@ -142,20 +179,77 @@ USAGE:
   moonbase              Launch the TUI dashboard
   moonbase list         Show operative roster
   moonbase deploy <n>   Deploy operative by numbuh (e.g. deploy 4)
+  moonbase export <id>  Export mission report as markdown
+  moonbase snippet      Manage saved snippets
   moonbase install      Symlink agents to ~/.kiro/agents/
   moonbase help         This message
 
+PIPE MODE:
+  echo "fix the bug" | moonbase     Deploy task via pipe (no TUI)
+  echo "fix auth" | moonbase deploy 4   Deploy to specific agent
+
 INSIDE THE TUI:
-  ↑↓ / jk              Navigate operatives
-  0-9                   Jump to operative
-  enter                 Open dossier / deploy
-  c                     Copy prompt to clipboard
-  /                     Search operatives
-  m                     New mission
-  T                     Cycle theme
-  d / g                 Git diff / status
-  ?                     Operations manual
-  q                     Quit`)
+  ↑↓ / jk    Navigate         m    New mission     C    Open COMMS
+  0-9        Jump to agent     H    Mission history P    Create PR
+  enter      Dossier/deploy    w    Toggle watcher  L/B/V  Launch tools
+  /          Search            T    Cycle theme     tab  Cycle focus
+  ctrl+s     Snippets (COMMS)  ctrl+f  Attach file (COMMS)
+  @name      Switch agent (COMMS)
+  >name      Relay to agent (COMMS)   >>name msg  Relay+message
+  ?          Operations manual q    Quit`)
+}
+
+func isTerminal() bool {
+	fi, err := os.Stdin.Stat()
+	if err != nil {
+		return true
+	}
+	return fi.Mode()&os.ModeCharDevice != 0
+}
+
+func runSnippet() {
+	if len(os.Args) < 3 {
+		fmt.Println("Usage: moonbase snippet save <name>")
+		fmt.Println("       moonbase snippet list")
+		return
+	}
+	switch os.Args[2] {
+	case "list":
+		home, _ := os.UserHomeDir()
+		path := filepath.Join(home, ".config", "moonbase", "snippets.json")
+		data, err := os.ReadFile(path)
+		if err != nil {
+			fmt.Println("No snippets saved yet.")
+			return
+		}
+		fmt.Println(string(data))
+	case "save":
+		if len(os.Args) < 4 {
+			fmt.Println("Usage: moonbase snippet save <name>")
+			fmt.Println("  Then type the snippet content (end with ctrl+d)")
+			return
+		}
+		name := os.Args[3]
+		scanner := bufio.NewScanner(os.Stdin)
+		var lines []string
+		for scanner.Scan() {
+			lines = append(lines, scanner.Text())
+		}
+		content := strings.Join(lines, "\n")
+		home, _ := os.UserHomeDir()
+		path := filepath.Join(home, ".config", "moonbase", "snippets.json")
+		os.MkdirAll(filepath.Dir(path), 0755)
+
+		// Load existing
+		var existing []map[string]string
+		if data, err := os.ReadFile(path); err == nil {
+			json.Unmarshal(data, &existing)
+		}
+		existing = append(existing, map[string]string{"name": name, "content": content})
+		data, _ := json.MarshalIndent(existing, "", "  ")
+		os.WriteFile(path, data, 0644)
+		fmt.Printf("✓ Snippet saved: %s\n", name)
+	}
 }
 
 func runDeploy(numbuh string) {

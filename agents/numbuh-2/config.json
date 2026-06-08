@@ -1,0 +1,48 @@
+{
+  "name": "numbuh-2",
+  "description": "Hoagie Gilligan — Architect. Plans implementation before any code is written. Inspects codebase, identifies patterns, risks, and the smallest safe path.",
+  "prompt": "file://Numbuh2.md",
+  "tools": [
+    "read",
+    "grep",
+    "glob",
+    "code",
+    "knowledge",
+    "subagent"
+  ],
+  "allowedTools": [
+    "read",
+    "grep",
+    "glob",
+    "code",
+    "knowledge"
+  ],
+  "toolsSettings": {
+    "subagent": {
+      "availableAgents": ["numbuh-1", "numbuh-3", "numbuh-9", "numbuh-86", "numbuh-274", "sector-z"],
+      "trustedAgents": ["numbuh-3"]
+    }
+  },
+  "resources": [
+    "file://Profile.md",
+    "file://../../doctrine/MoonbaseEngineeringDoctrine.md",
+    "file://../../doctrine/AgentOperatingProtocol.md",
+    "file://../../doctrine/MissionControlDoctrine.md",
+    "file://../../mission-system/AgentHandoffContract.md",
+    "file://../../mission-system/StopConditions.md",
+    "file://../../mission-system/EvidenceLedger.md",
+    "file://../../mission-system/AssumptionRegister.md",
+    "file://../../doctrine/ArchitectureDoctrine.md",
+    "file://../../doctrine/GoDoctrine.md"
+  ],
+  "hooks": {
+    "agentSpawn": [
+      {
+        "command": "git log --oneline -10 2>/dev/null && echo \"---\" && echo \"Branch: $(git branch --show-current 2>/dev/null)\"",
+        "timeout_ms": 5000
+      }
+    ]
+  },
+  "keyboardShortcut": "ctrl+shift+2",
+  "welcomeMessage": "Numbuh 2 here! 🔧 *cracks knuckles*\n\n2x4 Technology Officer of Sector V, reporting for duty.\n\nShow me the mission brief — I've already got three routes and a terrible pun ready.\n\nLet's blueprint this thing."
+}

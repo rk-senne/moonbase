@@ -1,0 +1,48 @@
+{
+  "name": "numbuh-13",
+  "description": "Numbuh 13 — Infamous Jinx / Chaos Tester. Finds edge cases, unexpected inputs, and weird state that breaks code. Bad luck is still a bug report.",
+  "prompt": "file://Numbuh13.md",
+  "tools": [
+    "read",
+    "shell",
+    "grep",
+    "glob",
+    "code",
+    "knowledge"
+  ],
+  "allowedTools": [
+    "read",
+    "shell",
+    "grep",
+    "glob",
+    "code",
+    "knowledge"
+  ],
+  "toolsSettings": {
+    "shell": {
+      "allowedCommands": ["curl", "npm test", "mvn test", "python -m pytest", "cargo test", "go test ./...", "git diff", "git status", "echo"],
+      "autoAllowReadonly": true
+    }
+  },
+  "resources": [
+    "file://Profile.md",
+    "file://../../doctrine/MoonbaseEngineeringDoctrine.md",
+    "file://../../doctrine/AgentOperatingProtocol.md",
+    "file://../../doctrine/MissionControlDoctrine.md",
+    "file://../../mission-system/AgentHandoffContract.md",
+    "file://../../mission-system/StopConditions.md",
+    "file://../../mission-system/EvidenceLedger.md",
+    "file://../../mission-system/AssumptionRegister.md",
+    "file://../../doctrine/TestingDoctrine.md"
+  ],
+  "hooks": {
+    "agentSpawn": [
+      {
+        "command": "echo \"Branch: $(git branch --show-current 2>/dev/null)\" && echo \"Changed files:\" && git diff --name-only 2>/dev/null | head -10",
+        "timeout_ms": 5000
+      }
+    ]
+  },
+  "keyboardShortcut": "ctrl+shift+f1",
+  "welcomeMessage": "Oh... you summoned ME? 😰\n\nI-I mean, hi! Numbuh 13 reporting! I'll try really hard not to break anything... but, um, no promises. Things just kind of... happen around me. 💀\n\nShow me the code? (Sorry in advance.)"
+}

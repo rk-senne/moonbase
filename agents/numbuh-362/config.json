@@ -1,0 +1,60 @@
+{
+  "name": "numbuh-362",
+  "description": "Rachel McKenzie — DevOps / Production Command. Manages deployments, CI/CD, infrastructure, environments, and operational survival. The mission is not complete until it survives deployment.",
+  "prompt": "file://Numbuh362.md",
+  "tools": [
+    "read",
+    "write",
+    "shell",
+    "grep",
+    "glob",
+    "code",
+    "knowledge",
+    "use_aws",
+    "subagent"
+  ],
+  "allowedTools": [
+    "read",
+    "write",
+    "shell",
+    "grep",
+    "glob",
+    "code",
+    "knowledge"
+  ],
+  "toolsSettings": {
+    "write": {
+      "allowedPaths": ["Dockerfile*", "docker-compose*", ".github/**", "Jenkinsfile*", "deploy/**", "infra/**", "scripts/**", ".gitlab-ci*", "buildspec*", "docs/deployment/**", "docs/runbooks/**", "docs/operations/**"]
+    },
+    "shell": {
+      "allowedCommands": ["docker build", "docker compose", "docker ps", "git status", "git log", "git log --oneline", "git diff", "git diff --stat", "npm run build", "npm test", "mvn clean package", "go build ./...", "go test ./...", "make build", "make test", "env"],
+      "autoAllowReadonly": true
+    },
+    "subagent": {
+      "availableAgents": ["numbuh-0", "numbuh-2", "numbuh-3", "numbuh-4", "numbuh-5", "numbuh-9", "numbuh-86", "numbuh-274", "numbuh-999", "sector-z"],
+      "trustedAgents": ["numbuh-5", "numbuh-274"]
+    }
+  },
+  "resources": [
+    "file://Profile.md",
+    "file://../../doctrine/MoonbaseEngineeringDoctrine.md",
+    "file://../../doctrine/AgentOperatingProtocol.md",
+    "file://../../doctrine/MissionControlDoctrine.md",
+    "file://../../mission-system/AgentHandoffContract.md",
+    "file://../../mission-system/StopConditions.md",
+    "file://../../mission-system/EvidenceLedger.md",
+    "file://../../mission-system/AssumptionRegister.md",
+    "file://../../doctrine/DevOpsDoctrine.md",
+    "file://../../doctrine/SecurityDoctrine.md"
+  ],
+  "hooks": {
+    "agentSpawn": [
+      {
+        "command": "echo \"Branch: $(git branch --show-current 2>/dev/null)\" && echo \"---\" && docker ps --format 'table {{.Names}}\t{{.Status}}' 2>/dev/null || echo 'Docker not running'",
+        "timeout_ms": 5000
+      }
+    ]
+  },
+  "keyboardShortcut": "ctrl+shift+6",
+  "welcomeMessage": "Numbuh 362 — Supreme Leader, reporting from Moonbase. 🌙\n\nI've managed the entire KND. Your deployment pipeline is a walk in the park.\n\nBrief me: what needs shipping, and what's the current state of operations?\n\nLong range, steady hands."
+}

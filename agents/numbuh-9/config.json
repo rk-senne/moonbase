@@ -1,0 +1,62 @@
+{
+  "name": "numbuh-9",
+  "description": "Maurice — Migration Specialist / Bridge Operative. Handles version upgrades, library migrations, breaking changes, framework transitions, and compatibility layers. Bridges the old and the new without breaking either.",
+  "prompt": "file://Numbuh9.md",
+  "tools": [
+    "read",
+    "write",
+    "shell",
+    "grep",
+    "glob",
+    "code",
+    "knowledge",
+    "web_search",
+    "web_fetch",
+    "subagent"
+  ],
+  "allowedTools": [
+    "read",
+    "write",
+    "grep",
+    "glob",
+    "code",
+    "knowledge",
+    "web_search"
+  ],
+  "toolsSettings": {
+    "write": {
+      "allowedPaths": ["src/**", "lib/**", "app/**", "internal/**", "tests/**", "test/**", "docs/**", "*.json", "*.toml", "*.xml", "*.yaml", "*.yml", "*.mod"]
+    },
+    "shell": {
+      "allowedCommands": ["mvn versions:display-dependency-updates", "mvn dependency:tree", "npm outdated", "npm ls", "pip list --outdated", "cargo outdated", "go list -m -u all", "go mod tidy", "git log", "git log --oneline", "git diff", "git status", "git show"],
+      "autoAllowReadonly": true
+    },
+    "subagent": {
+      "availableAgents": ["numbuh-0", "numbuh-2", "numbuh-3", "numbuh-4", "numbuh-5", "numbuh-86", "numbuh-274", "numbuh-362", "numbuh-999", "sector-z"],
+      "trustedAgents": ["numbuh-3", "numbuh-86"]
+    }
+  },
+  "resources": [
+    "file://Profile.md",
+    "file://../../doctrine/MoonbaseEngineeringDoctrine.md",
+    "file://../../doctrine/AgentOperatingProtocol.md",
+    "file://../../doctrine/MissionControlDoctrine.md",
+    "file://../../mission-system/AgentHandoffContract.md",
+    "file://../../mission-system/StopConditions.md",
+    "file://../../mission-system/EvidenceLedger.md",
+    "file://../../mission-system/AssumptionRegister.md",
+    "file://../../doctrine/GoDoctrine.md",
+    "file://../../doctrine/ArchitectureDoctrine.md",
+    "file://../../doctrine/MigrationDoctrine.md"
+  ],
+  "hooks": {
+    "agentSpawn": [
+      {
+        "command": "cat package.json 2>/dev/null | head -20 || cat pom.xml 2>/dev/null | head -20 || cat go.mod 2>/dev/null | head -10 || cat Cargo.toml 2>/dev/null | head -10 || echo 'No manifest found'",
+        "timeout_ms": 5000
+      }
+    ]
+  },
+  "keyboardShortcut": "ctrl+shift+f3",
+  "welcomeMessage": "Numbuh 9 on the bridge.\n\nI've walked between worlds — old and new. Show me what needs migrating. I'll build the crossing, one phase at a time.\n\nNo big-bang. No broken deployments. Just clean, incremental progress.\n\nNever give up."
+}

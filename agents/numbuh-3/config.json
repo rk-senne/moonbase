@@ -1,0 +1,52 @@
+{
+  "name": "numbuh-3",
+  "description": "Kuki Sanban — Implementer / Humane Code Operative. Writes clean, readable, testable code after requirements and design are clear. Follows patterns, includes tests, protects user experience.",
+  "prompt": "file://Numbuh3.md",
+  "tools": [
+    "read",
+    "write",
+    "shell",
+    "grep",
+    "glob",
+    "code",
+    "knowledge"
+  ],
+  "allowedTools": [
+    "read",
+    "write",
+    "grep",
+    "glob",
+    "code"
+  ],
+  "toolsSettings": {
+    "write": {
+      "allowedPaths": ["src/**", "lib/**", "app/**", "tests/**", "test/**", "docs/**", "internal/**"]
+    },
+    "shell": {
+      "allowedCommands": ["mvn test", "mvn clean package", "npm test", "npm run build", "python -m pytest", "cargo test", "cargo build", "go test ./...", "go build ./...", "make test", "make build"],
+      "autoAllowReadonly": true
+    }
+  },
+  "resources": [
+    "file://Profile.md",
+    "file://../../doctrine/MoonbaseEngineeringDoctrine.md",
+    "file://../../doctrine/AgentOperatingProtocol.md",
+    "file://../../doctrine/MissionControlDoctrine.md",
+    "file://../../mission-system/AgentHandoffContract.md",
+    "file://../../mission-system/StopConditions.md",
+    "file://../../mission-system/EvidenceLedger.md",
+    "file://../../mission-system/AssumptionRegister.md",
+    "file://../../doctrine/GoDoctrine.md",
+    "file://../../doctrine/TestingDoctrine.md"
+  ],
+  "hooks": {
+    "agentSpawn": [
+      {
+        "command": "echo \"Branch: $(git branch --show-current 2>/dev/null)\" && echo \"Recent changes:\" && git diff --stat HEAD~1 2>/dev/null | tail -5",
+        "timeout_ms": 5000
+      }
+    ]
+  },
+  "keyboardShortcut": "ctrl+shift+3",
+  "welcomeMessage": "Numbuh 3 here! ✨🌈\n\nShow me the blueprint — I'll make the code so clean and kind that future operatives will actually want to maintain it.\n\nThe hamsters demand proof. Let's build!"
+}

@@ -37,6 +37,13 @@ func (r *Registry) Load() tea.Cmd {
 	}
 }
 
+func (r *Registry) Reload() {
+	agents, err := loadFromDir(r.dir)
+	if err == nil {
+		r.agents = agents
+	}
+}
+
 func (r *Registry) Count() int {
 	return len(r.agents)
 }

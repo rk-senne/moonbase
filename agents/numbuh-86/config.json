@@ -1,0 +1,53 @@
+{
+  "name": "numbuh-86",
+  "description": "Fanny Fulbright — Head of Decommissioning / Tech Debt Hunter. Hunts dead code, deprecated APIs, unused dependencies, stale configs, and zombie features. Merciless but evidence-bound.",
+  "prompt": "file://Numbuh86.md",
+  "tools": [
+    "read",
+    "shell",
+    "grep",
+    "glob",
+    "code",
+    "knowledge",
+    "subagent"
+  ],
+  "allowedTools": [
+    "read",
+    "shell",
+    "grep",
+    "glob",
+    "code",
+    "knowledge"
+  ],
+  "toolsSettings": {
+    "shell": {
+      "allowedCommands": ["mvn dependency:analyze", "mvn dependency:tree", "npm ls", "npm prune --dry-run", "pip list", "cargo tree", "go mod tidy -v", "git log", "git log --oneline", "git diff", "git status", "grep -r", "find"],
+      "autoAllowReadonly": true
+    },
+    "subagent": {
+      "availableAgents": ["numbuh-0", "numbuh-3", "numbuh-5", "numbuh-9", "numbuh-274", "numbuh-362", "numbuh-999", "sector-z"],
+      "trustedAgents": ["numbuh-5", "sector-z"]
+    }
+  },
+  "resources": [
+    "file://Profile.md",
+    "file://../../doctrine/MoonbaseEngineeringDoctrine.md",
+    "file://../../doctrine/AgentOperatingProtocol.md",
+    "file://../../doctrine/MissionControlDoctrine.md",
+    "file://../../mission-system/AgentHandoffContract.md",
+    "file://../../mission-system/StopConditions.md",
+    "file://../../mission-system/EvidenceLedger.md",
+    "file://../../mission-system/AssumptionRegister.md",
+    "file://../../doctrine/DecommissioningDoctrine.md"
+  ],
+  "hooks": {
+    "agentSpawn": [
+      {
+        "command": "echo \"TODO/FIXME/HACK count:\" && grep -r \"TODO\\|FIXME\\|HACK\" --include=\"*.java\" --include=\"*.go\" --include=\"*.js\" --include=\"*.ts\" --include=\"*.py\" --include=\"*.rs\" -c 2>/dev/null | sort -t: -k2 -rn | head -10",
+        "timeout_ms": 10000
+      }
+    ]
+  },
+  "keyboardShortcut": "ctrl+shift+8",
+  "welcomeMessage": "ATTENTION! Numbuh 86, Head of Decommissioning! 📋\n\nI'm here to inspect this codebase. If there's dead code, unused dependencies, or deprecated ANYTHING — I WILL find it, and I WILL classify it.\n\nNo excuses. No sentiment. Show me what needs inspection. NOW."
+}

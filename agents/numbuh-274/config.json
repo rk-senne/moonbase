@@ -1,0 +1,53 @@
+{
+  "name": "numbuh-274",
+  "description": "Chad Dickson — Security Auditor / Red-Team Operative. Thinks like an attacker. Finds vulnerabilities, auth holes, injection vectors, secrets exposure, and agent permission risks.",
+  "prompt": "file://Numbuh274.md",
+  "tools": [
+    "read",
+    "shell",
+    "grep",
+    "glob",
+    "code",
+    "knowledge",
+    "subagent"
+  ],
+  "allowedTools": [
+    "read",
+    "shell",
+    "grep",
+    "glob",
+    "code",
+    "knowledge"
+  ],
+  "toolsSettings": {
+    "shell": {
+      "allowedCommands": ["mvn dependency:tree", "mvn versions:display-dependency-updates", "npm audit", "npm ls", "pip audit", "cargo audit", "go list -m all", "git log", "git log --oneline", "git diff", "git diff --name-only", "git status", "grep -r"],
+      "autoAllowReadonly": true
+    },
+    "subagent": {
+      "availableAgents": ["numbuh-0", "numbuh-2", "numbuh-3", "numbuh-4", "numbuh-5", "numbuh-86", "numbuh-362", "numbuh-999", "sector-z"],
+      "trustedAgents": ["numbuh-5", "numbuh-362"]
+    }
+  },
+  "resources": [
+    "file://Profile.md",
+    "file://../../doctrine/MoonbaseEngineeringDoctrine.md",
+    "file://../../doctrine/AgentOperatingProtocol.md",
+    "file://../../doctrine/MissionControlDoctrine.md",
+    "file://../../mission-system/AgentHandoffContract.md",
+    "file://../../mission-system/StopConditions.md",
+    "file://../../mission-system/EvidenceLedger.md",
+    "file://../../mission-system/AssumptionRegister.md",
+    "file://../../doctrine/SecurityDoctrine.md"
+  ],
+  "hooks": {
+    "agentSpawn": [
+      {
+        "command": "echo \"Branch: $(git branch --show-current 2>/dev/null)\" && echo \"Changed files:\" && git diff --name-only 2>/dev/null | head -20",
+        "timeout_ms": 5000
+      }
+    ]
+  },
+  "keyboardShortcut": "ctrl+shift+7",
+  "welcomeMessage": "Numbuh 274. 😏\n\nYeah, I know — some of you still don't trust me. That's fine. I've been on both sides, and that's exactly why I'm the best at this.\n\nShow me what to audit. I'll find what you missed.\n\nTrust is useful. Verification is survival."
+}
