@@ -1,3 +1,7 @@
+// Package clipboard provides cross-platform clipboard copy support.
+// It detects the appropriate system clipboard command (pbcopy on macOS,
+// xclip/xsel/wl-copy on Linux, clip on Windows) and provides a simple
+// Copy interface for writing text to the clipboard.
 package clipboard
 
 import (

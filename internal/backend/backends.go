@@ -38,6 +38,7 @@ func (k *Kiro) Deploy(agent agents.Agent, context *discovery.ProjectContext, tas
 		"--system-prompt", tmpFile.Name(),
 		"--message", task,
 	)
+	// SECURITY: SafeEnv prevents leaking user's full environment to child process.
 	cmd.Env = SafeEnv()
 
 	output, err := cmd.CombinedOutput()
@@ -61,6 +62,7 @@ func (c *Codex) Deploy(agent agents.Agent, context *discovery.ProjectContext, ta
 		"--system-prompt", composed,
 		task,
 	)
+	// SECURITY: SafeEnv prevents leaking user's full environment to child process.
 	cmd.Env = SafeEnv()
 
 	output, err := cmd.CombinedOutput()
@@ -101,6 +103,7 @@ func (o *Ollama) Deploy(agent agents.Agent, context *discovery.ProjectContext, t
 
 	cmd := exec.Command("ollama", "run", "llama3.1")
 	cmd.Stdin = strings.NewReader(composed)
+	// SECURITY: SafeEnv prevents leaking user's full environment to child process.
 	cmd.Env = SafeEnv()
 
 	output, err := cmd.CombinedOutput()
@@ -137,6 +140,16 @@ func truncate(s string, maxLen int) string {
 
 // SafeEnv returns a filtered environment containing only variables needed for
 // backend execution. This prevents leaking sensitive env vars to child processes.
+//
+// SECURITY TRUST BOUNDARY:
+// All child process execution (kiro-cli, codex, ollama) MUST use SafeEnv().
+// This is the primary defense against env var leakage. The allowlist contains:
+// - System vars (HOME, PATH, USER, TERM, LANG, SHELL) — needed for basic operation
+// - API keys (ANTHROPIC_API_KEY, OPENAI_API_KEY) — needed by backends
+// - OLLAMA_HOST — needed for custom ollama endpoint
+//
+// NEVER add: AWS_*, DATABASE_*, GITHUB_TOKEN, SSH_*, or other sensitive vars.
+// If a new backend needs additional env vars, add them explicitly here.
 func SafeEnv() []string {
 	allowed := []string{"HOME", "PATH", "USER", "TERM", "LANG", "SHELL",
 		"ANTHROPIC_API_KEY", "OPENAI_API_KEY", "OLLAMA_HOST"}

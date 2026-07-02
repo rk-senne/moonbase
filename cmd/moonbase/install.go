@@ -28,14 +28,14 @@ func runInstall() {
 	// Find the moonbase agents directory
 	agentsSource, err := findAgentsSource()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "❌ %v\n", err)
 		os.Exit(1)
 	}
 
 	// List available agents
 	files, err := filepath.Glob(filepath.Join(agentsSource, "*.md"))
 	if err != nil || len(files) == 0 {
-		fmt.Fprintf(os.Stderr, "No agent .md files found in %s\n", agentsSource)
+		fmt.Fprintf(os.Stderr, "❌ No agent .md files found in %s\n", agentsSource)
 		os.Exit(1)
 	}
 
@@ -49,9 +49,10 @@ func runInstall() {
 		targetDir = filepath.Join(cwd, ".kiro", "agents")
 	}
 
-	// Create target directory
+	// SECURITY: Create target directory with restrictive permissions (0755).
+	// Agent files are not secrets but we don't want other users modifying them.
 	if err := os.MkdirAll(targetDir, 0o755); err != nil {
-		fmt.Fprintf(os.Stderr, "Error creating %s: %v\n", targetDir, err)
+		fmt.Fprintf(os.Stderr, "❌ Cannot create %s: %v\n", targetDir, err)
 		os.Exit(1)
 	}
 
@@ -81,6 +82,14 @@ func runInstall() {
 	installed := 0
 	for _, src := range toInstall {
 		base := filepath.Base(src)
+
+		// SECURITY: Validate that the source filename is safe (no path traversal).
+		// filepath.Glob should only return clean names, but belt-and-suspenders.
+		if strings.Contains(base, "..") || strings.ContainsAny(base, `/\`) {
+			fmt.Fprintf(os.Stderr, "  ⚠️  %s: suspicious filename, skipping\n", base)
+			continue
+		}
+
 		dst := filepath.Join(targetDir, base)
 
 		if err := copyFile(src, dst); err != nil {
@@ -143,7 +152,7 @@ func findAgentsSource() (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("agents directory not found — run from moonbase project root or install moonbase first")
+	return "", fmt.Errorf("agents directory not found — run from moonbase project root or run 'moonbase init' first")
 }
 
 func isAgentsDir(path string) bool {
@@ -151,6 +160,10 @@ func isAgentsDir(path string) bool {
 	return err == nil && len(files) > 0
 }
 
+// copyFile copies src to dst with explicit file permissions.
+// SECURITY: Destination is created with 0644 (owner rw, others read-only).
+// Agent .md files are not secrets, but we use explicit permissions rather
+// than relying on umask to ensure consistent behavior across systems.
 func copyFile(src, dst string) error {
 	source, err := os.Open(src)
 	if err != nil {
@@ -158,7 +171,7 @@ func copyFile(src, dst string) error {
 	}
 	defer source.Close()
 
-	dest, err := os.Create(dst)
+	dest, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
 	if err != nil {
 		return err
 	}

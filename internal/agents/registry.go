@@ -9,22 +9,24 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// AgentsLoadedMsg is sent when agents finish loading
+// AgentsLoadedMsg is the Bubbletea message sent when agents finish loading from disk.
 type AgentsLoadedMsg struct {
 	Agents []Agent
 	Err    error
 }
 
-// Registry holds all loaded agents
+// Registry holds all loaded agents and provides lookup by name, index, or role.
 type Registry struct {
 	dir    string
 	agents []Agent
 }
 
+// NewRegistry creates a new Registry that will load agents from the given directory.
 func NewRegistry(dir string) *Registry {
 	return &Registry{dir: dir}
 }
 
+// Load returns a Bubbletea command that loads all agents from disk asynchronously.
 func (r *Registry) Load() tea.Cmd {
 	return func() tea.Msg {
 		agents, err := loadFromDir(r.dir)
@@ -36,6 +38,7 @@ func (r *Registry) Load() tea.Cmd {
 	}
 }
 
+// Reload synchronously reloads all agents from disk.
 func (r *Registry) Reload() {
 	agents, err := loadFromDir(r.dir)
 	if err == nil {
@@ -43,10 +46,12 @@ func (r *Registry) Reload() {
 	}
 }
 
+// Count returns the number of loaded agents.
 func (r *Registry) Count() int {
 	return len(r.agents)
 }
 
+// Get returns the agent at the given index, or a placeholder if out of bounds.
 func (r *Registry) Get(index int) Agent {
 	if index >= 0 && index < len(r.agents) {
 		return r.agents[index]
@@ -54,6 +59,7 @@ func (r *Registry) Get(index int) Agent {
 	return Agent{Name: "unknown", Description: "Operative not found"}
 }
 
+// All returns all loaded agents in display order.
 func (r *Registry) All() []Agent {
 	return r.agents
 }

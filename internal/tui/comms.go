@@ -86,11 +86,6 @@ func (c *CommsState) rebuildContent() {
 	c.viewport.GotoBottom()
 }
 
-func (c *CommsState) Resize(w, h int) {
-	c.viewport.Width = w - 4
-	c.viewport.Height = h - 6
-}
-
 // renderComms renders the COMMS view
 func (a App) renderComms() string {
 	header := a.renderHeader("Comms › " + a.comms.agent)

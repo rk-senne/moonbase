@@ -167,8 +167,8 @@ func (a *App) handlePhaseResult(msg PhaseResultMsg) tea.Cmd {
 
 	// Show summary in chat (truncated)
 	summary := strings.TrimSpace(msg.Output)
-	if len(summary) > 300 {
-		summary = summary[:300] + "..."
+	if len(summary) > maxSummaryChars {
+		summary = summary[:maxSummaryChars] + "..."
 	}
 	elapsed := msg.Elapsed.Round(time.Millisecond)
 	a.pipelineChat = append(a.pipelineChat,

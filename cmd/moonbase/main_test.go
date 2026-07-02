@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -151,5 +152,75 @@ func TestEnvExists_EmptyValue(t *testing.T) {
 	// Empty/whitespace-only should return false
 	if envExists("MOONBASE_EMPTY_VAR") {
 		t.Error("expected envExists to return false for whitespace-only var")
+	}
+}
+
+// === Gap Coverage: isValidAgentID edge cases (unicode, null bytes, path traversal) ===
+
+func TestIsValidAgentID_ValidCases(t *testing.T) {
+	valid := []string{
+		"0", "1", "4", "13", "274", "362", "999",
+		"council", "z", "Z",
+		"numbuh-4", "sector-z", "knd-council",
+		"a", "A", "abc",
+	}
+	for _, id := range valid {
+		t.Run(id, func(t *testing.T) {
+			if !isValidAgentID(id) {
+				t.Errorf("expected valid: %q", id)
+			}
+		})
+	}
+}
+
+func TestIsValidAgentID_InvalidCases(t *testing.T) {
+	invalid := []struct {
+		id   string
+		desc string
+	}{
+		{"", "empty string"},
+		{"../etc/passwd", "path traversal with dots"},
+		{"../../secret", "double path traversal"},
+		{"/etc/passwd", "absolute path"},
+		{"numbuh 4", "space"},
+		{"numbuh\t4", "tab character"},
+		{"numbuh\n4", "newline"},
+		{"numbuh\x004", "null byte"},
+		{"a/b", "forward slash"},
+		{"a\\b", "backslash"},
+		{"numbuh_4", "underscore"},
+		{"numbuh.4", "dot"},
+		{"münchen", "unicode (German)"},
+		{"エージェント", "unicode (Japanese)"},
+		{"🌙", "emoji"},
+		{"a b c", "multiple spaces"},
+		{"$HOME", "shell variable"},
+		{"`id`", "backtick injection"},
+		{"$(whoami)", "command substitution"},
+		{"a;b", "semicolon"},
+		{"a&b", "ampersand"},
+		{"a|b", "pipe"},
+		{"this-is-way-too-long-id", "exceeds 20 chars"},
+		{strings.Repeat("a", 21), "exactly 21 chars"},
+	}
+	for _, tt := range invalid {
+		t.Run(tt.desc, func(t *testing.T) {
+			if isValidAgentID(tt.id) {
+				t.Errorf("expected INVALID for %q (%s)", tt.id, tt.desc)
+			}
+		})
+	}
+}
+
+func TestIsValidAgentID_MaxLength(t *testing.T) {
+	// Exactly 20 characters should be valid
+	id20 := strings.Repeat("a", 20)
+	if !isValidAgentID(id20) {
+		t.Errorf("expected valid for 20-char ID")
+	}
+	// 21 should be invalid
+	id21 := strings.Repeat("a", 21)
+	if isValidAgentID(id21) {
+		t.Errorf("expected invalid for 21-char ID")
 	}
 }

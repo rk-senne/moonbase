@@ -40,6 +40,13 @@ const (
 	ViewProtocol
 )
 
+// Buffer size limits for TUI state
+const (
+	maxIntelEntries   = 50
+	maxTerminalLines  = 100
+	maxSummaryChars   = 300
+)
+
 type IntelEntry struct {
 	Time    string
 	Message string
@@ -351,7 +358,7 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				a.searchInput.Blur()
 				if len(a.filtered) > 0 {
 					a.cursor = a.filtered[0]
-					a.selected = a.cursorToAgent()
+					a.selected = a.cursor
 					a.view = ViewDossier
 				}
 				a.searchInput.Reset()
@@ -701,7 +708,7 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if a.cursor > 0 {
 					a.cursor--
 				}
-				a.selected = a.cursorToAgent()
+				a.selected = a.cursor
 				a.anim.TriggerSelectPulse()
 			}
 		case "down", "j":
@@ -709,7 +716,7 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if a.cursor < a.registry.Count()-1 {
 					a.cursor++
 				}
-				a.selected = a.cursorToAgent()
+				a.selected = a.cursor
 				a.anim.TriggerSelectPulse()
 			}
 		case "enter":
@@ -792,7 +799,7 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "0", "1", "2", "3", "4", "5", "6", "7", "8", "9":
 			idx := int(msg.String()[0] - '0')
 			a.cursor = idx
-			a.selected = a.cursorToAgent()
+			a.selected = a.cursor
 			a.view = ViewDossier
 		}
 
@@ -928,9 +935,9 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		for _, line := range strings.Split(msg.output, "\n") {
 			a.termOutput = append(a.termOutput, line)
 		}
-		// Keep last 100 lines
-		if len(a.termOutput) > 100 {
-			a.termOutput = a.termOutput[len(a.termOutput)-100:]
+		// Keep last maxTerminalLines lines
+		if len(a.termOutput) > maxTerminalLines {
+			a.termOutput = a.termOutput[len(a.termOutput)-maxTerminalLines:]
 		}
 	}
 
@@ -975,14 +982,10 @@ func (a *App) addIntel(format string, args ...any) {
 		Message: fmt.Sprintf(format, args...),
 	}
 	a.intel = append(a.intel, entry)
-	if len(a.intel) > 50 {
-		a.intel = a.intel[len(a.intel)-50:]
+	if len(a.intel) > maxIntelEntries {
+		a.intel = a.intel[len(a.intel)-maxIntelEntries:]
 	}
 	a.anim.TriggerIntelFlash()
-}
-
-func (a App) cursorToAgent() int {
-	return a.cursor
 }
 
 func (a *App) filterAgents() {
@@ -1138,22 +1141,7 @@ func (a *App) cycleTheme() {
 	}
 }
 
-func (a App) deployMission(task string) tea.Cmd {
-	return func() tea.Msg {
-		// Deploy council with the task via kiro-cli or copy to clipboard
-		prompt := fmt.Sprintf("MISSION: %s\n\nExecute the full KND Council pipeline.", task)
-		if _, err := exec.LookPath("kiro-cli"); err == nil {
-			cmd := exec.Command("kiro-cli", "chat", "--agent", "knd-council")
-			cmd.Stdin = strings.NewReader(prompt)
-			cmd.Start()
-		} else {
-			cmd := exec.Command("pbcopy")
-			cmd.Stdin = strings.NewReader(prompt)
-			cmd.Run()
-		}
-		return deployDoneMsg{agent: "knd-council"}
-	}
-}
+
 
 func (a App) copyPrompt() tea.Cmd {
 	agent := a.registry.Get(a.selected)
@@ -1441,6 +1429,17 @@ func (a *App) ringBell() {
 }
 
 // --- Embedded Terminal ---
+//
+// SECURITY TRUST BOUNDARY: execTermCmd passes user input directly to bash -c.
+// This is INTENTIONAL — it is a local terminal emulator for the TUI operator.
+// The trust model is identical to the user opening a terminal: the operator IS
+// the user. This is NOT exposed to network input, AI-generated commands, or
+// untrusted sources. Input comes only from the local keyboard via the TUI
+// text input widget (a.termInput). No remote or programmatic callers exist.
+//
+// If this function were ever exposed to AI-generated or network-sourced input,
+// it would require a command allowlist (like the agent shell.allowed_commands).
+// Currently the blast radius is identical to the user typing in their terminal.
 
 func (a *App) execTermCmd(input string) tea.Cmd {
 	// Handle built-in cd

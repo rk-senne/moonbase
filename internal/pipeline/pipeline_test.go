@@ -388,3 +388,180 @@ func TestExtractFilesChanged_NoFiles(t *testing.T) {
 		t.Errorf("expected 0 files, got %d: %v", len(files), files)
 	}
 }
+
+// === Gap Coverage: StatusSummary, CurrentPhase, IsComplete, Advance end ===
+
+func TestPipeline_StatusSummary(t *testing.T) {
+	p := New("build the feature")
+	p.Phases[0].Status = StatusComplete
+	p.Phases[1].Status = StatusRunning
+	p.Current = 1
+
+	summary := p.StatusSummary()
+
+	if !strings.Contains(summary, "build the feature") {
+		t.Error("expected task in summary")
+	}
+	if !strings.Contains(summary, "✅") {
+		t.Error("expected complete icon in summary")
+	}
+	if !strings.Contains(summary, "🔄") {
+		t.Error("expected running icon in summary")
+	}
+	if !strings.Contains(summary, "⏳") {
+		t.Error("expected pending icon in summary")
+	}
+	if !strings.Contains(summary, "Phase 1") {
+		t.Error("expected Phase 1 in summary")
+	}
+	if !strings.Contains(summary, "Phase 8") {
+		t.Error("expected Phase 8 in summary (8 phases total)")
+	}
+	if !strings.Contains(summary, "(conditional)") {
+		t.Error("expected (conditional) tag for specialist phases")
+	}
+}
+
+func TestPipeline_StatusSummary_AllStatuses(t *testing.T) {
+	p := New("test all icons")
+	p.Phases[0].Status = StatusComplete
+	p.Phases[1].Status = StatusRunning
+	p.Phases[2].Status = StatusSkipped
+	p.Phases[3].Status = StatusFailed
+	p.Phases[4].Status = StatusRework
+
+	summary := p.StatusSummary()
+	if !strings.Contains(summary, "✅") {
+		t.Error("missing complete icon")
+	}
+	if !strings.Contains(summary, "🔄") {
+		t.Error("missing running icon")
+	}
+	if !strings.Contains(summary, "⏭️") {
+		t.Error("missing skipped icon")
+	}
+	if !strings.Contains(summary, "❌") {
+		t.Error("missing failed icon")
+	}
+	if !strings.Contains(summary, "🔁") {
+		t.Error("missing rework icon")
+	}
+}
+
+func TestPipeline_CurrentPhase(t *testing.T) {
+	p := New("test")
+	p.Current = 0
+
+	phase := p.CurrentPhase()
+	if phase == nil {
+		t.Fatal("expected non-nil current phase")
+	}
+	if phase.Name != "Analysis" {
+		t.Errorf("expected 'Analysis', got: %s", phase.Name)
+	}
+	if phase.AgentName != "numbuh-1" {
+		t.Errorf("expected agent 'numbuh-1', got: %s", phase.AgentName)
+	}
+}
+
+func TestPipeline_CurrentPhase_OutOfBounds(t *testing.T) {
+	p := New("test")
+	p.Current = 99
+
+	phase := p.CurrentPhase()
+	if phase != nil {
+		t.Error("expected nil for out-of-bounds current")
+	}
+}
+
+func TestPipeline_CurrentPhase_Negative(t *testing.T) {
+	p := New("test")
+	p.Current = -1
+
+	phase := p.CurrentPhase()
+	if phase != nil {
+		t.Error("expected nil for negative current")
+	}
+}
+
+func TestPipeline_IsComplete_Active(t *testing.T) {
+	p := New("test")
+	if p.IsComplete() {
+		t.Error("new pipeline should not be complete")
+	}
+}
+
+func TestPipeline_IsComplete_Stopped(t *testing.T) {
+	p := New("test")
+	p.Stop("done")
+	if !p.IsComplete() {
+		t.Error("stopped pipeline should be complete")
+	}
+}
+
+func TestPipeline_Advance_ToEnd(t *testing.T) {
+	p := New("test")
+	// Advance through all phases
+	for i := 0; i < len(p.Phases); i++ {
+		p.Phases[i].Status = StatusRunning
+		p.Advance()
+	}
+	if p.Active {
+		t.Error("pipeline should be inactive after advancing past all phases")
+	}
+	if p.Phases[len(p.Phases)-1].Status != StatusComplete {
+		t.Error("last phase should be complete")
+	}
+}
+
+func TestPipeline_Retry(t *testing.T) {
+	p := New("test")
+	p.Current = 2
+	p.Phases[2].Status = StatusFailed
+
+	p.Retry()
+
+	if p.Phases[2].Status != StatusRunning {
+		t.Error("expected retry to set phase back to running")
+	}
+	if p.Current != 2 {
+		t.Error("expected current to stay the same on retry")
+	}
+}
+
+func TestPipeline_ShouldInvokeConditional_Mandatory(t *testing.T) {
+	p := New("test")
+	// Phase 0 is mandatory (Analysis)
+	result := p.ShouldInvokeConditional(&p.Phases[0])
+	if !result.Invoke {
+		t.Error("mandatory phase should always invoke")
+	}
+	if result.Reason != "mandatory phase" {
+		t.Errorf("expected 'mandatory phase' reason, got: %s", result.Reason)
+	}
+}
+
+func TestPipeline_ShouldInvokeConditional_NotTriggered(t *testing.T) {
+	p := New("fix typo")
+	p.Context.FilesChanged = []string{"README.md"}
+	p.Context.RecordPhase(3, "Fixed typo in README")
+
+	// Phase 5 is Oversight — ">5 files changed, core logic changed"
+	result := p.ShouldInvokeConditional(&p.Phases[5])
+	if result.Invoke {
+		t.Error("oversight should NOT trigger for a typo fix")
+	}
+}
+
+func TestPipeline_RouteToPhase_InvalidTarget(t *testing.T) {
+	p := New("test")
+	p.Current = 3
+
+	err := p.RouteToPhase(99)
+	if err == nil {
+		t.Error("expected error for nonexistent target phase")
+	}
+	if !strings.Contains(err.Error(), "not found") {
+		t.Errorf("expected 'not found' in error, got: %v", err)
+	}
+}

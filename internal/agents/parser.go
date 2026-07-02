@@ -10,7 +10,9 @@ import (
 )
 
 var (
+	// ErrNoFrontmatter is returned when a file does not begin with --- YAML frontmatter.
 	ErrNoFrontmatter = errors.New("no YAML frontmatter found")
+	// ErrMalformedFrontmatter is returned when the closing --- delimiter is missing.
 	ErrMalformedFrontmatter = errors.New("malformed YAML frontmatter (missing closing ---)")
 )
 

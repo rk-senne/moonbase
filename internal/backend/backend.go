@@ -1,3 +1,6 @@
+// Package backend provides AI tool integrations for deploying agents.
+// It supports multiple backends (kiro-cli, codex, ollama, openai, anthropic)
+// with automatic detection and a clipboard fallback for universal compatibility.
 package backend
 
 import (

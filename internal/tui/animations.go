@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -11,7 +10,6 @@ import (
 // AnimState holds all animation frame counters
 type AnimState struct {
 	frame        int  // global frame counter (increments every tick)
-	scanlinePos  int  // CRT scanline horizontal position
 	radarFrame   int  // satellite spinner frame
 	intelFlash   int  // frames remaining for intel flash effect
 	selectPulse  int  // frames remaining for selection pulse
@@ -35,9 +33,6 @@ var radarFrames = []string{"◜", "◝", "◞", "◟"}
 // Typing indicator frames for streaming
 var typingFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
 
-// Scanline characters for the CRT sweep
-var scanlineChars = []string{"▁", "▂", "▃", "▄", "▅", "▆", "▇", "█", "▇", "▆", "▅", "▄", "▃", "▂", "▁"}
-
 // RenderRadar returns the current radar animation frame
 func (a *AnimState) RenderRadar() string {
 	return radarFrames[a.radarFrame%len(radarFrames)]
@@ -46,30 +41,6 @@ func (a *AnimState) RenderRadar() string {
 // RenderTyping returns the current typing indicator
 func (a *AnimState) RenderTyping() string {
 	return typingFrames[a.frame%len(typingFrames)]
-}
-
-// RenderScanline renders the CRT sweep across a given width
-func (a *AnimState) RenderScanline(width int) string {
-	if width <= 0 {
-		return ""
-	}
-	pos := a.scanlinePos % width
-	var b strings.Builder
-	for i := 0; i < width; i++ {
-		dist := abs(i - pos)
-		if dist == 0 {
-			b.WriteString("█")
-		} else if dist == 1 {
-			b.WriteString("▓")
-		} else if dist == 2 {
-			b.WriteString("▒")
-		} else if dist == 3 {
-			b.WriteString("░")
-		} else {
-			b.WriteString("░")
-		}
-	}
-	return b.String()
 }
 
 // IntelFlashStyle returns a highlighted style if flash is active, otherwise normal
@@ -100,11 +71,6 @@ func (a *AnimState) TypewriterText(full string) string {
 // Advance increments all animation state by one frame
 func (a *AnimState) Advance() {
 	a.frame++
-
-	// Scanline moves every 2 frames
-	if a.frame%2 == 0 {
-		a.scanlinePos++
-	}
 
 	// Radar rotates every 3 frames
 	if a.frame%3 == 0 {
@@ -146,19 +112,7 @@ func (a *AnimState) TriggerReveal() {
 	a.revealChars = 0
 }
 
-// StopReveal ends the reveal (all content shown)
-func (a *AnimState) StopReveal() {
-	a.revealing = false
-}
-
 // TriggerTypewriter starts a typewriter effect
 func (a *AnimState) TriggerTypewriter() {
 	a.typewriterAt = 1
-}
-
-func abs(x int) int {
-	if x < 0 {
-		return -x
-	}
-	return x
 }

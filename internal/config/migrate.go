@@ -21,8 +21,9 @@ type oldJSONBackend struct {
 	Binary string `json:"binary,omitempty"`
 }
 
-// MigrateFromJSON detects old config.json and migrates to config.yaml.
-// Returns (true, nil) if migration happened, (false, nil) if no old file found.
+// MigrateFromJSON detects the legacy config.json and migrates it to config.yaml.
+// API keys are intentionally dropped during migration (they now come from env vars).
+// Returns (true, nil) if migration succeeded, (false, nil) if no old file was found.
 func MigrateFromJSON() (bool, error) {
 	return migrateJSON(OldJSONPath(), Path())
 }
@@ -52,13 +53,13 @@ func migrateJSON(jsonPath, yamlPath string) (bool, error) {
 	}
 
 	// Save as YAML to specified path
-	os.MkdirAll(filepath.Dir(yamlPath), 0o755)
+	os.MkdirAll(filepath.Dir(yamlPath), 0o700)
 	yamlData, err := marshalYAML(cfg)
 	if err != nil {
 		return false, fmt.Errorf("marshaling config: %w", err)
 	}
 	header := []byte("# Moonbase configuration (migrated from JSON)\n\n")
-	if err := os.WriteFile(yamlPath, append(header, yamlData...), 0o644); err != nil {
+	if err := os.WriteFile(yamlPath, append(header, yamlData...), 0o600); err != nil {
 		return false, fmt.Errorf("saving migrated config: %w", err)
 	}
 

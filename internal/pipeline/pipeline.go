@@ -1,3 +1,6 @@
+// Package pipeline implements the KND Council's multi-phase execution engine.
+// It orchestrates agents through mandatory and conditional phases, applies risk
+// gates after QA, and manages rework loops when quality thresholds are not met.
 package pipeline
 
 import (
@@ -18,29 +21,29 @@ const (
 
 // Phase represents a single phase in the KND Council pipeline.
 type Phase struct {
-	Number      int
-	Name        string
-	Operative   string
-	AgentName   string      // agent file name (e.g., "numbuh-1")
-	Status      PhaseStatus
-	Duration    string
-	Summary     string
-	Conditional bool
-	TriggerSpec string // trigger conditions for conditional phases
+	Number      int         // Phase number (1-8), determines execution order
+	Name        string      // Human-readable phase name (e.g., "Analysis", "QA")
+	Operative   string      // Display name of the operative (e.g., "Numbuh 1")
+	AgentName   string      // Agent file name without extension (e.g., "numbuh-1")
+	Status      PhaseStatus // Current execution status
+	Duration    string      // Execution time (set after completion)
+	Summary     string      // Brief outcome or error message
+	Conditional bool        // If true, phase only runs when trigger conditions are met
+	TriggerSpec string      // Trigger conditions for conditional phases (from agent frontmatter)
 }
 
 // Pipeline manages the full council execution flow.
 type Pipeline struct {
-	Task        string
-	Phases      []Phase
-	Current     int
-	Active      bool
-	Context     *PipelineContext
-	MaxRework   int // maximum rework loops (default 2)
+	Task      string           // The original task/mission description
+	Phases    []Phase          // All phases (mandatory + conditional)
+	Current   int              // Index of the currently active phase
+	Active    bool             // True while the pipeline is still executing
+	Context   *PipelineContext // Accumulated state across phases
+	MaxRework int              // Maximum rework loops before escalation (default 2)
 }
 
 // Backend is the interface the pipeline uses to deploy agents.
-// This is satisfied by the backend package implementations.
+// It is satisfied by the backend package implementations (kiro-cli, codex, etc.).
 type Backend interface {
 	Deploy(agentName string, prompt string, input string) (string, error)
 }
@@ -106,7 +109,7 @@ func (p *Pipeline) Skip() {
 func (p *Pipeline) RouteToPhase(targetPhase int) error {
 	p.Context.ReworkCount++
 	if p.Context.ReworkCount > p.MaxRework {
-		return fmt.Errorf("max rework loops (%d) exceeded — escalating to human", p.MaxRework)
+		return fmt.Errorf("max rework loops (%d) exceeded — escalating to human for review", p.MaxRework)
 	}
 
 	// Mark current phase as rework
@@ -121,7 +124,7 @@ func (p *Pipeline) RouteToPhase(targetPhase int) error {
 		}
 	}
 
-	return fmt.Errorf("target phase %d not found in pipeline", targetPhase)
+	return fmt.Errorf("target phase %d not found in pipeline — check pipeline phase configuration", targetPhase)
 }
 
 // Stop halts the pipeline (for CRITICAL risk).

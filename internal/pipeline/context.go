@@ -6,13 +6,15 @@ import (
 )
 
 // PipelineContext accumulates state as the pipeline executes phase by phase.
+// Each phase's output is recorded and made available to subsequent phases as
+// structured input, enabling agents to build on prior work.
 type PipelineContext struct {
-	Task         string
-	PhaseOutputs map[int]string   // phase number → agent output
-	FilesChanged []string         // accumulated files touched across phases
-	Decisions    []string         // decisions recorded during pipeline
-	RiskLevel    string           // current risk assessment from QA
-	ReworkCount  int              // how many times the pipeline has looped back
+	Task         string           // The original mission task description
+	PhaseOutputs map[int]string   // Phase number → agent output text
+	FilesChanged []string         // Accumulated file paths touched across all phases
+	Decisions    []string         // Key decisions recorded during pipeline execution
+	RiskLevel    string           // Current risk assessment from QA (LOW/MEDIUM/HIGH/CRITICAL)
+	ReworkCount  int              // Number of times the pipeline has looped back for fixes
 }
 
 // NewPipelineContext creates a fresh context for a pipeline run.

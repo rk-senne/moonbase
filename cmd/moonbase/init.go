@@ -63,7 +63,7 @@ func runInit() {
 		}
 		fmt.Printf("   ✅ Installed %d agents to .kiro/agents/\n", len(files))
 	} else {
-		fmt.Println("   ⚠️  Could not find moonbase agents to install")
+		fmt.Println("   ⚠️  Could not find moonbase agents to install. Run 'moonbase install' later.")
 	}
 
 	fmt.Println("   ✅ Created .kiro/specs/_templates/")

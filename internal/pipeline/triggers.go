@@ -6,8 +6,8 @@ import (
 
 // TriggerResult indicates whether a conditional specialist should be invoked.
 type TriggerResult struct {
-	Invoke bool
-	Reason string
+	Invoke bool   // Whether the specialist should be activated
+	Reason string // Human-readable explanation of why or why not
 }
 
 // EvaluateTrigger checks if a conditional specialist's trigger conditions are met

@@ -1,3 +1,6 @@
+// Package config manages moonbase user preferences stored as YAML.
+// No secrets or API keys are stored in config — those come exclusively from
+// environment variables. Supports automatic migration from the legacy JSON format.
 package config
 
 import (
@@ -10,11 +13,24 @@ import (
 
 // Config holds moonbase user preferences.
 // No API keys or secrets — those come from environment variables.
+//
+// SECURITY: YAML deserialization safety
+// gopkg.in/yaml.v3 is safe against YAML deserialization attacks because:
+// 1. It does NOT support custom constructors or !!python/object-style tags
+// 2. It does NOT execute code during unmarshaling
+// 3. It only maps YAML scalars/sequences/mappings to Go struct fields
+// 4. Unknown fields are silently ignored (no gadget chains possible)
+// 5. The Config struct uses only primitive types (string, []string) —
+//    no interfaces, func fields, or unsafe.Pointer that could be exploited
+//
+// Unlike PyYAML's yaml.load() or Java's SnakeYAML, Go's yaml.v3 has no
+// known deserialization vulnerabilities. The strict typing of Go structs
+// provides an additional layer of defense.
 type Config struct {
-	DefaultBackend string   `yaml:"default_backend"`
-	Theme          string   `yaml:"theme"`
-	AgentsDir      string   `yaml:"agents_dir,omitempty"` // empty = auto-detect
-	AgentOrder     []string `yaml:"agent_order,omitempty"`
+	DefaultBackend string   `yaml:"default_backend"`       // Preferred AI backend (e.g., "kiro-cli")
+	Theme          string   `yaml:"theme"`                 // TUI color theme name
+	AgentsDir      string   `yaml:"agents_dir,omitempty"`  // Custom agents directory (empty = auto-detect)
+	AgentOrder     []string `yaml:"agent_order,omitempty"` // Display order for agents in TUI sidebar
 }
 
 // DefaultConfig returns a Config with sensible defaults.
@@ -37,7 +53,7 @@ func Path() string {
 	return filepath.Join(home, ".config", "moonbase", "config.yaml")
 }
 
-// OldJSONPath returns the legacy JSON config path (for migration).
+// OldJSONPath returns the legacy JSON config path (used for migration detection).
 func OldJSONPath() string {
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, ".config", "moonbase", "config.json")
@@ -72,9 +88,12 @@ func Load() Config {
 }
 
 // Save writes the config to disk as YAML.
+// SECURITY: Config is written with 0600 permissions (owner read/write only).
+// Config directory is created with 0700 (owner access only).
+// This prevents other users on a shared system from reading preferences.
 func Save(cfg Config) error {
 	path := Path()
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return fmt.Errorf("creating config directory: %w", err)
 	}
 
@@ -86,7 +105,7 @@ func Save(cfg Config) error {
 	header := []byte("# Moonbase configuration\n# https://github.com/f5508037/moonbase\n\n")
 	content := append(header, data...)
 
-	return os.WriteFile(path, content, 0o644)
+	return os.WriteFile(path, content, 0o600)
 }
 
 // Show returns the config as a formatted YAML string for display.

@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"gopkg.in/yaml.v3"
 )
 
 func TestDefaultConfig(t *testing.T) {
@@ -173,4 +175,104 @@ func loadFromPath(path string) (Config, error) {
 
 func migrateFromJSONPaths(jsonPath, yamlPath string) (bool, error) {
 	return migrateJSON(jsonPath, yamlPath)
+}
+
+// === Gap Coverage: Path() returns valid path, Show() output format ===
+
+func TestPath_ReturnsValidPath(t *testing.T) {
+	path := Path()
+	if path == "" {
+		t.Fatal("Path() returned empty string")
+	}
+	// Must contain config.yaml
+	if !strings.Contains(path, "config.yaml") {
+		t.Errorf("expected path to contain 'config.yaml', got: %s", path)
+	}
+	// Must be absolute
+	if !filepath.IsAbs(path) {
+		t.Errorf("expected absolute path, got: %s", path)
+	}
+	// Must be under .config/moonbase
+	if !strings.Contains(path, filepath.Join(".config", "moonbase")) {
+		t.Errorf("expected path under .config/moonbase, got: %s", path)
+	}
+}
+
+func TestOldJSONPath_ReturnsValidPath(t *testing.T) {
+	path := OldJSONPath()
+	if path == "" {
+		t.Fatal("OldJSONPath() returned empty string")
+	}
+	if !strings.Contains(path, "config.json") {
+		t.Errorf("expected path to contain 'config.json', got: %s", path)
+	}
+	if !filepath.IsAbs(path) {
+		t.Errorf("expected absolute path, got: %s", path)
+	}
+}
+
+func TestShow_OutputIsValidYAML(t *testing.T) {
+	cfg := DefaultConfig()
+	output := Show(cfg)
+
+	// Should be parseable back as YAML
+	var parsed Config
+	if err := yaml.Unmarshal([]byte(output), &parsed); err != nil {
+		t.Fatalf("Show() output is not valid YAML: %v", err)
+	}
+	if parsed.DefaultBackend != "kiro-cli" {
+		t.Errorf("expected re-parsed backend 'kiro-cli', got: %s", parsed.DefaultBackend)
+	}
+	if parsed.Theme != "moonbase" {
+		t.Errorf("expected re-parsed theme 'moonbase', got: %s", parsed.Theme)
+	}
+	if len(parsed.AgentOrder) != 14 {
+		t.Errorf("expected 14 agents in re-parsed order, got: %d", len(parsed.AgentOrder))
+	}
+}
+
+func TestShow_ContainsAllFields(t *testing.T) {
+	cfg := Config{
+		DefaultBackend: "ollama",
+		Theme:          "classified",
+		AgentsDir:      "/custom/agents",
+		AgentOrder:     []string{"numbuh-1", "numbuh-2"},
+	}
+	output := Show(cfg)
+
+	if !strings.Contains(output, "ollama") {
+		t.Error("expected 'ollama' in show output")
+	}
+	if !strings.Contains(output, "classified") {
+		t.Error("expected 'classified' in show output")
+	}
+	if !strings.Contains(output, "/custom/agents") {
+		t.Error("expected agents_dir in show output")
+	}
+	if !strings.Contains(output, "numbuh-1") {
+		t.Error("expected agent_order entries in show output")
+	}
+}
+
+func TestDefaultConfig_AgentOrderContainsAllExpected(t *testing.T) {
+	cfg := DefaultConfig()
+
+	expected := []string{
+		"numbuh-0", "numbuh-1", "numbuh-2", "numbuh-3", "numbuh-4", "numbuh-5",
+		"numbuh-362", "numbuh-274", "numbuh-86", "numbuh-999", "numbuh-13",
+		"knd-council", "sector-z", "numbuh-9",
+	}
+
+	for _, name := range expected {
+		found := false
+		for _, a := range cfg.AgentOrder {
+			if a == name {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("expected agent %s in default order", name)
+		}
+	}
 }

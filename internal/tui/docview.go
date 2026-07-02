@@ -50,11 +50,6 @@ func (d *DocsState) loadDoc(idx int, width int) {
 	d.loaded = true
 }
 
-func (d *DocsState) Resize(w, h int) {
-	d.viewport.Width = w - 28
-	d.viewport.Height = h - 4
-}
-
 func (a App) renderDocs() string {
 	header := a.renderHeader("Documentation")
 

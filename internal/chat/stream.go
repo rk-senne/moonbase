@@ -3,15 +3,23 @@ package chat
 import (
 	"bufio"
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 )
 
 // DefaultMaxTokens is the maximum number of tokens the model will generate per response.
 const DefaultMaxTokens = 4096
+
+// maxErrorBodySize limits how much of an error response body we read (1MB).
+// Prevents memory exhaustion from malicious or malformed API responses.
+const maxErrorBodySize = 1 << 20
 
 type StreamChunk struct {
 	Text string
@@ -27,7 +35,36 @@ type anthropicRequest struct {
 	Stream    bool                `json:"stream"`
 }
 
-// Stream sends a conversation to Anthropic and returns a channel of text chunks
+// SECURITY: httpClient is configured with explicit TLS 1.2 minimum, timeouts on all
+// phases of the connection, and enforced HTTPS via TLS config. This prevents:
+// - Downgrade attacks (TLS 1.2 minimum)
+// - Slowloris/connection exhaustion (timeouts)
+// - The client only connects to api.anthropic.com over HTTPS (URL hardcoded below)
+var httpClient = &http.Client{
+	Timeout: 300 * time.Second, // overall request timeout (streaming may be long)
+	Transport: &http.Transport{
+		TLSClientConfig: &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		},
+		DialContext: (&net.Dialer{
+			Timeout:   10 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ResponseHeaderTimeout: 30 * time.Second,
+		IdleConnTimeout:       90 * time.Second,
+		MaxIdleConns:          10,
+		MaxIdleConnsPerHost:   2,
+	},
+}
+
+// Stream sends a conversation to Anthropic and returns a channel of text chunks.
+//
+// SECURITY TRUST BOUNDARY:
+// - API key comes from environment (never stored in config/code)
+// - Connection is HTTPS-only to api.anthropic.com (hardcoded, not configurable)
+// - Response is parsed as SSE; malformed data is discarded (not executed)
+// - Error response body is size-limited to prevent OOM
 func Stream(conv *Conversation) <-chan StreamChunk {
 	ch := make(chan StreamChunk, 64)
 
@@ -55,6 +92,7 @@ func Stream(conv *Conversation) <-chan StreamChunk {
 
 		payload, _ := json.Marshal(body)
 
+		// SECURITY: URL is hardcoded HTTPS — no user-controlled endpoint.
 		req, err := http.NewRequest("POST", "https://api.anthropic.com/v1/messages", bytes.NewReader(payload))
 		if err != nil {
 			ch <- StreamChunk{Err: err}
@@ -65,7 +103,7 @@ func Stream(conv *Conversation) <-chan StreamChunk {
 		req.Header.Set("x-api-key", apiKey)
 		req.Header.Set("anthropic-version", "2023-06-01")
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := httpClient.Do(req)
 		if err != nil {
 			ch <- StreamChunk{Err: err}
 			return
@@ -73,13 +111,15 @@ func Stream(conv *Conversation) <-chan StreamChunk {
 		defer resp.Body.Close()
 
 		if resp.StatusCode != 200 {
+			// SECURITY: Limit error body read to prevent OOM from oversized responses.
+			limited := io.LimitReader(resp.Body, maxErrorBodySize)
 			var buf bytes.Buffer
-			buf.ReadFrom(resp.Body)
+			buf.ReadFrom(limited)
 			ch <- StreamChunk{Err: fmt.Errorf("API error %d: %s", resp.StatusCode, buf.String())}
 			return
 		}
 
-		// Parse SSE stream
+		// Parse SSE stream — only extract text content, discard anything else.
 		scanner := bufio.NewScanner(resp.Body)
 		for scanner.Scan() {
 			line := scanner.Text()
@@ -104,7 +144,7 @@ func Stream(conv *Conversation) <-chan StreamChunk {
 			}
 
 			if err := json.Unmarshal([]byte(data), &event); err != nil {
-				continue
+				continue // SECURITY: Discard malformed events, don't propagate parse errors
 			}
 
 			if event.Type == "content_block_delta" && event.Delta.Text != "" {

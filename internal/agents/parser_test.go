@@ -220,3 +220,176 @@ func findAgentsDir(t *testing.T) string {
 
 	return ""
 }
+
+// === Gap Coverage: Malformed YAML fields, empty file, invalid types ===
+
+func TestSplitFrontmatter_EmptyFile(t *testing.T) {
+	content := []byte("")
+
+	_, _, err := SplitFrontmatter(content)
+	if err != ErrNoFrontmatter {
+		t.Fatalf("expected ErrNoFrontmatter for empty file, got: %v", err)
+	}
+}
+
+func TestSplitFrontmatter_OnlyDelimiters(t *testing.T) {
+	// With empty YAML content between delimiters (just a blank line)
+	content := []byte("---\n\n---\n")
+
+	yamlBytes, body, err := SplitFrontmatter(content)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// YAML should be empty/whitespace
+	if len(strings.TrimSpace(string(yamlBytes))) != 0 {
+		t.Errorf("expected empty yaml, got: %q", string(yamlBytes))
+	}
+	if len(strings.TrimSpace(string(body))) != 0 {
+		t.Errorf("expected empty body, got: %q", string(body))
+	}
+}
+
+func TestSplitFrontmatter_WhitespaceOnly(t *testing.T) {
+	content := []byte("   \n  \n  ")
+
+	_, _, err := SplitFrontmatter(content)
+	if err != ErrNoFrontmatter {
+		t.Fatalf("expected ErrNoFrontmatter for whitespace-only, got: %v", err)
+	}
+}
+
+func TestParseAgentFile_MissingNameField(t *testing.T) {
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "no-name.md")
+
+	// Valid YAML frontmatter but missing the 'name' field
+	content := "---\nrole: QA\ntools:\n  - read\n  - shell\n---\n# Agent with no name\n\nBody here.\n"
+	os.WriteFile(path, []byte(content), 0o644)
+
+	agent, err := ParseAgentFile(path)
+	if err != nil {
+		t.Fatalf("parse should succeed (YAML is valid), got: %v", err)
+	}
+	// Name should be empty string — it's valid YAML, just missing the field
+	if agent.Name != "" {
+		t.Errorf("expected empty name, got: %s", agent.Name)
+	}
+	if agent.Role != "QA" {
+		t.Errorf("expected role 'QA', got: %s", agent.Role)
+	}
+	if len(agent.Tools) != 2 {
+		t.Errorf("expected 2 tools, got: %d", len(agent.Tools))
+	}
+}
+
+func TestParseAgentFile_InvalidToolsType(t *testing.T) {
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "bad-tools.md")
+
+	// Tools as a string instead of a list — this should cause a YAML unmarshal error
+	content := "---\nname: bad-agent\ntools: \"this should be a list\"\n---\n# Bad Agent\n"
+	os.WriteFile(path, []byte(content), 0o644)
+
+	_, err := ParseAgentFile(path)
+	if err == nil {
+		t.Fatal("expected error when tools is a string instead of list")
+	}
+	if !strings.Contains(err.Error(), "YAML") {
+		t.Errorf("expected YAML parse error, got: %v", err)
+	}
+}
+
+func TestParseAgentFile_InvalidToolsTypeNumber(t *testing.T) {
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "number-tools.md")
+
+	// Tools as a number — YAML unmarshal should fail
+	content := "---\nname: bad-agent\ntools: 42\n---\n# Bad Agent\n"
+	os.WriteFile(path, []byte(content), 0o644)
+
+	_, err := ParseAgentFile(path)
+	if err == nil {
+		t.Fatal("expected error when tools is a number")
+	}
+}
+
+func TestParseAgentFile_EmptyFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "empty.md")
+
+	os.WriteFile(path, []byte(""), 0o644)
+
+	_, err := ParseAgentFile(path)
+	if err == nil {
+		t.Fatal("expected error for empty file")
+	}
+}
+
+func TestParseAgentFile_NonexistentFile(t *testing.T) {
+	_, err := ParseAgentFile("/nonexistent/agent.md")
+	if err == nil {
+		t.Fatal("expected error for nonexistent file")
+	}
+}
+
+func TestParseAgentFile_MissingDesignation(t *testing.T) {
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "no-designation.md")
+
+	content := "---\nname: numbuh-test\nrole: Tester\ntools:\n  - read\n---\n# Test Agent\n\nPrompt.\n"
+	os.WriteFile(path, []byte(content), 0o644)
+
+	agent, err := ParseAgentFile(path)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if agent.Designation != "" {
+		t.Errorf("expected empty designation, got: %s", agent.Designation)
+	}
+}
+
+func TestParseAgentFile_AllOptionalFieldsMissing(t *testing.T) {
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "minimal.md")
+
+	// Absolute minimum valid agent
+	content := "---\nname: minimal\n---\n# Minimal\n"
+	os.WriteFile(path, []byte(content), 0o644)
+
+	agent, err := ParseAgentFile(path)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if agent.Name != "minimal" {
+		t.Errorf("expected name 'minimal', got: %s", agent.Name)
+	}
+	if agent.Shell != nil {
+		t.Error("expected nil shell config")
+	}
+	if agent.PipelinePosition != nil {
+		t.Error("expected nil pipeline_position")
+	}
+	if agent.Routing != nil {
+		t.Error("expected nil routing")
+	}
+	if agent.Triggers != nil {
+		t.Error("expected nil triggers")
+	}
+}
+
+func TestParseAgentFile_ExtraUnknownFields(t *testing.T) {
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "extra-fields.md")
+
+	// Unknown YAML fields should not cause errors (YAML ignores them)
+	content := "---\nname: extra\nrole: Test\nfoo: bar\nunknown_field: 123\ntools:\n  - read\n---\n# Extra\n"
+	os.WriteFile(path, []byte(content), 0o644)
+
+	agent, err := ParseAgentFile(path)
+	if err != nil {
+		t.Fatalf("unexpected error for unknown fields: %v", err)
+	}
+	if agent.Name != "extra" {
+		t.Errorf("expected name 'extra', got: %s", agent.Name)
+	}
+}

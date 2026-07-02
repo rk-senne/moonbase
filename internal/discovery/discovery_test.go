@@ -313,3 +313,148 @@ func findProjectRoot(t *testing.T) string {
 	}
 	return ""
 }
+
+// === Gap Coverage: Steering files with malformed frontmatter, edge cases ===
+
+func TestShouldExclude_MalformedFrontmatter(t *testing.T) {
+	// Has frontmatter delimiters but invalid YAML content — should NOT be excluded
+	content := []byte("---\n{{{{ invalid yaml !!!!\n---\n# Content\n")
+	if shouldExclude(content) {
+		t.Error("malformed frontmatter should NOT be excluded (fail-open)")
+	}
+}
+
+func TestShouldExclude_MalformedNoClosingDelimiter(t *testing.T) {
+	// Has opening --- but no closing --- — should NOT be excluded
+	content := []byte("---\ninclusion: manual\nno closing delimiter\n")
+	if shouldExclude(content) {
+		t.Error("frontmatter without closing --- should NOT be excluded")
+	}
+}
+
+func TestShouldExclude_InclusionUnknownValue(t *testing.T) {
+	// Has inclusion field but with non-manual value
+	content := []byte("---\ninclusion: always\n---\n# Content\n")
+	if shouldExclude(content) {
+		t.Error("inclusion: 'always' (not 'manual') should NOT be excluded")
+	}
+}
+
+func TestShouldExclude_EmptyInclusionField(t *testing.T) {
+	content := []byte("---\ninclusion: \"\"\n---\n# Content\n")
+	if shouldExclude(content) {
+		t.Error("empty inclusion field should NOT be excluded")
+	}
+}
+
+func TestShouldExclude_CaseVariations(t *testing.T) {
+	// "Manual" (capitalized) should NOT match — only "manual" should exclude
+	content := []byte("---\ninclusion: Manual\n---\n# Content\n")
+	if shouldExclude(content) {
+		t.Error("'Manual' (capitalized) should NOT be excluded — only 'manual' matches")
+	}
+}
+
+func TestDiscoverSteering_NoFrontmatterIncluded(t *testing.T) {
+	tmpDir := t.TempDir()
+	steeringDir := filepath.Join(tmpDir, ".kiro", "steering")
+	os.MkdirAll(steeringDir, 0o755)
+
+	// A file with no frontmatter at all should be included
+	content := "# Plain Markdown Rule\n\nNo frontmatter. Just content.\n"
+	os.WriteFile(filepath.Join(steeringDir, "plain-rule.md"), []byte(content), 0o644)
+
+	steering, err := discoverSteering(tmpDir)
+	if err != nil {
+		t.Fatalf("discoverSteering failed: %v", err)
+	}
+	if len(steering) != 1 {
+		t.Fatalf("expected 1 steering file, got %d", len(steering))
+	}
+	if steering[0].Name != "plain-rule" {
+		t.Errorf("expected 'plain-rule', got: %s", steering[0].Name)
+	}
+}
+
+func TestDiscoverSteering_MalformedFrontmatterIncluded(t *testing.T) {
+	tmpDir := t.TempDir()
+	steeringDir := filepath.Join(tmpDir, ".kiro", "steering")
+	os.MkdirAll(steeringDir, 0o755)
+
+	// Malformed frontmatter should NOT cause exclusion (fail-open)
+	content := "---\n{{invalid yaml}}\n---\n# Rule\n\nContent.\n"
+	os.WriteFile(filepath.Join(steeringDir, "bad-yaml.md"), []byte(content), 0o644)
+
+	steering, err := discoverSteering(tmpDir)
+	if err != nil {
+		t.Fatalf("discoverSteering failed: %v", err)
+	}
+	if len(steering) != 1 {
+		t.Fatalf("expected 1 steering file (malformed yaml = include), got %d", len(steering))
+	}
+}
+
+func TestDiscoverSteering_EmptyDir(t *testing.T) {
+	tmpDir := t.TempDir()
+	steeringDir := filepath.Join(tmpDir, ".kiro", "steering")
+	os.MkdirAll(steeringDir, 0o755)
+
+	steering, err := discoverSteering(tmpDir)
+	if err != nil {
+		t.Fatalf("discoverSteering failed: %v", err)
+	}
+	if len(steering) != 0 {
+		t.Errorf("expected 0 steering files in empty dir, got %d", len(steering))
+	}
+}
+
+func TestDiscoverSteering_NonexistentDir(t *testing.T) {
+	tmpDir := t.TempDir()
+	// No .kiro/steering directory at all
+	steering, err := discoverSteering(tmpDir)
+	if err != nil {
+		t.Fatalf("discoverSteering should not error for missing dir: %v", err)
+	}
+	if steering != nil {
+		t.Errorf("expected nil steering for missing dir, got: %v", steering)
+	}
+}
+
+func TestStripFrontmatter_MalformedNoClosing(t *testing.T) {
+	// Frontmatter without closing --- should return content unchanged
+	input := "---\ntitle: Broken\nNo closing delimiter here\n"
+	result := stripFrontmatter(input)
+	if result != input {
+		t.Errorf("expected unchanged content for malformed frontmatter, got: %s", result)
+	}
+}
+
+func TestStripFrontmatter_EmptyString(t *testing.T) {
+	result := stripFrontmatter("")
+	if result != "" {
+		t.Errorf("expected empty string, got: %q", result)
+	}
+}
+
+func TestComposePrompt_MultipleSpecs(t *testing.T) {
+	agentPrompt := "# Numbuh 2\n\nI am the architect."
+	context := &ProjectContext{
+		Specs: []SpecFile{
+			{Feature: "auth", Type: "requirements", Content: "# Auth Requirements\n\nAC-1: login works.\n"},
+			{Feature: "auth", Type: "design", Content: "# Auth Design\n\nUse JWT.\n"},
+			{Feature: "pagination", Type: "requirements", Content: "# Pagination Requirements\n\nAC-2: page works.\n"},
+		},
+	}
+
+	result := ComposePrompt(agentPrompt, context, "Implement auth")
+
+	if !strings.Contains(result, "AC-1") {
+		t.Error("expected auth spec content")
+	}
+	if !strings.Contains(result, "AC-2") {
+		t.Error("expected pagination spec content")
+	}
+	if !strings.Contains(result, "JWT") {
+		t.Error("expected design content")
+	}
+}

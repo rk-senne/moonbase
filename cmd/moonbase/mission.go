@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/f5508037/moonbase/internal/agents"
+	"github.com/f5508037/moonbase/internal/backend"
 	clip "github.com/f5508037/moonbase/internal/clipboard"
 	"github.com/f5508037/moonbase/internal/discovery"
 	"github.com/f5508037/moonbase/internal/pipeline"
@@ -25,7 +26,7 @@ func runMission(task string) {
 	loadCmd := reg.Load()
 	msg := loadCmd()
 	if loaded, ok := msg.(agents.AgentsLoadedMsg); ok && loaded.Err != nil {
-		fmt.Fprintf(os.Stderr, "Error loading agents: %v\n", loaded.Err)
+		fmt.Fprintf(os.Stderr, "❌ Failed to load agents: %v\n", loaded.Err)
 		os.Exit(1)
 	}
 
@@ -128,6 +129,7 @@ func runMission(task string) {
 }
 
 // deployToBackend tries kiro-cli, then falls back to clipboard with manual input.
+// SECURITY: kiro-cli subprocess uses SafeEnv() to prevent env var leakage.
 func deployToBackend(agent *agents.Agent, composed string, task string) (string, error) {
 	// Try kiro-cli
 	if kiro, err := exec.LookPath("kiro-cli"); err == nil {
@@ -141,6 +143,9 @@ func deployToBackend(agent *agents.Agent, composed string, task string) (string,
 				"--system-prompt", tmpFile.Name(),
 				"--message", task,
 			)
+			// SECURITY: Use SafeEnv to prevent leaking sensitive env vars to subprocess.
+			cmd.Env = backend.SafeEnv()
+
 			output, err := cmd.CombinedOutput()
 			if err == nil {
 				return string(output), nil
@@ -168,5 +173,5 @@ func deployToBackend(agent *agents.Agent, composed string, task string) (string,
 		return strings.Join(lines, "\n"), nil
 	}
 
-	return "", fmt.Errorf("no backend available (install kiro-cli or ensure clipboard is available)")
+	return "", fmt.Errorf("no backend available — install kiro-cli or ensure clipboard is accessible")
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/f5508037/moonbase/internal/agents"
 	"github.com/f5508037/moonbase/internal/backend"
@@ -84,13 +85,13 @@ func runLint() {
 
 	dir := findAgentsDirQuiet()
 	if dir == "" {
-		fmt.Fprintln(os.Stderr, "❌ Cannot find agents directory")
+		fmt.Fprintln(os.Stderr, "❌ Cannot find agents directory. Run 'moonbase init' or run from project root.")
 		os.Exit(1)
 	}
 
 	files, _ := filepath.Glob(filepath.Join(dir, "*.md"))
 	if len(files) == 0 {
-		fmt.Fprintln(os.Stderr, "❌ No agent .md files found")
+		fmt.Fprintln(os.Stderr, "❌ No agent .md files found in agents directory.")
 		os.Exit(1)
 	}
 
@@ -169,22 +170,9 @@ func lintAgent(agent *agents.Agent, knownAgents map[string]bool) []string {
 	}
 
 	// Prompt should contain Operating Protocol
-	if !containsStr(agent.Prompt, "Operating Protocol") && !containsStr(agent.Prompt, "Evidence Standard") {
+	if !strings.Contains(agent.Prompt, "Operating Protocol") && !strings.Contains(agent.Prompt, "Evidence Standard") {
 		issues = append(issues, "prompt missing Operating Protocol section")
 	}
 
 	return issues
-}
-
-func containsStr(s, sub string) bool {
-	return len(s) > 0 && len(sub) > 0 && findStr(s, sub)
-}
-
-func findStr(s, sub string) bool {
-	for i := 0; i <= len(s)-len(sub); i++ {
-		if s[i:i+len(sub)] == sub {
-			return true
-		}
-	}
-	return false
 }

@@ -1,5 +1,9 @@
 bin/
 dist/
 *.exe
+*.out
+*.test
+*.prof
+coverage.out
 .DS_Store
 .env

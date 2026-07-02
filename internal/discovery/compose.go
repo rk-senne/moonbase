@@ -5,8 +5,34 @@ import (
 	"strings"
 )
 
+// maxSteeringSize is the maximum bytes of steering content included per file.
+// Prevents excessively large steering files from consuming the entire context window
+// or being used as a prompt injection amplification vector.
+const maxSteeringSize = 8000
+
+// maxSpecSize is the maximum bytes of spec content included per file.
+const maxSpecSize = 1500
+
+// maxTotalComposedSize is the absolute maximum size of a composed prompt (512KB).
+// Guards against OOM if many large files are discovered.
+const maxTotalComposedSize = 512 * 1024
+
 // ComposePrompt builds the full prompt for an agent deployment.
 // Order: project steering rules → agent prompt → spec context → task
+//
+// SECURITY TRUST BOUNDARY:
+// Content from steering and spec files is injected into the prompt structure.
+// This content is read from the local filesystem (.kiro/ directory) which is
+// under the project owner's control. However, injected content could
+// theoretically attempt to override agent instructions via prompt injection.
+//
+// Mitigations:
+// 1. Content is wrapped in clearly delimited sections (--- PROJECT RULES --- etc.)
+// 2. The agent prompt (identity/instructions) comes AFTER steering, so the agent's
+//    core directives have final authority in the prompt order
+// 3. Content is size-limited to prevent context window exhaustion
+// 4. Frontmatter is stripped to avoid YAML injection into the prompt
+// 5. Total composed size is capped to prevent OOM
 func ComposePrompt(agentPrompt string, context *ProjectContext, task string) string {
 	var sections []string
 
@@ -19,6 +45,10 @@ func ComposePrompt(agentPrompt string, context *ProjectContext, task string) str
 			steeringBlock.WriteString(fmt.Sprintf("### %s\n\n", s.Name))
 			// Strip frontmatter from steering content before including
 			content := stripFrontmatter(s.Content)
+			// SECURITY: Truncate oversized steering files to prevent context exhaustion
+			if len(content) > maxSteeringSize {
+				content = content[:maxSteeringSize] + "\n...(truncated for size)"
+			}
 			steeringBlock.WriteString(content)
 			steeringBlock.WriteString("\n\n")
 		}
@@ -44,10 +74,10 @@ func ComposePrompt(agentPrompt string, context *ProjectContext, task string) str
 		for feature, files := range features {
 			specBlock.WriteString(fmt.Sprintf("## Feature: %s\n\n", feature))
 			for _, f := range files {
-				// Include a summary (first 1500 chars per spec file)
+				// SECURITY: Truncate per-file spec content
 				content := f.Content
-				if len(content) > 1500 {
-					content = content[:1500] + "\n...(truncated)"
+				if len(content) > maxSpecSize {
+					content = content[:maxSpecSize] + "\n...(truncated)"
 				}
 				specBlock.WriteString(fmt.Sprintf("### %s.md\n\n%s\n\n", f.Type, content))
 			}
@@ -69,6 +99,11 @@ func ComposePrompt(agentPrompt string, context *ProjectContext, task string) str
 	// 5. Task (if provided — this is what the user actually wants done)
 	if task != "" {
 		composed += fmt.Sprintf("\n\n--- TASK ---\n%s\n--- END TASK ---\n", task)
+	}
+
+	// SECURITY: Final size guard — prevent OOM from accumulated content
+	if len(composed) > maxTotalComposedSize {
+		composed = composed[:maxTotalComposedSize] + "\n...(prompt truncated — exceeded maximum size)"
 	}
 
 	return composed

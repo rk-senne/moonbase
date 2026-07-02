@@ -15,11 +15,11 @@ const (
 	RiskUnknown  RiskLevel = "UNKNOWN"
 )
 
-// RiskRouting represents where the pipeline should go based on risk.
+// RiskRouting represents where the pipeline should go based on risk assessment.
 type RiskRouting struct {
-	Level       RiskLevel
-	TargetPhase int    // which phase to route to (0 = stop)
-	Action      string // human-readable action description
+	Level       RiskLevel // The assessed risk level
+	TargetPhase int       // Which phase to route to (0 = stop pipeline)
+	Action      string    // Human-readable action description
 }
 
 // ParseRiskGate parses QA output (Numbuh 4) to extract the risk verdict.

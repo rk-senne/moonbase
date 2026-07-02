@@ -1,3 +1,7 @@
+// Package discovery implements project context detection for moonbase agents.
+// It scans the working directory for .kiro/specs/, .kiro/steering/, build configs,
+// and README files, assembling a ProjectContext that agents use to understand
+// the project they are working in.
 package discovery
 
 import (
@@ -9,43 +13,34 @@ import (
 
 // ProjectContext holds discovered information about the project an agent is working in.
 type ProjectContext struct {
-	// Specs found in .kiro/specs/
-	Specs []SpecFile
-
-	// Steering rules from .kiro/steering/ (with inclusion filtering applied)
-	Steering []SteeringFile
-
-	// Detected stack info (from build configs)
-	Stack StackInfo
-
-	// README content (first 2000 chars)
-	README string
-
-	// Root directory of the project
-	RootDir string
+	Specs    []SpecFile    // Spec documents found in .kiro/specs/{feature}/
+	Steering []SteeringFile // Steering rules from .kiro/steering/ (manual-inclusion files excluded)
+	Stack    StackInfo     // Detected technology stack from build config files
+	README   string        // Project README content (truncated to 2000 chars)
+	RootDir  string        // Absolute path to the project root directory
 }
 
-// SpecFile represents a spec document from .kiro/specs/{feature}/
+// SpecFile represents a spec document from .kiro/specs/{feature}/.
 type SpecFile struct {
-	Feature  string // e.g., "moonbase-v2"
-	Type     string // "requirements", "design", "tasks"
-	Path     string // absolute path
-	Content  string // file content
+	Feature string // Feature directory name (e.g., "moonbase-v2")
+	Type    string // Spec type: "requirements", "design", or "tasks"
+	Path    string // Absolute file path
+	Content string // Full file content
 }
 
-// SteeringFile represents a project-wide rule from .kiro/steering/
+// SteeringFile represents a project-wide rule from .kiro/steering/.
 type SteeringFile struct {
-	Name    string // filename without extension
-	Path    string // absolute path
-	Content string // file content
+	Name    string // Filename without extension (e.g., "dev-rules")
+	Path    string // Absolute file path
+	Content string // Full file content (including frontmatter if present)
 }
 
 // StackInfo holds detected technology stack information.
 type StackInfo struct {
-	Language    string // "go", "java", "javascript", "python", "rust", etc.
-	BuildTool   string // "make", "maven", "npm", "cargo", etc.
-	TestCommand string // detected test command
-	BuildFile   string // path to the build config file
+	Language    string // Primary language: "go", "java", "javascript", "python", "rust", etc.
+	BuildTool   string // Build tool: "make", "maven", "npm", "cargo", etc.
+	TestCommand string // Detected test command (e.g., "go test ./...")
+	BuildFile   string // Absolute path to the build config file that was detected
 }
 
 // Discover scans a project directory for specs, steering rules, and stack info.

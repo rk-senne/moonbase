@@ -22,6 +22,10 @@ import (
 	"github.com/f5508037/moonbase/internal/tui"
 )
 
+// maxPipeInputSize is the maximum bytes accepted from piped stdin (1MB).
+// Prevents OOM if a malicious or accidental large pipe is connected.
+const maxPipeInputSize = 1 << 20
+
 func main() {
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
@@ -37,20 +41,20 @@ func main() {
 			runList()
 		case "deploy":
 			if len(os.Args) < 3 {
-				fmt.Fprintln(os.Stderr, "Usage: moonbase deploy <numbuh>")
+				fmt.Fprintln(os.Stderr, "❌ Usage: moonbase deploy <numbuh> [task]")
 				os.Exit(1)
 			}
 			runDeploy(os.Args[2])
 		case "mission":
 			task := strings.Join(os.Args[2:], " ")
 			if task == "" {
-				fmt.Fprintln(os.Stderr, "Usage: moonbase mission <task description>")
+				fmt.Fprintln(os.Stderr, "❌ Usage: moonbase mission <task description>")
 				os.Exit(1)
 			}
 			runMission(task)
 		case "export":
 			if len(os.Args) < 3 {
-				fmt.Fprintln(os.Stderr, "Usage: moonbase export <mission-id>")
+				fmt.Fprintln(os.Stderr, "❌ Usage: moonbase export <mission-id>")
 				os.Exit(1)
 			}
 			id, _ := strconv.Atoi(os.Args[2])
@@ -62,30 +66,39 @@ func main() {
 		case "config":
 			runConfig()
 		default:
-			fmt.Fprintf(os.Stderr, "Unknown command: %s\nRun 'moonbase help' for usage.\n", os.Args[1])
+			fmt.Fprintf(os.Stderr, "❌ Unknown command: %s\n   Run 'moonbase help' for usage.\n", os.Args[1])
 			os.Exit(1)
 		}
 		return
 	}
 
 	// Pipe mode: if stdin is not a TTY, read it and deploy
+	// SECURITY: Input is size-limited to prevent OOM from large/infinite pipes.
+	// The kiro-cli subprocess uses SafeEnv() to avoid leaking env vars.
 	if !isTerminal() {
-		input, _ := io.ReadAll(os.Stdin)
+		limited := io.LimitReader(os.Stdin, maxPipeInputSize)
+		input, _ := io.ReadAll(limited)
 		task := strings.TrimSpace(string(input))
-		if task != "" {
-			fmt.Printf("🌙 Pipe mode — task: %s\n", task)
-			fmt.Println("Deploy to kiro-cli with knd-council...")
-			if kiro, err := exec.LookPath("kiro-cli"); err == nil {
-				cmd := exec.Command(kiro, "chat", "--agent", "knd-council")
-				cmd.Stdin = strings.NewReader(task)
-				cmd.Stdout = os.Stdout
-				cmd.Stderr = os.Stderr
-				cmd.Run()
-			} else {
-				// Copy task to clipboard
-				clip.Copy(task)
-				fmt.Println("✓ Task copied to clipboard")
-			}
+		if task == "" {
+			return
+		}
+		if len(input) >= maxPipeInputSize {
+			fmt.Fprintf(os.Stderr, "⚠️  Pipe input truncated at %d bytes\n", maxPipeInputSize)
+		}
+		fmt.Printf("🌙 Pipe mode — task: %s\n", task)
+		fmt.Println("Deploy to kiro-cli with knd-council...")
+		if kiro, err := exec.LookPath("kiro-cli"); err == nil {
+			cmd := exec.Command(kiro, "chat", "--agent", "knd-council")
+			cmd.Stdin = strings.NewReader(task)
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			// SECURITY: Use SafeEnv to prevent leaking sensitive env vars to subprocess
+			cmd.Env = backend.SafeEnv()
+			cmd.Run()
+		} else {
+			// Copy task to clipboard
+			clip.Copy(task)
+			fmt.Println("✓ Task copied to clipboard")
 		}
 		return
 	}
@@ -93,13 +106,12 @@ func main() {
 	// Default: launch TUI
 	p := tea.NewProgram(tui.NewApp(), tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "❌ TUI error: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-// runInstall is defined in install.go
-
+// runList displays the full KND operative roster and detected backends.
 func runList() {
 	fmt.Println("🌙 KND MOONBASE — OPERATIVE ROSTER")
 	fmt.Println("═══════════════════════════════════════")
@@ -161,6 +173,7 @@ func runList() {
 	fmt.Println()
 }
 
+// runHelp prints the operations manual with all available commands.
 func runHelp() {
 	fmt.Println(`🌙 Moonbase — KND Tactical Operations Terminal
 
@@ -199,6 +212,7 @@ func isTerminal() bool {
 	return fi.Mode()&os.ModeCharDevice != 0
 }
 
+// runSnippet manages saved prompt snippets (save/list).
 func runSnippet() {
 	if len(os.Args) < 3 {
 		fmt.Println("Usage: moonbase snippet save <name>")
@@ -244,6 +258,8 @@ func runSnippet() {
 	}
 }
 
+// agentsDir locates the agents directory by checking multiple candidate paths.
+// Exits with an error if no agents directory can be found.
 func agentsDir() string {
 	// 1. Check relative to executable
 	if exe, err := os.Executable(); err == nil {
@@ -281,18 +297,19 @@ func agentsDir() string {
 			return dir
 		}
 	}
-	fmt.Fprintln(os.Stderr, "⚠️  Cannot find agents directory. Run from moonbase project or install agents first.")
+	fmt.Fprintln(os.Stderr, "❌ Cannot find agents directory. Run from moonbase project or install agents first.")
 	os.Exit(1)
 	return ""
 }
 
+// runDeploy deploys a single operative by numbuh to an interactive AI session.
 func runDeploy(numbuh string) {
 	dir := agentsDir()
 
-	// Security: validate agent identifier (prevent path traversal)
+	// SECURITY: Validate agent identifier — prevents path traversal via ../
 	if !isValidAgentID(numbuh) {
-		fmt.Fprintf(os.Stderr, "Invalid agent identifier: %s\n", numbuh)
-		fmt.Fprintf(os.Stderr, "Available: moonbase deploy <0-5|9|13|86|274|362|999|z|council>\n")
+		fmt.Fprintf(os.Stderr, "❌ Invalid agent identifier: %s\n", numbuh)
+		fmt.Fprintf(os.Stderr, "   Available: moonbase deploy <0-5|9|13|86|274|362|999|z|council>\n")
 		os.Exit(1)
 	}
 
@@ -303,6 +320,8 @@ func runDeploy(numbuh string) {
 	}
 
 	// Resolve agent file name from input
+	// SECURITY: Only filepath.Base-safe names are constructed here because
+	// isValidAgentID restricts to [a-zA-Z0-9-], preventing directory traversal.
 	var agentFile string
 	switch {
 	case numbuh == "council" || numbuh == "k":
@@ -316,8 +335,8 @@ func runDeploy(numbuh string) {
 	// Parse the agent .md file
 	agent, err := agents.ParseAgentFile(agentFile)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Agent not found: %s\n  (looked for %s)\n", numbuh, agentFile)
-		fmt.Fprintf(os.Stderr, "\nAvailable: moonbase deploy <0-5|9|13|86|274|362|999|z|council>\n")
+		fmt.Fprintf(os.Stderr, "❌ Agent not found: %s\n   (looked for %s)\n", numbuh, agentFile)
+		fmt.Fprintf(os.Stderr, "\n   Available: moonbase deploy <0-5|9|13|86|274|362|999|z|council>\n")
 		os.Exit(1)
 	}
 
@@ -353,7 +372,8 @@ func runDeploy(numbuh string) {
 			args = append(args, task)
 		}
 
-		// syscall.Exec replaces this process — full TTY to kiro-cli
+		// SECURITY: syscall.Exec uses SafeEnv — only allowlisted env vars are passed.
+		// This replaces this process — full TTY to kiro-cli.
 		execErr := execSyscall(kiro, args, backend.SafeEnv())
 		// If exec fails, fall through to fallback
 		if execErr != nil {
@@ -382,6 +402,7 @@ func runDeploy(numbuh string) {
 	}
 }
 
+// runConfig displays the current moonbase configuration.
 func runConfig() {
 	cfg := config.Load()
 	fmt.Println("🌙 Moonbase Configuration")
@@ -396,12 +417,14 @@ func envExists(key string) bool {
 
 // execSyscall replaces the current process with the given command.
 // This gives the target program full terminal control (TTY, colours, readline).
+// SECURITY: Always called with SafeEnv() — never passes full os.Environ().
 func execSyscall(binary string, args []string, env []string) error {
 	return syscall.Exec(binary, args, env)
 }
 
 // isValidAgentID checks that an agent identifier contains only safe characters.
-// Prevents path traversal attacks via deploy command.
+// Prevents path traversal attacks via deploy command (CWE-22).
+// Only allows: [a-zA-Z0-9-], max 20 chars.
 func isValidAgentID(id string) bool {
 	if len(id) == 0 || len(id) > 20 {
 		return false
