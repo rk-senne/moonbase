@@ -4,10 +4,10 @@
 
 A 14-agent AI development pipeline with spec-driven methodology, human interaction protocols, and project-aware execution. Built for Kiro CLI, compatible with any AI backend.
 
-```
-moonbase              # launch command center
-moonbase deploy 4     # deploy Numbuh 4 (QA)
-moonbase mission      # run the full KND Council pipeline
+```bash
+moonbase init                    # make any project agent-ready
+moonbase deploy 4 "check auth"  # deploy Numbuh 4 with a task
+moonbase mission "add pagination to /users API"  # run full pipeline
 ```
 
 ---
@@ -15,10 +15,56 @@ moonbase mission      # run the full KND Council pipeline
 ## What It Does
 
 - **14 AI operatives** with distinct roles, personalities, and scoped permissions
-- **Spec-driven development** — agents discover and work with `.kiro/specs/` and steering rules
-- **Human interaction protocol** — agents ask focused questions when uncertain instead of guessing
-- **Evidence-based pipeline** — every claim requires proof, every handoff includes context
-- **Risk-gated flow** — QA classifies risk, work loops back until it holds
+- **Spec-driven development** — agents discover `.kiro/specs/` and steering rules automatically
+- **Human interaction protocol** — agents ask focused questions when uncertain, proceed when confident
+- **Risk-gated pipeline** — QA classifies risk, work loops back until it holds
+- **Project-aware** — discovers your stack, conventions, and specs before doing work
+- **Self-auditing** — agents can scan their own codebase for bugs and tech debt
+
+---
+
+## Quick Start
+
+```bash
+# Build from source
+make build
+
+# Initialize a project for agent-driven development
+cd my-project
+moonbase init
+
+# Deploy an agent
+moonbase deploy 1 "analyze the user authentication flow"
+
+# Run the full KND Council pipeline
+moonbase mission "add rate limiting to the API"
+
+# Check environment
+moonbase status
+```
+
+---
+
+## CLI Commands
+
+| Command | Description |
+|---------|-------------|
+| `moonbase` | Launch the TUI dashboard |
+| `moonbase init` | Scaffold `.kiro/` in any project (specs, steering, agents) |
+| `moonbase deploy <n> [task]` | Deploy operative by numbuh (interactive kiro-cli session) |
+| `moonbase mission <task>` | Run full KND Council pipeline on a task |
+| `moonbase install [--all]` | Install agents to project's `.kiro/agents/` |
+| `moonbase status` | Show environment health check |
+| `moonbase lint` | Validate all agent `.md` files |
+| `moonbase config` | Show current YAML configuration |
+| `moonbase list` | Show operative roster |
+| `moonbase help` | Operations manual |
+
+**Pipe mode:**
+```bash
+echo "fix the auth bug" | moonbase              # pipe to KND Council
+echo "check security" | moonbase deploy 274     # pipe to specific agent
+```
 
 ---
 
@@ -33,74 +79,35 @@ Numbuh 2  → Design (blueprint, trade-offs, file impact)
     ↓
 Numbuh 3  → Implementation (code, tests, build)
     ↓
-Numbuh 4  → QA (verify, risk gate: LOW/MEDIUM/HIGH/CRITICAL)
+Numbuh 4  → QA (verify, risk gate)
     ↓                    ↑
-    ├── MEDIUM → fix ────┘
+    ├── MEDIUM → fix ────┘ (max 2 rework loops)
     ├── HIGH → redesign (back to Numbuh 2)
+    ├── CRITICAL → STOP (escalate to human)
     └── LOW ↓
 Numbuh 5  → Review (final gate, PR package)
     ↓
 Human Approval
 ```
 
-**Specialists** deploy conditionally:
-- **Numbuh 0** — Architecture oversight (>5 files, core logic, boundaries)
-- **Numbuh 9** — Migration (upgrades, breaking changes, compatibility)
-- **Numbuh 13** — Chaos testing (edge cases, weird inputs, fuzz)
-- **Numbuh 86** — Decommissioning (dead code, unused deps, tech debt)
-- **Numbuh 274** — Security audit (auth, injection, secrets, CVEs)
-- **Numbuh 362** — DevOps (CI/CD, Docker, deployment, health checks)
-- **Numbuh 999** — Documentation (READMEs, ADRs, changelogs, guides)
-- **Sector Z** — Legacy archaeology (git history, forgotten code, the WHY)
+**Conditional specialists** deploy based on content signals:
 
----
-
-## Structure
-
-```
-moonbase/
-├── agents/                  ← 14 self-contained .md agent files
-│   ├── numbuh-0.md         (System Architect)
-│   ├── numbuh-1.md         (Analyst)
-│   ├── numbuh-2.md         (Architect)
-│   ├── numbuh-3.md         (Implementer)
-│   ├── numbuh-4.md         (QA)
-│   ├── numbuh-5.md         (Reviewer)
-│   ├── numbuh-9.md         (Migration)
-│   ├── numbuh-13.md        (Chaos Tester)
-│   ├── numbuh-86.md        (Decommissioning)
-│   ├── numbuh-274.md       (Security)
-│   ├── numbuh-362.md       (DevOps)
-│   ├── numbuh-999.md       (Documentation)
-│   ├── sector-z.md         (Legacy Archaeology)
-│   └── knd-council.md      (Full Pipeline)
-├── doctrine/                ← Operating principles & protocols
-│   ├── HumanInteractionDoctrine.md
-│   ├── ProjectDiscoveryProtocol.md
-│   ├── SpecDrivenDevelopmentDoctrine.md
-│   ├── MoonbaseEngineeringDoctrine.md
-│   ├── ArchitectureDoctrine.md
-│   ├── GoDoctrine.md
-│   └── SuperTesterDoctrine.md
-├── docs/                    ← Project documentation
-│   ├── agent-format.md     (agent file format spec)
-│   └── design.md           (TUI architecture)
-├── internal/                ← Go TUI source code
-├── cmd/moonbase/            ← CLI entry point
-├── go.mod / go.sum
-├── Makefile
-└── README.md
-```
+| Operative | Triggers When |
+|-----------|--------------|
+| Numbuh 0 | >5 files changed, core logic modified, new patterns |
+| Numbuh 274 | Auth/secrets touched, new endpoints, dependency CVEs |
+| Numbuh 362 | CI/CD, Docker, env vars, deployment config changed |
+| Numbuh 9 | Version upgrades, breaking changes, migrations |
+| Numbuh 13 | Edge case coverage needed, fragile flows, parsers |
+| Numbuh 86 | Dead code discovered, unused deps, zombie features |
+| Numbuh 999 | README needed, ADRs, changelogs |
+| Sector Z | Old/mysterious code touched, legacy context needed |
 
 ---
 
 ## Agent Format
 
-Each agent is a single `.md` file with:
-
-1. **YAML frontmatter** — machine-readable metadata (tools, permissions, routing, hooks)
-2. **Markdown body** — full identity, output formats, behaviour rules, verification checklist
-3. **Operating Protocol** — universal section (evidence standard, human interaction, spec awareness, handoff protocol)
+Each operative is a single self-contained `.md` file:
 
 ```yaml
 ---
@@ -109,19 +116,59 @@ designation: Wallabee Beatles
 role: QA / Verification
 tools: [read, shell, grep, glob, code, knowledge, subagent]
 shell:
-  allowed_commands: ["mvn test", "npm test", "go test ./...", ...]
+  allowed_commands: ["go test ./...", "npm test", "mvn test"]
   read_only: true
 routing:
   available: [numbuh-2, numbuh-3, numbuh-5, numbuh-274, numbuh-362, numbuh-0]
+  trusted: [numbuh-3, numbuh-5]
 pipeline_position: 4
-shortcut: ctrl+shift+4
+triggers: null
 ---
 
 # Numbuh 4 — QA / Verification
+
+## Identity
+Australian. Blunt. Brave. Evidence-driven...
+
+## Purpose
+Core question: "Does it hold when I hit it?"
+
+## Output Formats
 ...
+
+## Operating Protocol
+(Evidence standard, human interaction, spec awareness, handoff protocol)
 ```
 
-No JSON configs. No external references. One file = one complete agent.
+One file = one complete agent. Copy to any project's `.kiro/agents/` and it works.
+
+---
+
+## Project Structure
+
+```
+moonbase/
+├── agents/              ← 14 agent .md files (source of truth)
+├── doctrine/            ← 8 operating doctrine documents
+├── .kiro/
+│   ├── specs/           ← Feature specs (requirements, design, tasks)
+│   ├── steering/        ← Project-wide dev rules
+│   └── agents/          ← Installed agents for kiro-cli
+├── internal/            ← Go source (15 packages)
+│   ├── agents/          ← YAML frontmatter parser + registry
+│   ├── pipeline/        ← Orchestrator, risk gate, triggers
+│   ├── discovery/       ← Project context (.kiro/specs, stack detection)
+│   ├── backend/         ← AI backend integrations (kiro-cli, clipboard)
+│   ├── clipboard/       ← Cross-platform clipboard (macOS/Linux/Windows)
+│   ├── config/          ← YAML config (no secrets)
+│   ├── tui/             ← Bubbletea TUI (dashboard, pipeline, dossier)
+│   └── ...              ← chat, history, watcher, docs, snippets
+├── cmd/moonbase/        ← CLI entry point + subcommands
+├── .github/workflows/   ← CI + release automation
+├── .goreleaser.yml      ← Binary release config
+├── Makefile
+└── go.mod
+```
 
 ---
 
@@ -129,33 +176,60 @@ No JSON configs. No external references. One file = one complete agent.
 
 ### Human Interaction Protocol
 
-Agents use a 4-level uncertainty model:
-- **CERTAIN** — proceed silently
-- **LIKELY** — proceed, label assumption
-- **UNCERTAIN** — ask the human (focused question with options and default)
-- **UNKNOWN** — stop, ask, do not guess
-
-### Spec-Driven Awareness
-
-Agents automatically look for project specs:
 ```
-.kiro/specs/*/requirements.md    → numbered acceptance criteria
-.kiro/specs/*/design.md          → architecture decisions
-.kiro/specs/*/tasks.md           → implementation steps
-.kiro/steering/*.md              → project-wide rules
+CERTAIN  → proceed silently
+LIKELY   → proceed, label assumption
+UNCERTAIN → ask the human (focused question + options + default)
+UNKNOWN  → stop, ask, do not guess
 ```
 
-When specs exist, agents reference AC-IDs, follow designs, and update task status.
-When no spec exists, agents work from code patterns and suggest specs for non-trivial work.
+### Project Discovery
 
-### Evidence Standard
+When deployed, agents automatically find:
+- `.kiro/specs/` — requirements, design, tasks (references AC-IDs)
+- `.kiro/steering/` — project conventions and rules
+- Build configs — detects Go/Java/Node/Python/Rust
+- README — project overview
 
-Every agent must prove what they claim:
-- Numbuh 1: requirements cite user request or label assumptions
-- Numbuh 3: implementation lists changed files and tests run
-- Numbuh 4: every finding includes reproduction evidence
-- Numbuh 274: every vulnerability needs attack vector + remediation
-- Sector Z: every legacy claim needs git evidence
+### Security
+
+- **SafeEnv** — child processes get allowlisted env vars only (no secret leakage)
+- **Hook guard** — blocks dangerous commands (curl, rm, python, eval, shell pipes)
+- **Input validation** — agent IDs validated against `[a-zA-Z0-9-]`
+- **File permissions** — all user data written with `0600`/`0700`
+- **No secrets in config** — API keys come from environment variables only
+
+---
+
+## Build & Install
+
+```bash
+# Development
+make run              # go run ./cmd/moonbase
+make build            # go build -o bin/moonbase
+make test             # go test ./...
+
+# Install locally
+cp bin/moonbase /usr/local/bin/
+
+# Release (produces cross-platform binaries)
+git tag v1.0.1 && git push --tags
+# GitHub Actions builds: darwin/linux × amd64/arm64
+```
+
+---
+
+## Quality
+
+| Metric | Value |
+|--------|-------|
+| Tests | 144 |
+| Packages tested | 15/15 (100%) |
+| Go LOC | 9,266 |
+| Direct dependencies | 6 |
+| CI | GitHub Actions (vet + build + test on every push) |
+| Releases | goreleaser (4 platform binaries on tag) |
+| Agent lint | `moonbase lint` validates all 14 agents |
 
 ---
 
@@ -163,20 +237,13 @@ Every agent must prove what they claim:
 
 | Layer | Tool | Why |
 |-------|------|-----|
-| Language | Go 1.22+ | Single binary, fast, cross-platform |
+| Language | Go 1.24 | Single binary, fast, cross-platform |
 | TUI | Bubbletea + Lipgloss | Elm architecture, terminal styling |
 | Agents | Markdown + YAML frontmatter | Portable, readable, versionable |
-| Pipeline | Kiro CLI / any AI backend | Tool-agnostic orchestration |
-
----
-
-## Build
-
-```bash
-make run        # go run cmd/moonbase/main.go
-make build      # go build -o bin/moonbase
-make test       # go test ./...
-```
+| Backend | Kiro CLI (primary) | Tool execution, file access, multi-turn |
+| Clipboard | pbcopy / xclip / xsel / wl-copy / clip | Cross-platform fallback |
+| CI | GitHub Actions | Automated quality gates |
+| Releases | goreleaser | Cross-platform binaries |
 
 ---
 
@@ -186,8 +253,10 @@ make test       # go test ./...
 2. **Spec before code** — understand before building, spec the non-trivial
 3. **Ask don't guess** — focused questions beat wrong assumptions
 4. **Evidence over claims** — prove it or label it an assumption
-5. **Tool-agnostic** — works with Kiro, Codex, OpenAI, Anthropic, Ollama
-6. **Single binary** — no runtime deps, no install complexity
+5. **Self-auditing** — agents can scan their own system
+6. **Tool-agnostic** — works with Kiro, Codex, OpenAI, Anthropic, Ollama
+7. **Single binary** — no runtime deps, no install complexity
+8. **Security by default** — env isolation, input validation, permission hardening
 
 ---
 
