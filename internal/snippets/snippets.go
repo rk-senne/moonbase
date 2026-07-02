@@ -30,12 +30,12 @@ func Load() []Snippet {
 }
 
 func Save(s []Snippet) error {
-	os.MkdirAll(filepath.Dir(snippetsPath), 0755)
+	os.MkdirAll(filepath.Dir(snippetsPath), 0700)
 	data, err := json.MarshalIndent(s, "", "  ")
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(snippetsPath, data, 0644)
+	return os.WriteFile(snippetsPath, data, 0600)
 }
 
 func Add(name, content, agent string) error {

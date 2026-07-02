@@ -16,6 +16,7 @@ import (
 	"github.com/f5508037/moonbase/internal/agents"
 	"github.com/f5508037/moonbase/internal/backend"
 	"github.com/f5508037/moonbase/internal/chat"
+	"github.com/f5508037/moonbase/internal/discovery"
 	"github.com/f5508037/moonbase/internal/history"
 	"github.com/f5508037/moonbase/internal/pipeline"
 	"github.com/f5508037/moonbase/internal/platform"
@@ -116,6 +117,10 @@ type App struct {
 	anim           AnimState
 	fileWatcher    *watcher.Watcher
 	ctx            platform.Context
+	projectCtx     *discovery.ProjectContext
+	activeBackend  backend.Backend
+	abortPending   bool
+	abortPendingAt time.Time
 	snippetPicker  bool
 	snippetList    []snippets.Snippet
 	snippetCursor  int
@@ -198,11 +203,20 @@ func NewApp() App {
 	}
 
 	reg := agents.NewRegistry("./agents")
+	
+	// Discover project context for pipeline execution
+	projectCtx, _ := discovery.Discover(cwd)
+	
+	// Select preferred backend
+	activeBackend := backend.Preferred()
+
 	return App{
-		view:         ViewBoot,
-		registry:     reg,
-		spinner:      s,
-		intel:        []IntelEntry{},
+		view:          ViewBoot,
+		registry:      reg,
+		spinner:       s,
+		intel:         []IntelEntry{},
+		projectCtx:    projectCtx,
+		activeBackend: activeBackend,
 		missionInput: ti,
 		searchInput:  si,
 		commsInput:   ci,
@@ -559,20 +573,32 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				task := a.missionInput.Value()
 				if task != "" {
 					a.addIntel("Mission briefed: %s", task)
-					a.addIntel("Deploying KND Council pipeline...")
 					a.pipelineState = pipeline.New(task)
-					a.pipelineState.Phases[0].Status = 1 // Running
 					a.pipelineOutput = []string{
 						fmt.Sprintf("━━━ MISSION: %s ━━━", task),
 					}
 					a.pipelineChat = []PipelineMsg{
 						{"", fmt.Sprintf("━━━ MISSION: %s ━━━", task)},
-						{"Numbuh 1", "Receiving mission brief... Analyzing requirements."},
-						{"Numbuh 1", "Breaking down objectives into acceptance criteria."},
 					}
 					a.missionInput.Reset()
 					a.missionInput.Blur()
 					a.view = ViewPipeline
+					a.missionStart = time.Now()
+
+					// Start real pipeline execution if backend available
+					if cmd := a.startNextPhase(); cmd != nil {
+						a.addIntel("Pipeline executing via %s...", a.activeBackend.Name())
+						return a, cmd
+					}
+					// No backend — show simulated mode
+					a.addIntel("No AI backend — simulated pipeline mode")
+					a.pipelineChat = append(a.pipelineChat,
+						PipelineMsg{"", "⚠️ No AI backend available. Showing pipeline simulation."},
+						PipelineMsg{"", "Install kiro-cli for real execution, or use [n] to advance manually."},
+						PipelineMsg{"", ""},
+						PipelineMsg{"Numbuh 1", "Receiving mission brief... Analyzing requirements."},
+					)
+					a.pipelineState.Phases[0].Status = pipeline.StatusRunning
 				}
 			default:
 				var cmd tea.Cmd
@@ -594,20 +620,43 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.view = ViewProtocol
 		case "esc":
 			if a.view == ViewPipeline {
-				a.view = ViewDashboard
+				if pipelineRunning {
+					if a.abortPending && time.Since(a.abortPendingAt) < 3*time.Second {
+						// Second esc within 3s — actually abort
+						a.pipelineState.Stop("Aborted by human")
+						a.pipelineChat = append(a.pipelineChat,
+							PipelineMsg{"", "🛑 Mission aborted by human."},
+						)
+						a.addIntel("Mission aborted: %s", a.pipelineState.Task)
+						pipelineRunning = false
+						a.abortPending = false
+					} else {
+						// First esc — show warning
+						a.abortPending = true
+						a.abortPendingAt = time.Now()
+					}
+				} else {
+					a.view = ViewDashboard
+					a.abortPending = false
+				}
 			} else {
 				a.view = ViewDashboard
+				a.abortPending = false
 			}
 		case "n":
-			if a.view == ViewPipeline && a.pipelineState != nil {
+			if a.view == ViewPipeline && a.pipelineState != nil && !pipelineRunning {
 				prev := a.pipelineState.Phases[a.pipelineState.Current]
 				a.pipelineState.Advance()
 				if a.pipelineState.Current < len(a.pipelineState.Phases) {
 					phase := a.pipelineState.Phases[a.pipelineState.Current]
 					a.pipelineOutput = append(a.pipelineOutput, "",
 						fmt.Sprintf("Phase %d: %s activated...", phase.Number, phase.Operative))
-					a.pipelineState.Phases[a.pipelineState.Current].Status = 1
-					// Inter-agent handoff chat
+					// Try real execution
+					if cmd := a.startNextPhase(); cmd != nil {
+						return a, cmd
+					}
+					// Fallback: manual/simulated advance
+					a.pipelineState.Phases[a.pipelineState.Current].Status = pipeline.StatusRunning
 					a.pipelineChat = append(a.pipelineChat,
 						PipelineMsg{prev.Operative, fmt.Sprintf("Phase complete. Handing off to %s.", phase.Operative)},
 						PipelineMsg{"", "───────────────────────────────────"},
@@ -616,7 +665,7 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case "r":
-			if a.view == ViewPipeline && a.pipelineState != nil {
+			if a.view == ViewPipeline && a.pipelineState != nil && !pipelineRunning {
 				a.pipelineState.Retry()
 				phase := a.pipelineState.Phases[a.pipelineState.Current]
 				a.pipelineOutput = append(a.pipelineOutput,
@@ -624,6 +673,10 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				a.pipelineChat = append(a.pipelineChat,
 					PipelineMsg{phase.Operative, "⚠️ Retrying... Let me take another look at this."},
 				)
+				// Try real execution on retry
+				if cmd := a.startNextPhase(); cmd != nil {
+					return a, cmd
+				}
 			}
 		case "s":
 			if a.view == ViewPipeline && a.pipelineState != nil {
@@ -771,6 +824,22 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Err == nil {
 			a.backends = backend.DetectAll()
 		}
+
+	case PhaseResultMsg:
+		// Pipeline phase completed — handle result and start next phase
+		if cmd := a.handlePhaseResult(msg); cmd != nil {
+			return a, cmd
+		}
+
+	case PipelineAbortedMsg:
+		if a.pipelineState != nil {
+			a.pipelineState.Stop("Aborted by human")
+			a.pipelineChat = append(a.pipelineChat,
+				PipelineMsg{"", "🛑 Mission aborted by human."},
+			)
+			a.addIntel("Mission aborted: %s", a.pipelineState.Task)
+		}
+		pipelineRunning = false
 
 	case systemInfoMsg:
 		a.gitBranch = msg.branch
@@ -995,13 +1064,20 @@ func (a App) runGitCmd(command string) tea.Cmd {
 
 func (a App) runSpawnHook() tea.Cmd {
 	agent := a.registry.Get(a.selected)
-	hooks, ok := agent.Hooks["agentSpawn"]
-	if !ok || len(hooks) == 0 {
+	if agent.Hooks == nil || len(agent.Hooks.OnActivate) == 0 {
 		return func() tea.Msg {
 			return spawnHookMsg{agent: agent.Name, output: "(no spawn hook configured)"}
 		}
 	}
-	cmd := hooks[0].Command
+	cmd := agent.Hooks.OnActivate[0].Command
+
+	// Security: validate hook command against safe patterns
+	if !isSafeHookCommand(cmd) {
+		return func() tea.Msg {
+			return spawnHookMsg{agent: agent.Name, output: fmt.Sprintf("⚠️ Hook blocked (unsafe): %s", cmd)}
+		}
+	}
+
 	return func() tea.Msg {
 		out, err := exec.Command("bash", "-c", cmd).CombinedOutput()
 		if err != nil {
@@ -1009,6 +1085,28 @@ func (a App) runSpawnHook() tea.Cmd {
 		}
 		return spawnHookMsg{agent: agent.Name, output: strings.TrimSpace(string(out))}
 	}
+}
+
+// isSafeHookCommand validates that a hook command only uses safe read-only operations.
+// Blocks: curl, wget, rm, mv, cp, chmod, chown, dd, mkfs, sh -c, python, node, eval, exec
+func isSafeHookCommand(cmd string) bool {
+	// Dangerous patterns that indicate write/network/exec operations
+	dangerous := []string{
+		"curl ", "wget ", "rm ", "rm -", "mv ", "cp ",
+		"chmod ", "chown ", "dd ", "mkfs",
+		"python", "node ", "ruby ", "perl ",
+		"eval ", "> ", ">> ", "| sh", "| bash",
+		"$(curl", "$(wget", "${", "`curl", "`wget",
+		"nc ", "ncat ", "socat ",
+		"base64", "openssl",
+		"/dev/tcp", "/dev/udp",
+	}
+	for _, d := range dangerous {
+		if strings.Contains(cmd, d) {
+			return false
+		}
+	}
+	return true
 }
 
 func (a *App) cycleTheme() {
@@ -1293,7 +1391,7 @@ func (a *App) relayToAgent(targetName, msg string) tea.Cmd {
 // --- Mission History View ---
 
 func (a App) renderHistory() string {
-	header := a.renderHeader("MISSION HISTORY")
+	header := a.renderHeader("Mission History")
 
 	var b strings.Builder
 	titleStyle := lipgloss.NewStyle().Foreground(ColorBrand).Bold(true)

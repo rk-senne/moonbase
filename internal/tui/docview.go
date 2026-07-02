@@ -56,7 +56,7 @@ func (d *DocsState) Resize(w, h int) {
 }
 
 func (a App) renderDocs() string {
-	header := a.renderHeader("DOCUMENTS")
+	header := a.renderHeader("Documentation")
 
 	if a.docs == nil || len(a.docs.files) == 0 {
 		body := StylePanel.Width(a.width - 4).Render(

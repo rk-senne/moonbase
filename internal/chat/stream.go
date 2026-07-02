@@ -10,6 +10,9 @@ import (
 	"strings"
 )
 
+// DefaultMaxTokens is the maximum number of tokens the model will generate per response.
+const DefaultMaxTokens = 4096
+
 type StreamChunk struct {
 	Text string
 	Done bool
@@ -44,7 +47,7 @@ func Stream(conv *Conversation) <-chan StreamChunk {
 
 		body := anthropicRequest{
 			Model:     model,
-			MaxTokens: 4096,
+			MaxTokens: DefaultMaxTokens,
 			System:    conv.System,
 			Messages:  conv.APIMessages(),
 			Stream:    true,

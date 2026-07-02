@@ -21,7 +21,7 @@ func NewProjectsState() *ProjectsState {
 }
 
 func (a App) renderProjects() string {
-	header := a.renderHeader("PROJECT NAVIGATOR")
+	header := a.renderHeader("Projects")
 
 	if a.projectNav == nil || len(a.projectNav.list) == 0 {
 		body := StylePanel.Width(a.width - 4).Render(

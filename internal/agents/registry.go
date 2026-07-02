@@ -1,8 +1,7 @@
 package agents
 
 import (
-	"encoding/json"
-	"os"
+	"log"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -52,11 +51,46 @@ func (r *Registry) Get(index int) Agent {
 	if index >= 0 && index < len(r.agents) {
 		return r.agents[index]
 	}
-	return Agent{Name: "Unknown", Description: "Operative not found"}
+	return Agent{Name: "unknown", Description: "Operative not found"}
 }
 
 func (r *Registry) All() []Agent {
 	return r.agents
+}
+
+// GetByName returns an agent by name, or nil if not found.
+func (r *Registry) GetByName(name string) *Agent {
+	for i := range r.agents {
+		if r.agents[i].Name == name {
+			return &r.agents[i]
+		}
+	}
+	return nil
+}
+
+// PipelineAgents returns agents sorted by pipeline_position (core pipeline only).
+func (r *Registry) PipelineAgents() []Agent {
+	var pipeline []Agent
+	for _, a := range r.agents {
+		if a.IsPipeline() {
+			pipeline = append(pipeline, a)
+		}
+	}
+	sort.Slice(pipeline, func(i, j int) bool {
+		return *pipeline[i].PipelinePosition < *pipeline[j].PipelinePosition
+	})
+	return pipeline
+}
+
+// Specialists returns agents that are conditional (have trigger conditions).
+func (r *Registry) Specialists() []Agent {
+	var specialists []Agent
+	for _, a := range r.agents {
+		if a.IsConditional() {
+			specialists = append(specialists, a)
+		}
+	}
+	return specialists
 }
 
 // agentOrder defines display order for the sidebar
@@ -78,35 +112,34 @@ func sortOrder(name string) int {
 func loadFromDir(dir string) ([]Agent, error) {
 	var agents []Agent
 
-	files, err := filepath.Glob(filepath.Join(dir, "*.json"))
+	// Load .md files (new format)
+	mdFiles, err := filepath.Glob(filepath.Join(dir, "*.md"))
 	if err != nil {
 		return nil, err
 	}
 
-	for _, file := range files {
-		data, err := os.ReadFile(file)
+	if len(mdFiles) == 0 {
+		// Check if old .json files exist and warn
+		jsonFiles, _ := filepath.Glob(filepath.Join(dir, "*.json"))
+		if len(jsonFiles) > 0 {
+			log.Printf("WARNING: Found %d .json agent files but no .md files. JSON format is deprecated. Convert to .md with YAML frontmatter.", len(jsonFiles))
+		}
+		return nil, nil
+	}
+
+	for _, file := range mdFiles {
+		agent, err := ParseAgentFile(file)
 		if err != nil {
+			log.Printf("WARNING: skipping %s: %v", filepath.Base(file), err)
 			continue
 		}
-		var agent Agent
-		if err := json.Unmarshal(data, &agent); err != nil {
-			continue
-		}
-		// Skip knd-council from roster (it's a meta-agent)
-		if agent.Name == "knd-council" {
-			continue
-		}
-		agents = append(agents, agent)
+		agents = append(agents, *agent)
 	}
 
 	// Sort by KND operative order
 	sort.Slice(agents, func(i, j int) bool {
-		return sortOrder(agentName(agents[i])) < sortOrder(agentName(agents[j]))
+		return sortOrder(strings.ToLower(agents[i].Name)) < sortOrder(strings.ToLower(agents[j].Name))
 	})
 
 	return agents, nil
-}
-
-func agentName(a Agent) string {
-	return strings.ToLower(a.Name)
 }

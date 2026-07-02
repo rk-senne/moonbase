@@ -93,7 +93,7 @@ func (c *CommsState) Resize(w, h int) {
 
 // renderComms renders the COMMS view
 func (a App) renderComms() string {
-	header := a.renderHeader(fmt.Sprintf("COMMS: %s", strings.ToUpper(a.comms.agent)))
+	header := a.renderHeader("Comms › " + a.comms.agent)
 
 	// Chat viewport
 	vpStyle := lipgloss.NewStyle().

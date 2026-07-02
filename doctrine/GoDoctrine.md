@@ -90,7 +90,7 @@ internal/             — private implementation packages
   backend/            — AI provider backends
   config/             — configuration loading
   pipeline/           — agent pipeline orchestration
-agents/               — agent definitions (Profile.md, config.json, prompt)
+agents/               — agent definitions (single .md files with YAML frontmatter)
 doctrine/             — shared engineering doctrine
 docs/                 — project documentation
 bin/                  — compiled binary

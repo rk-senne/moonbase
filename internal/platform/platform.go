@@ -1,7 +1,8 @@
 package platform
 
 import (
-	"os/exec"
+	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -12,16 +13,16 @@ const (
 	Work
 )
 
-const personalEmail = "rego.senne@icloud.com"
-
-// Detect checks git user.email to determine platform context
+// Detect determines platform context by checking if the current working
+// directory is under ~/Workspace/Personal. No hardcoded credentials.
 func Detect() Context {
-	out, err := exec.Command("git", "config", "user.email").Output()
+	cwd, err := os.Getwd()
 	if err != nil {
 		return Work // default to restricted
 	}
-	email := strings.TrimSpace(string(out))
-	if email == personalEmail {
+	home, _ := os.UserHomeDir()
+	personalDir := filepath.Join(home, "Workspace", "Personal")
+	if strings.HasPrefix(cwd, personalDir) {
 		return Personal
 	}
 	return Work
