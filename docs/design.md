@@ -37,7 +37,7 @@ moonbase/
 │   │       ├── phaselist.go        ← pipeline phase tracker
 │   │       └── systemstatus.go     ← CPU/MEM/GIT/DOCKER panel
 │   ├── agents/
-│   │   ├── loader.go               ← reads agent JSON configs
+│   │   ├── loader.go               ← reads agent .md files (YAML frontmatter + body)
 │   │   ├── agent.go                ← agent struct/schema
 │   │   ├── registry.go             ← agent lookup, filtering
 │   │   └── validator.go            ← config validation
@@ -62,23 +62,25 @@ moonbase/
 │   └── config/
 │       ├── config.go               ← app config (paths, defaults)
 │       └── paths.go                ← agent dir, steering dir resolution
-├── agents/                          ← the actual agent JSON configs
-│   ├── numbuh-0.json
-│   ├── numbuh-1.json
-│   ├── numbuh-2.json
-│   ├── numbuh-3.json
-│   ├── numbuh-4.json
-│   ├── numbuh-5.json
-│   ├── numbuh-13.json
-│   ├── numbuh-86.json
-│   ├── numbuh-274.json
-│   ├── numbuh-362.json
-│   ├── numbuh-999.json
-│   └── knd-council.json
+├── agents/                          ← the actual agent .md files (YAML frontmatter + markdown body)
+│   ├── numbuh-0.md
+│   ├── numbuh-1.md
+│   ├── numbuh-2.md
+│   ├── numbuh-3.md
+│   ├── numbuh-4.md
+│   ├── numbuh-5.md
+│   ├── numbuh-9.md
+│   ├── numbuh-13.md
+│   ├── numbuh-86.md
+│   ├── numbuh-274.md
+│   ├── numbuh-362.md
+│   ├── numbuh-999.md
+│   ├── sector-z.md
+│   └── knd-council.md
 ├── docs/
 │   ├── design.md                    ← this file (architecture + vision)
-│   ├── backends.md                  ← how each AI backend integration works
-│   └── agents.md                    ← agent format spec
+│   ├── agent-format.md              ← agent .md file format specification
+│   └── action-plan-v05.md           ← historical action plan
 ├── go.mod
 ├── go.sum
 ├── Makefile
@@ -96,7 +98,7 @@ moonbase/
 | TUI Framework | Bubbletea | Elm architecture, composable, active |
 | Styling | Lipgloss | CSS-like terminal styling, colors, borders |
 | Components | Bubbles | Pre-built spinners, tables, viewports, inputs |
-| Config | JSON | Agent configs are already JSON, stay consistent |
+| Config | YAML frontmatter in .md | Agent configs are markdown with YAML metadata, human and machine readable |
 | Build | Make | Simple, universal |
 
 ---
@@ -346,7 +348,7 @@ make release          # builds for darwin-arm64, darwin-amd64, linux-amd64
 ## Philosophy
 
 1. **Tool-agnostic** — works with any AI backend, locks into none
-2. **Portable agents** — agent configs are plain JSON, usable anywhere
+2. **Portable agents** — agent files are plain markdown with YAML frontmatter, usable anywhere
 3. **Command-center UX** — Pentagon/Moonbase energy, not a toy
 4. **Useful first, pretty second** — every pixel serves a purpose
 5. **Single binary** — no runtime deps, no install complexity

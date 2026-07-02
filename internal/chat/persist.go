@@ -17,12 +17,12 @@ func chatPath(agent string) string {
 
 // Save persists a conversation to disk
 func Save(conv *Conversation) error {
-	os.MkdirAll(chatDir(), 0755)
+	os.MkdirAll(chatDir(), 0700)
 	data, err := json.MarshalIndent(conv, "", "  ")
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(chatPath(conv.Agent), data, 0644)
+	return os.WriteFile(chatPath(conv.Agent), data, 0600)
 }
 
 // Load restores a conversation from disk, or returns nil if none exists

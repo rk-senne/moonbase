@@ -1,6 +1,6 @@
 APP_NAME := moonbase
 BUILD_DIR := bin
-MAIN := cmd/moonbase/main.go
+MAIN := ./cmd/moonbase
 
 .PHONY: run build test clean install setup release
 

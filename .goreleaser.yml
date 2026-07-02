@@ -1,0 +1,42 @@
+version: 2
+
+project_name: moonbase
+
+builds:
+  - id: moonbase
+    main: ./cmd/moonbase
+    binary: moonbase
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+
+archives:
+  - id: default
+    format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+
+# Private repo — no homebrew, no announcements
+release:
+  github:
+    owner: rk-senne
+    name: moonbase
+  draft: false
+  prerelease: auto

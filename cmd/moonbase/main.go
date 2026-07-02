@@ -10,8 +10,14 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/f5508037/moonbase/internal/agents"
+	"github.com/f5508037/moonbase/internal/backend"
+	clip "github.com/f5508037/moonbase/internal/clipboard"
+	"github.com/f5508037/moonbase/internal/config"
+	"github.com/f5508037/moonbase/internal/discovery"
 	"github.com/f5508037/moonbase/internal/history"
 	"github.com/f5508037/moonbase/internal/tui"
 )
@@ -21,6 +27,12 @@ func main() {
 		switch os.Args[1] {
 		case "install":
 			runInstall()
+		case "init":
+			runInit()
+		case "status":
+			runStatus()
+		case "lint":
+			runLint()
 		case "list":
 			runList()
 		case "deploy":
@@ -29,6 +41,13 @@ func main() {
 				os.Exit(1)
 			}
 			runDeploy(os.Args[2])
+		case "mission":
+			task := strings.Join(os.Args[2:], " ")
+			if task == "" {
+				fmt.Fprintln(os.Stderr, "Usage: moonbase mission <task description>")
+				os.Exit(1)
+			}
+			runMission(task)
 		case "export":
 			if len(os.Args) < 3 {
 				fmt.Fprintln(os.Stderr, "Usage: moonbase export <mission-id>")
@@ -40,6 +59,8 @@ func main() {
 			runSnippet()
 		case "help", "--help", "-h":
 			runHelp()
+		case "config":
+			runConfig()
 		default:
 			fmt.Fprintf(os.Stderr, "Unknown command: %s\nRun 'moonbase help' for usage.\n", os.Args[1])
 			os.Exit(1)
@@ -62,9 +83,7 @@ func main() {
 				cmd.Run()
 			} else {
 				// Copy task to clipboard
-				clip := exec.Command("pbcopy")
-				clip.Stdin = strings.NewReader(task)
-				clip.Run()
+				clip.Copy(task)
 				fmt.Println("✓ Task copied to clipboard")
 			}
 		}
@@ -79,37 +98,7 @@ func main() {
 	}
 }
 
-func runInstall() {
-	home, _ := os.UserHomeDir()
-	kiroDir := filepath.Join(home, ".kiro", "agents")
-	agentsDir := "./agents"
-
-	// Create .kiro/agents if it doesn't exist
-	os.MkdirAll(kiroDir, 0755)
-
-	files, _ := filepath.Glob(filepath.Join(agentsDir, "*.json"))
-	if len(files) == 0 {
-		fmt.Println("No agent configs found in ./agents/")
-		os.Exit(1)
-	}
-
-	for _, src := range files {
-		name := filepath.Base(src)
-		dst := filepath.Join(kiroDir, name)
-
-		// Remove existing symlink/file
-		os.Remove(dst)
-
-		absSrc, _ := filepath.Abs(src)
-		if err := os.Symlink(absSrc, dst); err != nil {
-			fmt.Printf("  ✗ %s: %v\n", name, err)
-		} else {
-			fmt.Printf("  ✓ %s → %s\n", name, dst)
-		}
-	}
-
-	fmt.Printf("\n🌙 %d agents installed to %s\n", len(files), kiroDir)
-}
+// runInstall is defined in install.go
 
 func runList() {
 	fmt.Println("🌙 KND MOONBASE — OPERATIVE ROSTER")
@@ -177,11 +166,14 @@ func runHelp() {
 
 USAGE:
   moonbase              Launch the TUI dashboard
-  moonbase list         Show operative roster
+  moonbase init         Scaffold .kiro/ in any project (specs, steering, agents)
   moonbase deploy <n>   Deploy operative by numbuh (e.g. deploy 4)
-  moonbase export <id>  Export mission report as markdown
-  moonbase snippet      Manage saved snippets
-  moonbase install      Symlink agents to ~/.kiro/agents/
+  moonbase mission <t>  Run full KND Council pipeline on a task
+  moonbase install      Install agents to .kiro/agents/ (--all, --global)
+  moonbase status       Show environment health check
+  moonbase lint         Validate all agent .md files
+  moonbase config       Show current configuration
+  moonbase list         Show operative roster
   moonbase help         This message
 
 PIPE MODE:
@@ -238,7 +230,7 @@ func runSnippet() {
 		content := strings.Join(lines, "\n")
 		home, _ := os.UserHomeDir()
 		path := filepath.Join(home, ".config", "moonbase", "snippets.json")
-		os.MkdirAll(filepath.Dir(path), 0755)
+		os.MkdirAll(filepath.Dir(path), 0700)
 
 		// Load existing
 		var existing []map[string]string
@@ -247,60 +239,177 @@ func runSnippet() {
 		}
 		existing = append(existing, map[string]string{"name": name, "content": content})
 		data, _ := json.MarshalIndent(existing, "", "  ")
-		os.WriteFile(path, data, 0644)
+		os.WriteFile(path, data, 0600)
 		fmt.Printf("✓ Snippet saved: %s\n", name)
 	}
 }
 
+func agentsDir() string {
+	// 1. Check relative to executable
+	if exe, err := os.Executable(); err == nil {
+		dir := filepath.Join(filepath.Dir(exe), "..", "agents")
+		if fi, err := os.Stat(dir); err == nil && fi.IsDir() {
+			return dir
+		}
+		dir = filepath.Join(filepath.Dir(exe), "agents")
+		if fi, err := os.Stat(dir); err == nil && fi.IsDir() {
+			return dir
+		}
+	}
+	// 2. Check relative to CWD
+	if cwd, err := os.Getwd(); err == nil {
+		dir := filepath.Join(cwd, "agents")
+		if fi, err := os.Stat(dir); err == nil && fi.IsDir() {
+			return dir
+		}
+	}
+	// 3. Check common install paths
+	home, _ := os.UserHomeDir()
+	paths := []string{
+		filepath.Join(home, ".moonbase", "agents"),
+		filepath.Join(home, ".config", "moonbase", "agents"),
+	}
+	for _, p := range paths {
+		if fi, err := os.Stat(p); err == nil && fi.IsDir() {
+			return p
+		}
+	}
+	// 4. Project-local .kiro/agents
+	if cwd, err := os.Getwd(); err == nil {
+		dir := filepath.Join(cwd, ".kiro", "agents")
+		if fi, err := os.Stat(dir); err == nil && fi.IsDir() {
+			return dir
+		}
+	}
+	fmt.Fprintln(os.Stderr, "⚠️  Cannot find agents directory. Run from moonbase project or install agents first.")
+	os.Exit(1)
+	return ""
+}
+
 func runDeploy(numbuh string) {
-	// Map numbuh to agent filename
-	agentFile := fmt.Sprintf("./agents/numbuh-%s.json", numbuh)
-	if numbuh == "council" || numbuh == "k" {
-		agentFile = "./agents/knd-council.json"
-	} else if numbuh == "z" || numbuh == "Z" {
-		agentFile = "./agents/sector-z.json"
+	dir := agentsDir()
+
+	// Security: validate agent identifier (prevent path traversal)
+	if !isValidAgentID(numbuh) {
+		fmt.Fprintf(os.Stderr, "Invalid agent identifier: %s\n", numbuh)
+		fmt.Fprintf(os.Stderr, "Available: moonbase deploy <0-5|9|13|86|274|362|999|z|council>\n")
+		os.Exit(1)
 	}
 
-	data, err := os.ReadFile(agentFile)
+	// Check if there's a task argument after the numbuh
+	var task string
+	if len(os.Args) > 3 {
+		task = strings.Join(os.Args[3:], " ")
+	}
+
+	// Resolve agent file name from input
+	var agentFile string
+	switch {
+	case numbuh == "council" || numbuh == "k":
+		agentFile = filepath.Join(dir, "knd-council.md")
+	case numbuh == "z" || numbuh == "Z":
+		agentFile = filepath.Join(dir, "sector-z.md")
+	default:
+		agentFile = filepath.Join(dir, fmt.Sprintf("numbuh-%s.md", numbuh))
+	}
+
+	// Parse the agent .md file
+	agent, err := agents.ParseAgentFile(agentFile)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Agent not found: numbuh-%s\n", numbuh)
+		fmt.Fprintf(os.Stderr, "Agent not found: %s\n  (looked for %s)\n", numbuh, agentFile)
+		fmt.Fprintf(os.Stderr, "\nAvailable: moonbase deploy <0-5|9|13|86|274|362|999|z|council>\n")
 		os.Exit(1)
 	}
 
-	// Extract agent name
-	var agent struct {
-		Name   string `json:"name"`
-		Prompt string `json:"prompt"`
+	// Discover project context
+	cwd, _ := os.Getwd()
+	ctx, _ := discovery.Discover(cwd)
+
+	fmt.Printf("🌙 Deploying %s — %s (%s)\n", agent.Name, agent.Designation, agent.Role)
+	if ctx != nil && (ctx.HasSpecs() || ctx.HasSteering()) {
+		fmt.Printf("   Context: %s\n", ctx.Summary())
 	}
-	if err := json.Unmarshal(data, &agent); err != nil {
-		fmt.Fprintf(os.Stderr, "Invalid agent config: %v\n", err)
-		os.Exit(1)
+	if task != "" {
+		fmt.Printf("   Task: %s\n", task)
+	}
+	fmt.Println()
+
+	// Compose prompt with project context and task
+	composed := discovery.ComposePrompt(agent.Prompt, ctx, task)
+
+	// Try kiro-cli with syscall.Exec (replaces this process)
+	if kiro, kErr := exec.LookPath("kiro-cli"); kErr == nil {
+		// Build kiro-cli args — pass composed prompt as the initial input
+		args := []string{"kiro-cli", "chat"}
+
+		// If the agent is installed in .kiro/agents/, use --agent flag
+		localAgent := filepath.Join(cwd, ".kiro", "agents", agent.Name+".md")
+		if _, statErr := os.Stat(localAgent); statErr == nil {
+			args = append(args, "--agent", agent.Name)
+		}
+
+		// Add task as the input question
+		if task != "" {
+			args = append(args, task)
+		}
+
+		// syscall.Exec replaces this process — full TTY to kiro-cli
+		execErr := execSyscall(kiro, args, backend.SafeEnv())
+		// If exec fails, fall through to fallback
+		if execErr != nil {
+			fmt.Fprintf(os.Stderr, "   ⚠️  kiro-cli exec failed: %v\n", execErr)
+		}
 	}
 
-	fmt.Printf("🌙 Deploying %s...\n", agent.Name)
+	// Fallback: copy composed prompt to clipboard
+	fmt.Println("   No interactive backend available. Copying prompt to clipboard...")
+	fmt.Println()
 
-	// Try kiro-cli
-	if kiro, err := exec.LookPath("kiro-cli"); err == nil {
-		cmd := exec.Command(kiro, "chat", "--agent", agent.Name)
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		cmd.Run()
-		return
-	}
-
-	// Fallback: copy prompt to clipboard
-	clip := exec.Command("pbcopy")
-	clip.Stdin = strings.NewReader(agent.Prompt)
-	if err := clip.Run(); err == nil {
-		fmt.Println("✓ Prompt copied to clipboard (kiro-cli not found)")
+	if cErr := clip.Copy(composed); cErr == nil {
+		fmt.Printf("   ✅ Copied to clipboard (%d chars)\n", len(composed))
+		fmt.Println()
+		fmt.Printf("   Agent:    %s (%s)\n", agent.Designation, agent.Role)
+		fmt.Printf("   Tools:    %s\n", strings.Join(agent.Tools, ", "))
+		if task != "" {
+			fmt.Printf("   Task:     %s\n", task)
+		}
+		fmt.Println()
+		fmt.Println("   Paste into: Claude / ChatGPT / Kiro IDE / any AI tool")
 	} else {
-		fmt.Println("Prompt:")
-		fmt.Println(agent.Prompt[:min(200, len(agent.Prompt))] + "...")
+		fmt.Printf("   Agent: %s (%s)\n", agent.Name, agent.Role)
+		fmt.Printf("   Prompt: %d chars\n", len(composed))
+		fmt.Println("   (No clipboard available — install xclip on Linux or use kiro-cli)")
 	}
+}
+
+func runConfig() {
+	cfg := config.Load()
+	fmt.Println("🌙 Moonbase Configuration")
+	fmt.Printf("   Path: %s\n\n", config.Path())
+	fmt.Println(config.Show(cfg))
 }
 
 func envExists(key string) bool {
 	v := os.Getenv(key)
 	return strings.TrimSpace(v) != ""
+}
+
+// execSyscall replaces the current process with the given command.
+// This gives the target program full terminal control (TTY, colours, readline).
+func execSyscall(binary string, args []string, env []string) error {
+	return syscall.Exec(binary, args, env)
+}
+
+// isValidAgentID checks that an agent identifier contains only safe characters.
+// Prevents path traversal attacks via deploy command.
+func isValidAgentID(id string) bool {
+	if len(id) == 0 || len(id) > 20 {
+		return false
+	}
+	for _, c := range id {
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '-') {
+			return false
+		}
+	}
+	return true
 }

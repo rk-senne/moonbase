@@ -42,31 +42,6 @@ func Load() []Mission {
 	return missions
 }
 
-func save(missions []Mission) error {
-	os.MkdirAll(filepath.Dir(historyPath), 0755)
-	data, err := json.MarshalIndent(missions, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(historyPath, data, 0644)
-}
-
-func LogMission(task string, phases []Phase, outcome string, duration time.Duration) {
-	all := Load()
-	id := len(all) + 1
-	m := Mission{
-		ID:        id,
-		Task:      task,
-		StartTime: time.Now().Add(-duration),
-		EndTime:   time.Now(),
-		Duration:  duration.Round(time.Second).String(),
-		Phases:    phases,
-		Outcome:   outcome,
-	}
-	all = append(all, m)
-	save(all)
-}
-
 func Export(id int) string {
 	all := Load()
 	for _, m := range all {

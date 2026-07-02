@@ -7,7 +7,7 @@ import (
 )
 
 func (a App) renderProtocol() string {
-	header := a.renderHeader("PROTOCOL")
+	header := a.renderHeader("Protocol")
 
 	brand := lipgloss.NewStyle().Foreground(ColorBrand).Bold(true)
 	info := lipgloss.NewStyle().Foreground(ColorInfo)
