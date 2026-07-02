@@ -27,6 +27,12 @@ func main() {
 		switch os.Args[1] {
 		case "install":
 			runInstall()
+		case "init":
+			runInit()
+		case "status":
+			runStatus()
+		case "lint":
+			runLint()
 		case "list":
 			runList()
 		case "deploy":
@@ -160,12 +166,14 @@ func runHelp() {
 
 USAGE:
   moonbase              Launch the TUI dashboard
-  moonbase list         Show operative roster
+  moonbase init         Scaffold .kiro/ in any project (specs, steering, agents)
   moonbase deploy <n>   Deploy operative by numbuh (e.g. deploy 4)
   moonbase mission <t>  Run full KND Council pipeline on a task
   moonbase install      Install agents to .kiro/agents/ (--all, --global)
-  moonbase export <id>  Export mission report as markdown
-  moonbase snippet      Manage saved snippets
+  moonbase status       Show environment health check
+  moonbase lint         Validate all agent .md files
+  moonbase config       Show current configuration
+  moonbase list         Show operative roster
   moonbase help         This message
 
 PIPE MODE:
