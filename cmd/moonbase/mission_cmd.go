@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
 )
 
@@ -18,6 +20,13 @@ var missionCmd = &cobra.Command{
 		if missionDryRun {
 			runMissionDryRun(task)
 		} else {
+			// Show confirmation before executing (only if terminal)
+			if isTerminal() {
+				if !confirmMission(task) {
+					fmt.Println("Mission aborted.")
+					return
+				}
+			}
 			runMission(task)
 		}
 	},
@@ -25,4 +34,27 @@ var missionCmd = &cobra.Command{
 
 func init() {
 	missionCmd.Flags().BoolVar(&missionDryRun, "dry-run", false, "print execution plan without invoking backends")
+}
+
+// confirmMission shows a huh confirmation dialog before executing a mission.
+func confirmMission(task string) bool {
+	var confirm bool
+	err := huh.NewConfirm().
+		Title("Deploy KND Council on this mission?").
+		Description(task).
+		Affirmative("Deploy").
+		Negative("Abort").
+		Value(&confirm).
+		Run()
+
+	if err != nil {
+		// ESC/Ctrl+C cancels
+		return false
+	}
+	return confirm
+}
+
+// runMissionWithoutConfirm executes a mission without showing the confirmation dialog.
+func runMissionWithoutConfirm(task string) {
+	runMission(task)
 }

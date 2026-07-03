@@ -73,15 +73,13 @@ func (c *Codex) Deploy(agent agents.Agent, context *discovery.ProjectContext, ta
 	return string(output), nil
 }
 
-// OpenAI deploys agents via OpenAI API (placeholder — requires full API client)
+// OpenAI deploys agents via OpenAI-compatible Chat Completions API with SSE streaming.
+// Compatible with OpenAI, Azure OpenAI, LM Studio, and Ollama OpenAI compat mode.
+// Configuration: OPENAI_API_KEY (required), OPENAI_BASE_URL (optional), OPENAI_MODEL (optional).
 type OpenAI struct{}
 
 func (o *OpenAI) Name() string   { return "openai" }
 func (o *OpenAI) Available() bool { return envExists("OPENAI_API_KEY") }
-
-func (o *OpenAI) Deploy(agent agents.Agent, context *discovery.ProjectContext, task string) (string, error) {
-	return "", fmt.Errorf("openai backend not yet wired — requires OpenAI streaming client. Use anthropic, kiro-cli, or clipboard instead")
-}
 
 // Anthropic deploys agents via Anthropic Messages API with streaming.
 // Uses the same HTTP streaming code as the comms system (internal/chat).
@@ -169,13 +167,16 @@ func truncate(s string, maxLen int) string {
 // This is the primary defense against env var leakage. The allowlist contains:
 // - System vars (HOME, PATH, USER, TERM, LANG, SHELL) — needed for basic operation
 // - API keys (ANTHROPIC_API_KEY, OPENAI_API_KEY) — needed by backends
+// - OPENAI_BASE_URL — needed for OpenAI-compatible endpoints (Azure, LM Studio, Ollama)
+// - OPENAI_MODEL — needed for model selection on OpenAI-compatible backends
 // - OLLAMA_HOST — needed for custom ollama endpoint
 //
 // NEVER add: AWS_*, DATABASE_*, GITHUB_TOKEN, SSH_*, or other sensitive vars.
 // If a new backend needs additional env vars, add them explicitly here.
 func SafeEnv() []string {
 	allowed := []string{"HOME", "PATH", "USER", "TERM", "LANG", "SHELL",
-		"ANTHROPIC_API_KEY", "OPENAI_API_KEY", "OLLAMA_HOST"}
+		"ANTHROPIC_API_KEY", "OPENAI_API_KEY", "OPENAI_BASE_URL", "OPENAI_MODEL",
+		"OLLAMA_HOST"}
 	var env []string
 	for _, key := range allowed {
 		if val, ok := os.LookupEnv(key); ok {

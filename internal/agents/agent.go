@@ -25,6 +25,7 @@ type Agent struct {
 
 	Prompt   string `yaml:"-"` // Full markdown body (the agent's system prompt)
 	FilePath string `yaml:"-"` // Absolute path to the source .md file
+	Source   string `yaml:"-"` // Where this agent was loaded from: "built-in", "user", "project"
 }
 
 // ShellConfig defines shell tool permissions for an agent.

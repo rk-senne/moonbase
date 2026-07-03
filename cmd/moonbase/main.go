@@ -31,10 +31,17 @@ func runList() {
 	fmt.Println("═══════════════════════════════════════")
 	fmt.Println()
 
-	// Try loading from registry
-	dir := agentsDir()
-	reg := agents.NewRegistry(dir)
-	reg.Reload()
+	// Load from all agent directories (built-in + user + project)
+	cfg := config.Load()
+	builtIn, user, project, _ := agents.FindAllAgentDirs(cfg.AgentsDir)
+
+	reg := agents.NewRegistry(builtIn)
+	if builtIn != "" || user != "" || project != "" {
+		loadCmd := reg.LoadMultipleDirs(builtIn, user, project)
+		loadCmd()
+	} else {
+		reg.Reload()
+	}
 	all := reg.All()
 
 	if len(all) > 0 {
@@ -42,13 +49,13 @@ func runList() {
 		fmt.Println("  SECTOR V")
 		for _, a := range all {
 			if a.PipelinePosition != nil && *a.PipelinePosition >= 1 && *a.PipelinePosition <= 5 {
-				fmt.Printf("  [%s] %-18s %s\n", extractNumbuh(a.Name), a.Designation, a.Role)
+				fmt.Printf("  [%s] %-18s %-26s %s\n", extractNumbuh(a.Name), a.Designation, a.Role, sourceTag(a.Source))
 			}
 		}
 		// Also include numbuh-0 (pipeline position 0 or architect role)
 		for _, a := range all {
 			if a.PipelinePosition != nil && *a.PipelinePosition == 0 {
-				fmt.Printf("  [%s] %-18s %s\n", extractNumbuh(a.Name), a.Designation, a.Role)
+				fmt.Printf("  [%s] %-18s %-26s %s\n", extractNumbuh(a.Name), a.Designation, a.Role, sourceTag(a.Source))
 			}
 		}
 
@@ -58,7 +65,7 @@ func runList() {
 			if a.PipelinePosition == nil || *a.PipelinePosition > 5 {
 				num := extractNumbuh(a.Name)
 				if num != "" {
-					fmt.Printf("  [%s] %-18s %s\n", num, a.Designation, a.Role)
+					fmt.Printf("  [%s] %-18s %-26s %s\n", num, a.Designation, a.Role, sourceTag(a.Source))
 				}
 			}
 		}
@@ -122,6 +129,20 @@ func runList() {
 		fmt.Println("  ✓ anthropic")
 	}
 	fmt.Println()
+}
+
+// sourceTag returns a display tag for the agent source.
+func sourceTag(source string) string {
+	switch source {
+	case agents.SourceUser:
+		return "[user]"
+	case agents.SourceProject:
+		return "[project]"
+	case agents.SourceBuiltIn:
+		return "[built-in]"
+	default:
+		return ""
+	}
 }
 
 // extractNumbuh extracts the display number/identifier from an agent name.

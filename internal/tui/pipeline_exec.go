@@ -69,8 +69,17 @@ func executePhase(
 		}
 		ch := make(chan result, 1)
 		go func() {
-			output, err := be.Deploy(*agent, projectCtx, composed)
-			ch <- result{output, err}
+			// Wrap with retry for transient failures (5xx, timeout, connection refused).
+			// Clipboard backend is never retried (local operation).
+			if be.Name() == "clipboard" {
+				output, err := be.Deploy(*agent, projectCtx, composed)
+				ch <- result{output, err}
+			} else {
+				output, err := backend.WithRetryCtx(timeoutCtx, func() (string, error) {
+					return be.Deploy(*agent, projectCtx, composed)
+				}, backend.DefaultMaxAttempts)
+				ch <- result{output, err}
+			}
 		}()
 
 		select {

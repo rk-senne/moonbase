@@ -59,3 +59,48 @@ func FindAgentsDir(configPath string) (string, error) {
 
 	return "", fmt.Errorf("cannot find agents directory; run from moonbase project or install agents first")
 }
+
+// FindAllAgentDirs returns all discoverable agent directories in priority order:
+//   - [0] built-in (relative to executable or CWD)
+//   - [1] user (~/.moonbase/agents/)
+//   - [2] project (.kiro/agents/ in CWD)
+//
+// Empty strings are returned for directories that don't exist.
+// At least one directory must exist or an error is returned.
+func FindAllAgentDirs(configPath string) (builtIn, user, project string, err error) {
+	// Built-in: use FindAgentsDir logic (config override → exe-relative → CWD-relative)
+	builtIn, _ = FindAgentsDir(configPath)
+
+	// User: ~/.moonbase/agents/
+	home, _ := os.UserHomeDir()
+	if home != "" {
+		userDir := filepath.Join(home, ".moonbase", "agents")
+		if fi, err := os.Stat(userDir); err == nil && fi.IsDir() {
+			user = userDir
+		}
+	}
+
+	// Project: .kiro/agents/ in CWD
+	if cwd, cwdErr := os.Getwd(); cwdErr == nil {
+		projectDir := filepath.Join(cwd, ".kiro", "agents")
+		if fi, statErr := os.Stat(projectDir); statErr == nil && fi.IsDir() {
+			project = projectDir
+		}
+	}
+
+	// Ensure at least one directory was found
+	if builtIn == "" && user == "" && project == "" {
+		err = fmt.Errorf("cannot find any agents directory; run from moonbase project or install agents first")
+	}
+
+	// Don't duplicate: if built-in resolved to user or project dir, clear it
+	if builtIn != "" && builtIn == user {
+		user = ""
+	}
+	if builtIn != "" && builtIn == project {
+		project = ""
+	}
+
+	return
+}
+

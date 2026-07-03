@@ -9,6 +9,13 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+// AgentSource constants for identifying where an agent was loaded from.
+const (
+	SourceBuiltIn = "built-in"
+	SourceUser    = "user"
+	SourceProject = "project"
+)
+
 // AgentsLoadedMsg is the Bubbletea message sent when agents finish loading from disk.
 type AgentsLoadedMsg struct {
 	Agents []Agent
@@ -33,8 +40,36 @@ func (r *Registry) Load() tea.Cmd {
 		if err != nil {
 			return AgentsLoadedMsg{Err: err}
 		}
+		// Tag all agents loaded via single-dir as built-in
+		for i := range agents {
+			if agents[i].Source == "" {
+				agents[i].Source = SourceBuiltIn
+			}
+		}
 		r.agents = agents
 		return AgentsLoadedMsg{Agents: agents}
+	}
+}
+
+// LoadMultipleDirs loads agents from multiple directories and merges them.
+// Priority order: later directories override earlier ones (same agent name).
+// Typically called as LoadMultipleDirs(builtinDir, userDir, projectDir).
+func (r *Registry) LoadMultipleDirs(dirs ...string) tea.Cmd {
+	return func() tea.Msg {
+		merged, err := loadAndMergeDirs(dirs...)
+		if err != nil {
+			return AgentsLoadedMsg{Err: err}
+		}
+		r.agents = merged
+		return AgentsLoadedMsg{Agents: merged}
+	}
+}
+
+// ReloadMultipleDirs synchronously reloads agents from multiple directories.
+func (r *Registry) ReloadMultipleDirs(dirs ...string) {
+	merged, err := loadAndMergeDirs(dirs...)
+	if err == nil {
+		r.agents = merged
 	}
 }
 
@@ -42,6 +77,11 @@ func (r *Registry) Load() tea.Cmd {
 func (r *Registry) Reload() {
 	agents, err := loadFromDir(r.dir)
 	if err == nil {
+		for i := range agents {
+			if agents[i].Source == "" {
+				agents[i].Source = SourceBuiltIn
+			}
+		}
 		r.agents = agents
 	}
 }
@@ -113,6 +153,65 @@ func sortOrder(name string) int {
 		}
 	}
 	return 99
+}
+
+// loadAndMergeDirs loads agents from multiple directories and merges them.
+// Directories are processed in order; later directories override earlier ones for same-name agents.
+// Source tags are assigned based on directory position:
+//   - dirs[0] = built-in
+//   - dirs[1] = user (~/.moonbase/agents/)
+//   - dirs[2] = project (.kiro/agents/)
+func loadAndMergeDirs(dirs ...string) ([]Agent, error) {
+	sourceLabels := []string{SourceBuiltIn, SourceUser, SourceProject}
+
+	// Map for deduplication (name → agent)
+	agentMap := make(map[string]Agent)
+
+	for i, dir := range dirs {
+		if dir == "" {
+			continue
+		}
+
+		agents, err := loadFromDir(dir)
+		if err != nil {
+			// Non-built-in dirs may not exist — skip gracefully
+			if i > 0 {
+				continue
+			}
+			return nil, err
+		}
+
+		source := SourceBuiltIn
+		if i < len(sourceLabels) {
+			source = sourceLabels[i]
+		}
+
+		for j := range agents {
+			agents[j].Source = source
+			name := agents[j].Name
+
+			// Log warning if overriding a pipeline agent
+			if existing, exists := agentMap[name]; exists {
+				if existing.IsPipeline() && source != SourceBuiltIn {
+					log.Printf("WARNING: %s agent '%s' overrides built-in pipeline agent", source, name)
+				}
+			}
+			agentMap[name] = agents[j]
+		}
+	}
+
+	// Flatten map to slice
+	result := make([]Agent, 0, len(agentMap))
+	for _, a := range agentMap {
+		result = append(result, a)
+	}
+
+	// Sort by KND operative order
+	sort.Slice(result, func(i, j int) bool {
+		return sortOrder(strings.ToLower(result[i].Name)) < sortOrder(strings.ToLower(result[j].Name))
+	})
+
+	return result, nil
 }
 
 func loadFromDir(dir string) ([]Agent, error) {

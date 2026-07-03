@@ -92,4 +92,6 @@ func init() {
 	rootCmd.AddCommand(installCmd)
 	rootCmd.AddCommand(exportCmd)
 	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(historyCmd)
+	rootCmd.AddCommand(replayCmd)
 }
