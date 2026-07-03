@@ -72,6 +72,11 @@ func (w *Watcher) Start(dir string) error {
 	return nil
 }
 
+// Watch adds an additional directory to the watcher.
+func (w *Watcher) Watch(dir string) error {
+	return w.w.Add(dir)
+}
+
 func (w *Watcher) Recent() []FileEvent {
 	w.mu.Lock()
 	defer w.mu.Unlock()

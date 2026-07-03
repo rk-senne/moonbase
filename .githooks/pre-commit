@@ -1,0 +1,7 @@
+#!/bin/sh
+set -e
+echo "🌙 Moonbase pre-commit checks..."
+go vet ./...
+go build ./...
+go test ./... -count=1 -timeout 60s
+echo "✅ All checks passed"

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/f5508037/moonbase/internal/agents"
+	"github.com/f5508037/moonbase/internal/chat"
 	clip "github.com/f5508037/moonbase/internal/clipboard"
 	"github.com/f5508037/moonbase/internal/discovery"
 )
@@ -79,17 +80,39 @@ func (o *OpenAI) Name() string   { return "openai" }
 func (o *OpenAI) Available() bool { return envExists("OPENAI_API_KEY") }
 
 func (o *OpenAI) Deploy(agent agents.Agent, context *discovery.ProjectContext, task string) (string, error) {
-	return "", fmt.Errorf("openai backend not yet implemented — use kiro-cli or clipboard")
+	return "", fmt.Errorf("openai backend not yet wired — requires OpenAI streaming client. Use anthropic, kiro-cli, or clipboard instead")
 }
 
-// Anthropic deploys agents via Anthropic API (placeholder)
+// Anthropic deploys agents via Anthropic Messages API with streaming.
+// Uses the same HTTP streaming code as the comms system (internal/chat).
 type Anthropic struct{}
 
 func (a *Anthropic) Name() string   { return "anthropic" }
 func (a *Anthropic) Available() bool { return envExists("ANTHROPIC_API_KEY") }
 
+// Deploy sends the agent prompt + task to Anthropic's Messages API via streaming,
+// collects all response chunks, and returns the full response text.
 func (a *Anthropic) Deploy(agent agents.Agent, context *discovery.ProjectContext, task string) (string, error) {
-	return "", fmt.Errorf("anthropic backend not yet implemented — use kiro-cli or clipboard")
+	composed := discovery.ComposePrompt(agent.Prompt, context, task)
+
+	// Build a conversation with the system prompt and task as the user message
+	conv := chat.NewConversation(agent.Name, composed)
+	conv.Add(chat.RoleUser, task)
+
+	// Stream the response and collect all chunks
+	ch := chat.Stream(conv)
+	var result strings.Builder
+	for chunk := range ch {
+		if chunk.Err != nil {
+			return result.String(), fmt.Errorf("anthropic streaming error: %w", chunk.Err)
+		}
+		if chunk.Done {
+			break
+		}
+		result.WriteString(chunk.Text)
+	}
+
+	return result.String(), nil
 }
 
 // Ollama deploys agents via local Ollama

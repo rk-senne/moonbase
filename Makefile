@@ -7,7 +7,7 @@ COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
 DATE := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 LDFLAGS := -ldflags "-X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(DATE)"
 
-.PHONY: run build test clean install setup release lint coverage
+.PHONY: run build test clean install setup release lint coverage hooks
 
 run:
 	go run $(MAIN)
@@ -44,3 +44,7 @@ release:
 	GOOS=darwin GOARCH=arm64 go build -o $(BUILD_DIR)/$(APP_NAME)-darwin-arm64 $(MAIN)
 	GOOS=darwin GOARCH=amd64 go build -o $(BUILD_DIR)/$(APP_NAME)-darwin-amd64 $(MAIN)
 	GOOS=linux GOARCH=amd64 go build -o $(BUILD_DIR)/$(APP_NAME)-linux-amd64 $(MAIN)
+
+hooks:
+	git config core.hooksPath .githooks
+	@echo "✓ Pre-commit hooks enabled (.githooks/pre-commit)"
