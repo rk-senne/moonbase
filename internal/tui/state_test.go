@@ -1,0 +1,259 @@
+package tui
+
+import (
+	"testing"
+
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+)
+
+func TestApp_FocusCycle(t *testing.T) {
+	app := NewApp()
+	app.view = ViewDashboard
+	app.ready = true
+	app.browsing = false
+	app.termActive = false
+
+	if app.focus != FocusSidebar {
+		t.Fatalf("expected initial focus=FocusSidebar, got %d", app.focus)
+	}
+
+	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyTab})
+	result := model.(App)
+	if result.focus != FocusMain {
+		t.Errorf("expected FocusMain after first tab, got %d", result.focus)
+	}
+
+	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyTab})
+	result = model.(App)
+	if result.focus != FocusRight {
+		t.Errorf("expected FocusRight after second tab, got %d", result.focus)
+	}
+
+	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyTab})
+	result = model.(App)
+	if result.focus != FocusSidebar {
+		t.Errorf("expected FocusSidebar after third tab (wrap), got %d", result.focus)
+	}
+}
+
+func TestApp_ThemeCycleAll(t *testing.T) {
+	app := NewApp()
+	app.view = ViewDashboard
+	app.ready = true
+	app.browsing = false
+	app.termActive = false
+
+	themes := []string{"treehouse", "classified", "nerv", "moonbase"}
+	result := app
+	for _, expected := range themes {
+		model, _ := result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'T'}})
+		result = model.(App)
+		if result.theme != expected {
+			t.Errorf("expected theme=%s, got %s", expected, result.theme)
+		}
+	}
+}
+
+func TestApp_SearchFilter(t *testing.T) {
+	app := NewApp()
+	app.view = ViewDashboard
+	app.ready = true
+	app.browsing = false
+	app.termActive = false
+	app.registry = newTestRegistry()
+
+	// Enter search mode
+	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
+	result := model.(App)
+	if !result.searching {
+		t.Fatal("expected searching=true")
+	}
+
+	// Type a search query
+	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'4'}})
+	result = model.(App)
+
+	// Should have filtered results
+	if result.filtered == nil {
+		t.Error("expected filtered to be populated after search input")
+	}
+
+	// Exit search with esc
+	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyEscape})
+	result = model.(App)
+	if result.searching {
+		t.Error("expected searching=false after esc")
+	}
+	if result.filtered != nil {
+		t.Error("expected filtered=nil after esc")
+	}
+}
+
+func TestApp_SearchEnter(t *testing.T) {
+	app := NewApp()
+	app.view = ViewDashboard
+	app.ready = true
+	app.browsing = false
+	app.termActive = false
+	app.registry = newTestRegistry()
+
+	// Enter search mode
+	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
+	result := model.(App)
+
+	// Type something that matches
+	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'1'}})
+	result = model.(App)
+
+	// Press enter to select
+	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	result = model.(App)
+
+	if result.searching {
+		t.Error("expected searching=false after enter")
+	}
+	if result.view != ViewDossier {
+		t.Errorf("expected ViewDossier after search enter with results, got %d", result.view)
+	}
+}
+
+func TestApp_CursorBounds(t *testing.T) {
+	app := NewApp()
+	app.view = ViewDashboard
+	app.ready = true
+	app.browsing = false
+	app.termActive = false
+	app.registry = newTestRegistry()
+	app.cursor = 0
+
+	// Try to go up past 0
+	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
+	result := model.(App)
+	if result.cursor != 0 {
+		t.Errorf("expected cursor to stay at 0 when going up, got %d", result.cursor)
+	}
+
+	// Go down
+	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	result = model.(App)
+	if result.cursor != 1 {
+		t.Errorf("expected cursor=1 after down, got %d", result.cursor)
+	}
+
+	// Go to max and try to exceed
+	count := app.registry.Count()
+	result.cursor = count - 1
+	result.selected = count - 1
+	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	result = model.(App)
+	if result.cursor != count-1 {
+		t.Errorf("expected cursor to stay at max (%d), got %d", count-1, result.cursor)
+	}
+}
+
+func TestApp_WindowResize(t *testing.T) {
+	app := NewApp()
+	app.ready = false
+
+	model, _ := app.Update(tea.WindowSizeMsg{Width: 200, Height: 50})
+	result := model.(App)
+
+	if !result.ready {
+		t.Error("expected ready=true after WindowSizeMsg")
+	}
+	if result.width != 200 {
+		t.Errorf("expected width=200, got %d", result.width)
+	}
+	if result.height != 50 {
+		t.Errorf("expected height=50, got %d", result.height)
+	}
+
+	// Resize again
+	model, _ = result.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	result = model.(App)
+	if result.width != 80 {
+		t.Errorf("expected width=80 after resize, got %d", result.width)
+	}
+	if result.height != 24 {
+		t.Errorf("expected height=24 after resize, got %d", result.height)
+	}
+}
+
+func TestAgentColor(t *testing.T) {
+	// The function uses strings.Contains with a switch-case order:
+	// "1" -> red, "2" -> teal, "3" -> mint, "4" -> yellow, "5" -> purple,
+	// "0" -> orange, "274" -> crimson, "362" -> cyan, default -> green
+	// Note: "274" contains "2" so it hits the "2" case first due to switch ordering.
+	tests := []struct {
+		name     string
+		expected lipgloss.Color
+	}{
+		{"Numbuh 1", lipgloss.Color("#FF6B6B")},
+		{"Numbuh 2", lipgloss.Color("#4ECDC4")},
+		{"Numbuh 3", lipgloss.Color("#A8E6CF")},
+		{"Numbuh 4", lipgloss.Color("#FFE66D")},
+		{"Numbuh 5", lipgloss.Color("#C4B5FD")},
+		{"Numbuh 0", lipgloss.Color("#F97316")},
+		{"Unknown Agent", lipgloss.Color("#00FF88")},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := agentColor(tt.name)
+			if got != tt.expected {
+				t.Errorf("agentColor(%q) = %s, want %s", tt.name, got, tt.expected)
+			}
+		})
+	}
+
+	// Ensure different names produce different results (smoke test)
+	c1 := agentColor("Numbuh 1")
+	c2 := agentColor("Numbuh 2")
+	if c1 == c2 {
+		t.Error("expected different colors for different agents")
+	}
+
+	// Verify default case
+	cDefault := agentColor("some-random-agent")
+	if cDefault != lipgloss.Color("#00FF88") {
+		t.Errorf("expected default color #00FF88, got %s", cDefault)
+	}
+}
+
+func TestIntelEntries_MaxCap(t *testing.T) {
+	app := NewApp()
+
+	// Add more than maxIntelEntries
+	for i := 0; i < maxIntelEntries+20; i++ {
+		app.addIntel("message %d", i)
+	}
+
+	if len(app.intel) > maxIntelEntries {
+		t.Errorf("expected intel entries <= %d, got %d", maxIntelEntries, len(app.intel))
+	}
+	if len(app.intel) != maxIntelEntries {
+		t.Errorf("expected exactly %d intel entries, got %d", maxIntelEntries, len(app.intel))
+	}
+
+	// Verify the oldest entries were trimmed (should have entries 20-69)
+	lastEntry := app.intel[len(app.intel)-1]
+	if lastEntry.Message != "message 69" {
+		t.Errorf("expected last entry to be 'message 69', got '%s'", lastEntry.Message)
+	}
+}
+
+func TestIntelEntries_Format(t *testing.T) {
+	app := NewApp()
+	app.addIntel("test %s %d", "hello", 42)
+
+	if len(app.intel) != 1 {
+		t.Fatalf("expected 1 intel entry, got %d", len(app.intel))
+	}
+	if app.intel[0].Message != "test hello 42" {
+		t.Errorf("expected message='test hello 42', got '%s'", app.intel[0].Message)
+	}
+	if app.intel[0].Time == "" {
+		t.Error("expected non-empty timestamp")
+	}
+}

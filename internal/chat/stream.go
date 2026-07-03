@@ -66,21 +66,30 @@ var httpClient = &http.Client{
 // - Response is parsed as SSE; malformed data is discarded (not executed)
 // - Error response body is size-limited to prevent OOM
 func Stream(conv *Conversation) <-chan StreamChunk {
+	apiKey := os.Getenv("ANTHROPIC_API_KEY")
+	if apiKey == "" {
+		ch := make(chan StreamChunk, 1)
+		ch <- StreamChunk{Err: fmt.Errorf("ANTHROPIC_API_KEY not set")}
+		close(ch)
+		return ch
+	}
+
+	model := os.Getenv("ANTHROPIC_MODEL")
+	if model == "" {
+		model = "claude-sonnet-4-20250514"
+	}
+
+	// SECURITY: URL is hardcoded HTTPS — no user-controlled endpoint.
+	return streamFrom("https://api.anthropic.com/v1/messages", apiKey, model, conv, httpClient)
+}
+
+// streamFrom performs the actual SSE streaming against the given URL.
+// Extracted for testability — tests can pass an httptest URL and custom client.
+func streamFrom(url, apiKey, model string, conv *Conversation, client *http.Client) <-chan StreamChunk {
 	ch := make(chan StreamChunk, 64)
 
 	go func() {
 		defer close(ch)
-
-		apiKey := os.Getenv("ANTHROPIC_API_KEY")
-		if apiKey == "" {
-			ch <- StreamChunk{Err: fmt.Errorf("ANTHROPIC_API_KEY not set")}
-			return
-		}
-
-		model := os.Getenv("ANTHROPIC_MODEL")
-		if model == "" {
-			model = "claude-sonnet-4-20250514"
-		}
 
 		body := anthropicRequest{
 			Model:     model,
@@ -92,8 +101,7 @@ func Stream(conv *Conversation) <-chan StreamChunk {
 
 		payload, _ := json.Marshal(body)
 
-		// SECURITY: URL is hardcoded HTTPS — no user-controlled endpoint.
-		req, err := http.NewRequest("POST", "https://api.anthropic.com/v1/messages", bytes.NewReader(payload))
+		req, err := http.NewRequest("POST", url, bytes.NewReader(payload))
 		if err != nil {
 			ch <- StreamChunk{Err: err}
 			return
@@ -103,7 +111,7 @@ func Stream(conv *Conversation) <-chan StreamChunk {
 		req.Header.Set("x-api-key", apiKey)
 		req.Header.Set("anthropic-version", "2023-06-01")
 
-		resp, err := httpClient.Do(req)
+		resp, err := client.Do(req)
 		if err != nil {
 			ch <- StreamChunk{Err: err}
 			return

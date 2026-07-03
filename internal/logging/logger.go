@@ -10,12 +10,16 @@ import (
 // Logger is the global structured logger for moonbase.
 var Logger *slog.Logger
 
+// LogDir overrides the default log directory. If empty, uses ~/.config/moonbase.
+// Exported for testing purposes only.
+var LogDir string
+
 // Init initializes the global logger.
-// If debug is true, writes JSON logs to ~/.config/moonbase/debug.log (append mode, 0600).
+// If debug is true, writes JSON logs to the log directory's debug.log (append mode, 0600).
 // If debug is false, uses a discard handler (no output).
 func Init(debug bool) {
 	if debug {
-		dir := filepath.Join(homeDir(), ".config", "moonbase")
+		dir := logDir()
 		if err := os.MkdirAll(dir, 0700); err != nil {
 			// Fall back to discard if we can't create the directory
 			Logger = slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -35,6 +39,14 @@ func Init(debug bool) {
 	} else {
 		Logger = slog.New(slog.NewTextHandler(io.Discard, nil))
 	}
+}
+
+// logDir returns the directory for log files.
+func logDir() string {
+	if LogDir != "" {
+		return LogDir
+	}
+	return filepath.Join(homeDir(), ".config", "moonbase")
 }
 
 func homeDir() string {
