@@ -132,29 +132,6 @@ func TestAgentNameResolution(t *testing.T) {
 	}
 }
 
-func TestEnvExists(t *testing.T) {
-	// Set a test env var
-	os.Setenv("MOONBASE_TEST_VAR", "hello")
-	defer os.Unsetenv("MOONBASE_TEST_VAR")
-
-	if !envExists("MOONBASE_TEST_VAR") {
-		t.Error("expected envExists to return true for set var")
-	}
-	if envExists("MOONBASE_NONEXISTENT_VAR_XYZ") {
-		t.Error("expected envExists to return false for unset var")
-	}
-}
-
-func TestEnvExists_EmptyValue(t *testing.T) {
-	os.Setenv("MOONBASE_EMPTY_VAR", "   ")
-	defer os.Unsetenv("MOONBASE_EMPTY_VAR")
-
-	// Empty/whitespace-only should return false
-	if envExists("MOONBASE_EMPTY_VAR") {
-		t.Error("expected envExists to return false for whitespace-only var")
-	}
-}
-
 // === Gap Coverage: isValidAgentID edge cases (unicode, null bytes, path traversal) ===
 
 func TestIsValidAgentID_ValidCases(t *testing.T) {

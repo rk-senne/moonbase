@@ -66,9 +66,8 @@ func (c *CommsState) rebuildContent() {
 			}
 		} else {
 			b.WriteString(dimStyle.Render(ts) + " " + nameStyle.Render(c.agent) + "\n")
-			for _, line := range strings.Split(msg.Content, "\n") {
-				b.WriteString("  " + agentStyle.Render(line) + "\n")
-			}
+			rendered := RenderMarkdown(msg.Content, c.viewport.Width-4)
+			b.WriteString(rendered)
 		}
 		b.WriteString("\n")
 	}

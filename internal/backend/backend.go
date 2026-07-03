@@ -6,6 +6,7 @@ package backend
 import (
 	"github.com/f5508037/moonbase/internal/agents"
 	"github.com/f5508037/moonbase/internal/discovery"
+	"github.com/f5508037/moonbase/internal/logging"
 )
 
 // Backend is the interface all AI tool integrations implement.
@@ -46,9 +47,15 @@ func Preferred() Backend {
 	priority := DetectAll()
 	for _, b := range priority {
 		if b.Available() && b.Name() != "clipboard" {
+			if logging.Logger != nil {
+				logging.Logger.Info("backend selected", "name", b.Name())
+			}
 			return b
 		}
 	}
 	// Fallback to clipboard (always available)
+	if logging.Logger != nil {
+		logging.Logger.Info("backend selected", "name", "clipboard", "reason", "no other backend available")
+	}
 	return &Clipboard{}
 }

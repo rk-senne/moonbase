@@ -317,14 +317,10 @@ func (a App) renderPipeline() string {
 				main.WriteString(dimStyle.Render(" "+content) + "\n")
 			}
 		} else {
-			// Agent output — indented with pipe
-			lines := strings.Split(msg.Content, "\n")
-			maxOutput := 8
-			for j, line := range lines {
-				if j >= maxOutput && len(lines) > maxOutput {
-					main.WriteString(pipeStyle.Render(fmt.Sprintf("│ [+%d more lines]", len(lines)-maxOutput)) + "\n")
-					break
-				}
+			// Agent output — render through glamour
+			rendered := RenderMarkdown(msg.Content, mainWidth-4)
+			lines := strings.Split(rendered, "\n")
+			for _, line := range lines {
 				main.WriteString(pipeStyle.Render("│ ") + line + "\n")
 			}
 		}

@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -140,8 +141,12 @@ type App struct {
 	termOutput     []string
 	termActive     bool
 	cwd            string
-	fileBrowser    *FileBrowser
-	browsing       bool // true = file browser mode, false = terminal mode
+	fileBrowser     *FileBrowser
+	browsing        bool // true = file browser mode, false = terminal mode
+	pipelineRunning bool // prevents double-dispatch of pipeline phases
+	streamCh        <-chan chat.StreamChunk // active stream channel for continued polling
+	pipelineCtx     context.Context    // context for active pipeline execution
+	cancelPipeline  context.CancelFunc // cancels the active pipeline context
 }
 
 type MissionEntry struct {
@@ -209,7 +214,8 @@ func NewApp() App {
 		}
 	}
 
-	reg := agents.NewRegistry("./agents")
+	dir, _ := agents.FindAgentsDir("")
+	reg := agents.NewRegistry(dir)
 	
 	// Discover project context for pipeline execution
 	projectCtx, _ := discovery.Discover(cwd)
@@ -592,6 +598,11 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					a.view = ViewPipeline
 					a.missionStart = time.Now()
 
+					// Create pipeline context for graceful shutdown
+					ctx, cancel := context.WithCancel(context.Background())
+					a.pipelineCtx = ctx
+					a.cancelPipeline = cancel
+
 					// Start real pipeline execution if backend available
 					if cmd := a.startNextPhase(); cmd != nil {
 						a.addIntel("Pipeline executing via %s...", a.activeBackend.Name())
@@ -616,6 +627,9 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		switch msg.String() {
 		case "q", "ctrl+c":
+			if a.cancelPipeline != nil {
+				a.cancelPipeline()
+			}
 			return a, tea.Quit
 		case "?":
 			if a.view == ViewHelp {
@@ -627,15 +641,18 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.view = ViewProtocol
 		case "esc":
 			if a.view == ViewPipeline {
-				if pipelineRunning {
+				if a.pipelineRunning {
 					if a.abortPending && time.Since(a.abortPendingAt) < 3*time.Second {
 						// Second esc within 3s — actually abort
+						if a.cancelPipeline != nil {
+							a.cancelPipeline()
+						}
 						a.pipelineState.Stop("Aborted by human")
 						a.pipelineChat = append(a.pipelineChat,
 							PipelineMsg{"", "🛑 Mission aborted by human."},
 						)
 						a.addIntel("Mission aborted: %s", a.pipelineState.Task)
-						pipelineRunning = false
+						a.pipelineRunning = false
 						a.abortPending = false
 					} else {
 						// First esc — show warning
@@ -651,7 +668,7 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				a.abortPending = false
 			}
 		case "n":
-			if a.view == ViewPipeline && a.pipelineState != nil && !pipelineRunning {
+			if a.view == ViewPipeline && a.pipelineState != nil && !a.pipelineRunning {
 				prev := a.pipelineState.Phases[a.pipelineState.Current]
 				a.pipelineState.Advance()
 				if a.pipelineState.Current < len(a.pipelineState.Phases) {
@@ -672,7 +689,7 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case "r":
-			if a.view == ViewPipeline && a.pipelineState != nil && !pipelineRunning {
+			if a.view == ViewPipeline && a.pipelineState != nil && !a.pipelineRunning {
 				a.pipelineState.Retry()
 				phase := a.pipelineState.Phases[a.pipelineState.Current]
 				a.pipelineOutput = append(a.pipelineOutput,
@@ -839,6 +856,9 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case PipelineAbortedMsg:
+		if a.cancelPipeline != nil {
+			a.cancelPipeline()
+		}
 		if a.pipelineState != nil {
 			a.pipelineState.Stop("Aborted by human")
 			a.pipelineChat = append(a.pipelineChat,
@@ -846,7 +866,7 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			)
 			a.addIntel("Mission aborted: %s", a.pipelineState.Task)
 		}
-		pipelineRunning = false
+		a.pipelineRunning = false
 
 	case systemInfoMsg:
 		a.gitBranch = msg.branch
@@ -914,7 +934,7 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		a.comms.AppendStreamToken(msg.text)
 		// Continue polling the stream
-		return a, pollStream(streamCh)
+		return a, pollStream(a.streamCh)
 
 	case fileChangeMsg:
 		a.addIntel("📁 %s modified", msg.path)
@@ -1263,8 +1283,8 @@ func (a *App) sendCommsMessage() tea.Cmd {
 	a.comms.streaming = true
 
 	// Start streaming and store channel for continued polling
-	streamCh = chat.Stream(a.comms.conv)
-	return pollStream(streamCh)
+	a.streamCh = chat.Stream(a.comms.conv)
+	return pollStream(a.streamCh)
 }
 
 func pollStream(ch <-chan chat.StreamChunk) tea.Cmd {
@@ -1276,9 +1296,6 @@ func pollStream(ch <-chan chat.StreamChunk) tea.Cmd {
 		return streamChunkMsg{text: chunk.Text, done: chunk.Done, err: chunk.Err}
 	}
 }
-
-// streamCh holds the active stream channel for continued polling
-var streamCh <-chan chat.StreamChunk
 
 // --- GitHub PR ---
 
@@ -1372,8 +1389,8 @@ func (a *App) relayToAgent(targetName, msg string) tea.Cmd {
 	a.comms.streaming = true
 	a.addIntel("Relayed to %s from %s", target.Name, fromAgent)
 
-	streamCh = chat.Stream(a.comms.conv)
-	return pollStream(streamCh)
+	a.streamCh = chat.Stream(a.comms.conv)
+	return pollStream(a.streamCh)
 }
 
 // --- Mission History View ---

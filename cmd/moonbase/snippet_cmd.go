@@ -1,0 +1,83 @@
+package main
+
+import (
+	"bufio"
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/spf13/cobra"
+)
+
+var snippetCmd = &cobra.Command{
+	Use:   "snippet",
+	Short: "Manage saved prompt snippets",
+	Long:  "Save and list reusable prompt snippets.\n\nExamples:\n  moonbase snippet save my-prompt\n  moonbase snippet list",
+}
+
+var snippetSaveCmd = &cobra.Command{
+	Use:   "save <name>",
+	Short: "Save a snippet (reads content from stdin)",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		name := args[0]
+
+		// Validate snippet name
+		if len(name) > 100 {
+			fmt.Fprintf(os.Stderr, "❌ Snippet name too long (%d chars, max 100)\n", len(name))
+			os.Exit(1)
+		}
+		if strings.ContainsAny(name, "/\\") {
+			fmt.Fprintf(os.Stderr, "❌ Snippet name must not contain path separators (/ or \\)\n")
+			os.Exit(1)
+		}
+		for _, r := range name {
+			if r < 32 {
+				fmt.Fprintf(os.Stderr, "❌ Snippet name must not contain control characters\n")
+				os.Exit(1)
+			}
+		}
+
+		scanner := bufio.NewScanner(os.Stdin)
+		var lines []string
+		for scanner.Scan() {
+			lines = append(lines, scanner.Text())
+		}
+		content := strings.Join(lines, "\n")
+		home, _ := os.UserHomeDir()
+		path := filepath.Join(home, ".config", "moonbase", "snippets.json")
+		os.MkdirAll(filepath.Dir(path), 0700)
+
+		// Load existing
+		var existing []map[string]string
+		if data, err := os.ReadFile(path); err == nil {
+			json.Unmarshal(data, &existing)
+		}
+		existing = append(existing, map[string]string{"name": name, "content": content})
+		data, _ := json.MarshalIndent(existing, "", "  ")
+		os.WriteFile(path, data, 0600)
+		fmt.Printf("✓ Snippet saved: %s\n", name)
+	},
+}
+
+var snippetListCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List saved snippets",
+	Run: func(cmd *cobra.Command, args []string) {
+		home, _ := os.UserHomeDir()
+		path := filepath.Join(home, ".config", "moonbase", "snippets.json")
+		data, err := os.ReadFile(path)
+		if err != nil {
+			fmt.Println("No snippets saved yet.")
+			return
+		}
+		fmt.Println(string(data))
+	},
+}
+
+func init() {
+	snippetCmd.AddCommand(snippetSaveCmd)
+	snippetCmd.AddCommand(snippetListCmd)
+}

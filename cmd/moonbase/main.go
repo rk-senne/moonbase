@@ -1,25 +1,18 @@
 package main
 
 import (
-	"bufio"
-	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"syscall"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/f5508037/moonbase/internal/agents"
 	"github.com/f5508037/moonbase/internal/backend"
 	clip "github.com/f5508037/moonbase/internal/clipboard"
 	"github.com/f5508037/moonbase/internal/config"
 	"github.com/f5508037/moonbase/internal/discovery"
-	"github.com/f5508037/moonbase/internal/history"
-	"github.com/f5508037/moonbase/internal/tui"
 )
 
 // maxPipeInputSize is the maximum bytes accepted from piped stdin (1MB).
@@ -27,86 +20,7 @@ import (
 const maxPipeInputSize = 1 << 20
 
 func main() {
-	if len(os.Args) > 1 {
-		switch os.Args[1] {
-		case "install":
-			runInstall()
-		case "init":
-			runInit()
-		case "status":
-			runStatus()
-		case "lint":
-			runLint()
-		case "list":
-			runList()
-		case "deploy":
-			if len(os.Args) < 3 {
-				fmt.Fprintln(os.Stderr, "❌ Usage: moonbase deploy <numbuh> [task]")
-				os.Exit(1)
-			}
-			runDeploy(os.Args[2])
-		case "mission":
-			task := strings.Join(os.Args[2:], " ")
-			if task == "" {
-				fmt.Fprintln(os.Stderr, "❌ Usage: moonbase mission <task description>")
-				os.Exit(1)
-			}
-			runMission(task)
-		case "export":
-			if len(os.Args) < 3 {
-				fmt.Fprintln(os.Stderr, "❌ Usage: moonbase export <mission-id>")
-				os.Exit(1)
-			}
-			id, _ := strconv.Atoi(os.Args[2])
-			fmt.Println(history.Export(id))
-		case "snippet":
-			runSnippet()
-		case "help", "--help", "-h":
-			runHelp()
-		case "config":
-			runConfig()
-		default:
-			fmt.Fprintf(os.Stderr, "❌ Unknown command: %s\n   Run 'moonbase help' for usage.\n", os.Args[1])
-			os.Exit(1)
-		}
-		return
-	}
-
-	// Pipe mode: if stdin is not a TTY, read it and deploy
-	// SECURITY: Input is size-limited to prevent OOM from large/infinite pipes.
-	// The kiro-cli subprocess uses SafeEnv() to avoid leaking env vars.
-	if !isTerminal() {
-		limited := io.LimitReader(os.Stdin, maxPipeInputSize)
-		input, _ := io.ReadAll(limited)
-		task := strings.TrimSpace(string(input))
-		if task == "" {
-			return
-		}
-		if len(input) >= maxPipeInputSize {
-			fmt.Fprintf(os.Stderr, "⚠️  Pipe input truncated at %d bytes\n", maxPipeInputSize)
-		}
-		fmt.Printf("🌙 Pipe mode — task: %s\n", task)
-		fmt.Println("Deploy to kiro-cli with knd-council...")
-		if kiro, err := exec.LookPath("kiro-cli"); err == nil {
-			cmd := exec.Command(kiro, "chat", "--agent", "knd-council")
-			cmd.Stdin = strings.NewReader(task)
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-			// SECURITY: Use SafeEnv to prevent leaking sensitive env vars to subprocess
-			cmd.Env = backend.SafeEnv()
-			cmd.Run()
-		} else {
-			// Copy task to clipboard
-			clip.Copy(task)
-			fmt.Println("✓ Task copied to clipboard")
-		}
-		return
-	}
-
-	// Default: launch TUI
-	p := tea.NewProgram(tui.NewApp(), tea.WithAltScreen())
-	if _, err := p.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "❌ TUI error: %v\n", err)
+	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}
 }
@@ -116,40 +30,77 @@ func runList() {
 	fmt.Println("🌙 KND MOONBASE — OPERATIVE ROSTER")
 	fmt.Println("═══════════════════════════════════════")
 	fmt.Println()
-	fmt.Println("  SECTOR V")
 
-	agents := []struct {
-		num, name, role string
-	}{
-		{"0", "Monty Uno", "System Architect"},
-		{"1", "Nigel Uno", "Analyst"},
-		{"2", "Hoagie Gilligan", "Architect"},
-		{"3", "Kuki Sanban", "Implementer"},
-		{"4", "Wallabee Beatles", "QA"},
-		{"5", "Abigail Lincoln", "Reviewer"},
-	}
+	// Try loading from registry
+	dir := agentsDir()
+	reg := agents.NewRegistry(dir)
+	reg.Reload()
+	all := reg.All()
 
-	for _, a := range agents {
-		fmt.Printf("  [%s] %-18s %s\n", a.num, a.name, a.role)
-	}
+	if len(all) > 0 {
+		// Group by pipeline position: core (1-5) vs specialists
+		fmt.Println("  SECTOR V")
+		for _, a := range all {
+			if a.PipelinePosition != nil && *a.PipelinePosition >= 1 && *a.PipelinePosition <= 5 {
+				fmt.Printf("  [%s] %-18s %s\n", extractNumbuh(a.Name), a.Designation, a.Role)
+			}
+		}
+		// Also include numbuh-0 (pipeline position 0 or architect role)
+		for _, a := range all {
+			if a.PipelinePosition != nil && *a.PipelinePosition == 0 {
+				fmt.Printf("  [%s] %-18s %s\n", extractNumbuh(a.Name), a.Designation, a.Role)
+			}
+		}
 
-	fmt.Println()
-	fmt.Println("  SPECIALISTS")
+		fmt.Println()
+		fmt.Println("  SPECIALISTS")
+		for _, a := range all {
+			if a.PipelinePosition == nil || *a.PipelinePosition > 5 {
+				num := extractNumbuh(a.Name)
+				if num != "" {
+					fmt.Printf("  [%s] %-18s %s\n", num, a.Designation, a.Role)
+				}
+			}
+		}
+	} else {
+		// Fallback to hardcoded if registry returns empty
+		fmt.Println("  ⚠️  Could not load agents from registry, showing defaults")
+		fmt.Println()
+		fmt.Println("  SECTOR V")
 
-	specialists := []struct {
-		num, name, role string
-	}{
-		{"362", "Rachel McKenzie", "DevOps"},
-		{"274", "Chad Dickson", "Security"},
-		{"86", "Fanny Fulbright", "Tech Debt"},
-		{"999", "Pioneer", "Documentation"},
-		{"13", "The Jinx", "Chaos Tester"},
-		{"Z", "Sector Z", "Legacy Archaeologist"},
-		{"9", "Maurice", "Migration Specialist"},
-	}
+		hardcodedAgents := []struct {
+			num, name, role string
+		}{
+			{"0", "Monty Uno", "System Architect"},
+			{"1", "Nigel Uno", "Analyst"},
+			{"2", "Hoagie Gilligan", "Architect"},
+			{"3", "Kuki Sanban", "Implementer"},
+			{"4", "Wallabee Beatles", "QA"},
+			{"5", "Abigail Lincoln", "Reviewer"},
+		}
 
-	for _, a := range specialists {
-		fmt.Printf("  [%s] %-18s %s\n", a.num, a.name, a.role)
+		for _, a := range hardcodedAgents {
+			fmt.Printf("  [%s] %-18s %s\n", a.num, a.name, a.role)
+		}
+
+		fmt.Println()
+		fmt.Println("  SPECIALISTS")
+
+		hardcodedSpecialists := []struct {
+			num, name, role string
+		}{
+			{"362", "Rachel McKenzie", "DevOps"},
+			{"274", "Chad Dickson", "Security"},
+			{"86", "Fanny Fulbright", "Tech Debt"},
+			{"999", "Pioneer", "Documentation"},
+			{"13", "The Jinx", "Chaos Tester"},
+			{"Z", "Sector Z", "Legacy Archaeologist"},
+			{"9", "Maurice", "Migration Specialist"},
+		}
+
+		for _, a := range hardcodedSpecialists {
+			fmt.Printf("  [%s] %-18s %s\n", a.num, a.name, a.role)
+		}
 	}
 
 	fmt.Println()
@@ -164,44 +115,28 @@ func runList() {
 			fmt.Printf("  ✗ %s\n", b)
 		}
 	}
-	if envExists("OPENAI_API_KEY") {
+	if os.Getenv("OPENAI_API_KEY") != "" {
 		fmt.Println("  ✓ openai")
 	}
-	if envExists("ANTHROPIC_API_KEY") {
+	if os.Getenv("ANTHROPIC_API_KEY") != "" {
 		fmt.Println("  ✓ anthropic")
 	}
 	fmt.Println()
 }
 
-// runHelp prints the operations manual with all available commands.
-func runHelp() {
-	fmt.Println(`🌙 Moonbase — KND Tactical Operations Terminal
-
-USAGE:
-  moonbase              Launch the TUI dashboard
-  moonbase init         Scaffold .kiro/ in any project (specs, steering, agents)
-  moonbase deploy <n>   Deploy operative by numbuh (e.g. deploy 4)
-  moonbase mission <t>  Run full KND Council pipeline on a task
-  moonbase install      Install agents to .kiro/agents/ (--all, --global)
-  moonbase status       Show environment health check
-  moonbase lint         Validate all agent .md files
-  moonbase config       Show current configuration
-  moonbase list         Show operative roster
-  moonbase help         This message
-
-PIPE MODE:
-  echo "fix the bug" | moonbase     Deploy task via pipe (no TUI)
-  echo "fix auth" | moonbase deploy 4   Deploy to specific agent
-
-INSIDE THE TUI:
-  ↑↓ / jk    Navigate         m    New mission     C    Open COMMS
-  0-9        Jump to agent     H    Mission history P    Create PR
-  enter      Dossier/deploy    w    Toggle watcher  L/B/V  Launch tools
-  /          Search            T    Cycle theme     tab  Cycle focus
-  ctrl+s     Snippets (COMMS)  ctrl+f  Attach file (COMMS)
-  @name      Switch agent (COMMS)
-  >name      Relay to agent (COMMS)   >>name msg  Relay+message
-  ?          Operations manual q    Quit`)
+// extractNumbuh extracts the display number/identifier from an agent name.
+// e.g., "numbuh-4" → "4", "sector-z" → "Z", "knd-council" → "K"
+func extractNumbuh(name string) string {
+	switch {
+	case strings.HasPrefix(name, "numbuh-"):
+		return strings.TrimPrefix(name, "numbuh-")
+	case name == "sector-z":
+		return "Z"
+	case name == "knd-council":
+		return "K"
+	default:
+		return name
+	}
 }
 
 func isTerminal() bool {
@@ -212,94 +147,18 @@ func isTerminal() bool {
 	return fi.Mode()&os.ModeCharDevice != 0
 }
 
-// runSnippet manages saved prompt snippets (save/list).
-func runSnippet() {
-	if len(os.Args) < 3 {
-		fmt.Println("Usage: moonbase snippet save <name>")
-		fmt.Println("       moonbase snippet list")
-		return
-	}
-	switch os.Args[2] {
-	case "list":
-		home, _ := os.UserHomeDir()
-		path := filepath.Join(home, ".config", "moonbase", "snippets.json")
-		data, err := os.ReadFile(path)
-		if err != nil {
-			fmt.Println("No snippets saved yet.")
-			return
-		}
-		fmt.Println(string(data))
-	case "save":
-		if len(os.Args) < 4 {
-			fmt.Println("Usage: moonbase snippet save <name>")
-			fmt.Println("  Then type the snippet content (end with ctrl+d)")
-			return
-		}
-		name := os.Args[3]
-		scanner := bufio.NewScanner(os.Stdin)
-		var lines []string
-		for scanner.Scan() {
-			lines = append(lines, scanner.Text())
-		}
-		content := strings.Join(lines, "\n")
-		home, _ := os.UserHomeDir()
-		path := filepath.Join(home, ".config", "moonbase", "snippets.json")
-		os.MkdirAll(filepath.Dir(path), 0700)
 
-		// Load existing
-		var existing []map[string]string
-		if data, err := os.ReadFile(path); err == nil {
-			json.Unmarshal(data, &existing)
-		}
-		existing = append(existing, map[string]string{"name": name, "content": content})
-		data, _ := json.MarshalIndent(existing, "", "  ")
-		os.WriteFile(path, data, 0600)
-		fmt.Printf("✓ Snippet saved: %s\n", name)
-	}
-}
 
-// agentsDir locates the agents directory by checking multiple candidate paths.
+// agentsDir locates the agents directory using the shared resolver.
 // Exits with an error if no agents directory can be found.
 func agentsDir() string {
-	// 1. Check relative to executable
-	if exe, err := os.Executable(); err == nil {
-		dir := filepath.Join(filepath.Dir(exe), "..", "agents")
-		if fi, err := os.Stat(dir); err == nil && fi.IsDir() {
-			return dir
-		}
-		dir = filepath.Join(filepath.Dir(exe), "agents")
-		if fi, err := os.Stat(dir); err == nil && fi.IsDir() {
-			return dir
-		}
+	cfg := config.Load()
+	dir, err := agents.FindAgentsDir(cfg.AgentsDir)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "❌ Cannot find agents directory. Run from moonbase project or install agents first.")
+		os.Exit(1)
 	}
-	// 2. Check relative to CWD
-	if cwd, err := os.Getwd(); err == nil {
-		dir := filepath.Join(cwd, "agents")
-		if fi, err := os.Stat(dir); err == nil && fi.IsDir() {
-			return dir
-		}
-	}
-	// 3. Check common install paths
-	home, _ := os.UserHomeDir()
-	paths := []string{
-		filepath.Join(home, ".moonbase", "agents"),
-		filepath.Join(home, ".config", "moonbase", "agents"),
-	}
-	for _, p := range paths {
-		if fi, err := os.Stat(p); err == nil && fi.IsDir() {
-			return p
-		}
-	}
-	// 4. Project-local .kiro/agents
-	if cwd, err := os.Getwd(); err == nil {
-		dir := filepath.Join(cwd, ".kiro", "agents")
-		if fi, err := os.Stat(dir); err == nil && fi.IsDir() {
-			return dir
-		}
-	}
-	fmt.Fprintln(os.Stderr, "❌ Cannot find agents directory. Run from moonbase project or install agents first.")
-	os.Exit(1)
-	return ""
+	return dir
 }
 
 // runDeploy deploys a single operative by numbuh to an interactive AI session.
@@ -408,11 +267,6 @@ func runConfig() {
 	fmt.Println("🌙 Moonbase Configuration")
 	fmt.Printf("   Path: %s\n\n", config.Path())
 	fmt.Println(config.Show(cfg))
-}
-
-func envExists(key string) bool {
-	v := os.Getenv(key)
-	return strings.TrimSpace(v) != ""
 }
 
 // execSyscall replaces the current process with the given command.

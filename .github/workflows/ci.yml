@@ -42,7 +42,7 @@ jobs:
           cache: true
 
       - name: Agent lint
-        run: go run ./cmd/moonbase lint 2>/dev/null || echo "lint command not yet wired"
+        run: go run ./cmd/moonbase lint
 
       - name: Verify agents parse
         run: go test ./internal/agents/ -run TestParseAgentFile_AllAgents -count=1

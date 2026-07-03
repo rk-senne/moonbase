@@ -46,13 +46,21 @@ func runInit() {
 	}
 
 	// Write spec templates
-	writeTemplate(filepath.Join(kiroDir, "specs", "_templates", "requirements.md"), requirementsTemplate)
-	writeTemplate(filepath.Join(kiroDir, "specs", "_templates", "design.md"), designTemplate)
-	writeTemplate(filepath.Join(kiroDir, "specs", "_templates", "tasks.md"), tasksTemplate)
+	if err := writeTemplate(filepath.Join(kiroDir, "specs", "_templates", "requirements.md"), requirementsTemplate); err != nil {
+		fmt.Printf("   ⚠️  Failed to write requirements.md template: %v\n", err)
+	}
+	if err := writeTemplate(filepath.Join(kiroDir, "specs", "_templates", "design.md"), designTemplate); err != nil {
+		fmt.Printf("   ⚠️  Failed to write design.md template: %v\n", err)
+	}
+	if err := writeTemplate(filepath.Join(kiroDir, "specs", "_templates", "tasks.md"), tasksTemplate); err != nil {
+		fmt.Printf("   ⚠️  Failed to write tasks.md template: %v\n", err)
+	}
 
 	// Write steering rules (auto-detected from stack)
 	steeringContent := generateSteering(stack, buildTool, testCmd)
-	writeTemplate(filepath.Join(kiroDir, "steering", "dev-rules.md"), steeringContent)
+	if err := writeTemplate(filepath.Join(kiroDir, "steering", "dev-rules.md"), steeringContent); err != nil {
+		fmt.Printf("   ⚠️  Failed to write dev-rules.md: %v\n", err)
+	}
 
 	// Install agents
 	agentsSource, err := findAgentsSource()
@@ -77,8 +85,8 @@ func runInit() {
 	fmt.Println("   ✨ Project is now agent-ready.")
 }
 
-func writeTemplate(path, content string) {
-	os.WriteFile(path, []byte(content), 0o644)
+func writeTemplate(path, content string) error {
+	return os.WriteFile(path, []byte(content), 0o644)
 }
 
 func generateSteering(stack, buildTool, testCmd string) string {

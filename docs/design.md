@@ -16,75 +16,94 @@ Moonbase is **AI-tool agnostic**. It doesn't call AI APIs directly. It orchestra
 moonbase/
 ├── cmd/
 │   └── moonbase/
-│       └── main.go                 ← entry point
+│       ├── main.go                 ← entry point, CLI routing, deploy, list, snippet
+│       ├── init.go                 ← `moonbase init` scaffolding
+│       ├── install.go              ← `moonbase install` agent installation
+│       ├── mission.go              ← `moonbase mission` pipeline execution
+│       ├── status.go              ← `moonbase status` health checks
+│       └── main_test.go            ← CLI integration tests
 ├── internal/
 │   ├── tui/
-│   │   ├── app.go                  ← root bubbletea model
+│   │   ├── app.go                  ← root bubbletea model (Update, View, Init)
+│   │   ├── views.go                ← all view rendering (dashboard, dossier, pipeline, help)
 │   │   ├── styles.go               ← lipgloss theme (colors, borders, badges)
-│   │   ├── keys.go                 ← key bindings
-│   │   ├── views/
-│   │   │   ├── dashboard.go        ← main command center view
-│   │   │   ├── dossier.go          ← operative detail view
-│   │   │   ├── pipeline.go         ← mission/pipeline running view
-│   │   │   ├── help.go             ← operations manual overlay
-│   │   │   ├── backend.go          ← AI backend selector
-│   │   │   └── mission.go          ← mission briefing input
-│   │   └── components/
-│   │       ├── sidebar.go          ← operative roster sidebar
-│   │       ├── header.go           ← scanline header bar
-│   │       ├── statusbar.go        ← bottom key hints
-│   │       ├── intelfeed.go        ← activity log panel
-│   │       ├── phaselist.go        ← pipeline phase tracker
-│   │       └── systemstatus.go     ← CPU/MEM/GIT/DOCKER panel
+│   │   ├── boot.go                 ← boot sequence animation
+│   │   ├── animations.go           ← transition and loading animations
+│   │   ├── comms.go                ← COMMS panel (chat input/output)
+│   │   ├── docview.go              ← document viewer (scrollable viewport)
+│   │   ├── filebrowser.go          ← file browser panel
+│   │   ├── pipeline_exec.go        ← pipeline execution view integration
+│   │   ├── portraits.go            ← ASCII art operative portraits
+│   │   ├── projectnav.go           ← project navigator panel
+│   │   ├── protocol.go             ← human interaction protocol UI
+│   │   └── tui_test.go             ← TUI unit tests
 │   ├── agents/
-│   │   ├── loader.go               ← reads agent .md files (YAML frontmatter + body)
-│   │   ├── agent.go                ← agent struct/schema
-│   │   ├── registry.go             ← agent lookup, filtering
-│   │   └── validator.go            ← config validation
+│   │   ├── agent.go                ← Agent struct/schema definitions
+│   │   ├── parser.go               ← YAML frontmatter + markdown body parser
+│   │   ├── registry.go             ← agent lookup, filtering, loading from disk
+│   │   ├── resolve.go              ← agent directory resolution logic
+│   │   └── parser_test.go          ← parser unit tests
 │   ├── backend/
-│   │   ├── backend.go              ← interface for AI backends
-│   │   ├── detect.go               ← auto-detect available backends
-│   │   ├── kiro.go                 ← kiro-cli integration
-│   │   ├── codex.go                ← codex CLI integration
-│   │   ├── openai.go               ← openai API integration
-│   │   ├── anthropic.go            ← anthropic API integration
-│   │   ├── ollama.go               ← ollama local integration
-│   │   └── clipboard.go            ← copy-prompt-to-clipboard fallback
+│   │   ├── backend.go              ← Backend interface + SafeEnv
+│   │   ├── backends.go             ← backend detection, dispatch, available check
+│   │   └── backend_test.go         ← backend tests
 │   ├── pipeline/
-│   │   ├── pipeline.go             ← phase state machine
-│   │   ├── phase.go                ← individual phase execution
-│   │   ├── riskgate.go             ← risk assessment logic
-│   │   └── history.go              ← mission log/history
-│   ├── system/
-│   │   ├── git.go                  ← git status, branch, diff
-│   │   ├── docker.go               ← docker ps, container status
-│   │   └── stats.go                ← CPU, memory, disk
-│   └── config/
-│       ├── config.go               ← app config (paths, defaults)
-│       └── paths.go                ← agent dir, steering dir resolution
-├── agents/                          ← the actual agent .md files (YAML frontmatter + markdown body)
-│   ├── numbuh-0.md
-│   ├── numbuh-1.md
-│   ├── numbuh-2.md
-│   ├── numbuh-3.md
-│   ├── numbuh-4.md
-│   ├── numbuh-5.md
-│   ├── numbuh-9.md
-│   ├── numbuh-13.md
-│   ├── numbuh-86.md
-│   ├── numbuh-274.md
-│   ├── numbuh-362.md
-│   ├── numbuh-999.md
+│   │   ├── pipeline.go             ← phase state machine, orchestrator
+│   │   ├── context.go              ← pipeline context (files touched, output)
+│   │   ├── riskgate.go             ← risk assessment logic (LOW/MEDIUM/HIGH/CRITICAL)
+│   │   ├── triggers.go             ← conditional specialist trigger evaluation
+│   │   ├── pipeline_test.go        ← pipeline unit tests
+│   │   └── integration_test.go     ← pipeline integration tests
+│   ├── discovery/
+│   │   ├── discovery.go            ← project context discovery (.kiro/specs, stack)
+│   │   ├── compose.go              ← prompt composition (agent + context + task)
+│   │   ├── steering.go             ← steering rules loader
+│   │   └── discovery_test.go       ← discovery tests
+│   ├── config/
+│   │   ├── config.go               ← YAML app config (Load, Show, Path)
+│   │   ├── migrate.go              ← config migration (JSON → YAML)
+│   │   └── config_test.go          ← config tests
+│   ├── chat/
+│   │   ├── chat.go                 ← chat message types
+│   │   ├── stream.go               ← streaming output handler
+│   │   ├── persist.go              ← chat history persistence
+│   │   └── persist_test.go         ← persistence tests
+│   ├── clipboard/
+│   │   ├── clipboard.go            ← cross-platform clipboard (pbcopy/xclip/wl-copy)
+│   │   └── clipboard_test.go       ← clipboard tests
+│   ├── history/
+│   │   ├── history.go              ← mission history storage and export
+│   │   └── history_test.go         ← history tests
+│   ├── docs/
+│   │   ├── docs.go                 ← embedded documentation loader
+│   │   └── docs_test.go            ← docs tests
+│   ├── snippets/
+│   │   ├── snippets.go             ← prompt snippet management
+│   │   └── snippets_test.go        ← snippets tests
+│   ├── watcher/
+│   │   ├── watcher.go              ← file system watcher for live reload
+│   │   └── watcher_test.go         ← watcher tests
+│   ├── platform/
+│   │   ├── platform.go             ← OS detection utilities
+│   │   └── platform_test.go        ← platform tests
+│   └── projects/
+│       ├── projects.go             ← multi-project management
+│       └── projects_test.go        ← projects tests
+├── agents/                          ← the actual agent .md files (source of truth)
+│   ├── numbuh-0.md through numbuh-999.md
 │   ├── sector-z.md
 │   └── knd-council.md
+├── doctrine/                        ← operating doctrine documents (reference only)
 ├── docs/
-│   ├── design.md                    ← this file (architecture + vision)
-│   ├── agent-format.md              ← agent .md file format specification
-│   └── action-plan-v05.md           ← historical action plan
+│   └── design.md                    ← this file (architecture + vision)
+├── .kiro/
+│   ├── specs/                       ← feature specifications
+│   └── steering/                    ← project development rules
+├── .github/workflows/               ← CI + release automation
+├── .goreleaser.yml                  ← cross-platform binary release config
 ├── go.mod
 ├── go.sum
 ├── Makefile
-├── .gitignore
 └── README.md
 ```
 
@@ -94,189 +113,110 @@ moonbase/
 
 | Layer | Tool | Why |
 |-------|------|-----|
-| Language | Go 1.22+ | Single binary, fast, cross-platform |
+| Language | Go 1.24 | Single binary, fast, cross-platform |
 | TUI Framework | Bubbletea | Elm architecture, composable, active |
 | Styling | Lipgloss | CSS-like terminal styling, colors, borders |
 | Components | Bubbles | Pre-built spinners, tables, viewports, inputs |
-| Config | YAML frontmatter in .md | Agent configs are markdown with YAML metadata, human and machine readable |
-| Build | Make | Simple, universal |
+| Config | YAML | App config in `~/.config/moonbase/config.yaml` |
+| Agent Format | Markdown + YAML frontmatter | Human and machine readable, portable |
+| Build | Make + goreleaser | Simple dev builds, cross-platform releases |
 
 ---
 
-## Views
+## TUI Architecture
 
-### 1. Dashboard (default)
-- Header: scanline "K.N.D. MOONBASE" bar
-- Left sidebar: operative roster (Sector V + Specialists) with status indicators
-- Right main panel: mission briefing / intel feed / system status
-- Bottom: key hints contextual to current focus
+The TUI uses a flat file structure (no subdirectories). All views are rendered from `views.go` based on the current app state in `app.go`.
 
-### 2. Dossier (operative selected)
-- Full operative profile: name, codename, role, archetype, MBTI
-- Capabilities: tools, shell commands, write permissions, spawn hook
-- Personality summary
-- Escalation chain (who they hand off to)
-- Actions: deploy, copy prompt, preview, run spawn hook
+### Key Files
 
-### 3. Pipeline (mission active)
-- Phase list with status (✅ 🔄 ⏳), timing, summary
-- Live output viewport (scrollable)
-- Risk gate status
-- Files touched tracker
-- Controls: next, retry, skip, abort
+| File | Responsibility |
+|------|---------------|
+| `app.go` | Root Bubbletea model — state, Init, Update (key handling, messages), View dispatch |
+| `views.go` | All view rendering: dashboard, dossier, pipeline, help overlay, mission input |
+| `styles.go` | Lipgloss theme: colors, borders, badges, layout styles |
+| `boot.go` | Boot sequence animation (startup splash) |
+| `animations.go` | View transition animations |
+| `comms.go` | COMMS panel — chat interface with agent relay, file attach, snippets |
+| `docview.go` | Scrollable document viewer (viewport wrapper) |
+| `filebrowser.go` | In-TUI file browser for project navigation |
+| `pipeline_exec.go` | Pipeline execution integration (phase tracking, live output) |
+| `portraits.go` | ASCII art operative portraits for dossier view |
+| `projectnav.go` | Project navigator (multi-project switching) |
+| `protocol.go` | Human interaction protocol UI (certainty levels, questions) |
 
-### 4. Help (overlay)
-- Full operations manual
-- Key bindings organized by context
-- "The KND Way" — brief explanation of the system
+### State Management
 
-### 5. Mission Briefing (input)
-- Text input for task description
-- Backend selector
-- Pipeline mode selector (full council, single operative, custom)
+The app model in `app.go` holds all state — current view, selected agent, pipeline state, COMMS history. Views are pure render functions that read state and return strings.
 
-### 6. Backend Selector
-- List of detected AI backends with availability status
-- Switch active backend
-- Configure API keys/paths
+---
+
+## Pipeline Architecture
+
+```
+Human Request
+    ↓
+Numbuh 1  → Requirements (ACs, scope, risks)
+    ↓
+Numbuh 2  → Design (blueprint, trade-offs, file impact)
+    ↓
+Numbuh 3  → Implementation (code, tests, build)
+    ↓
+Numbuh 4  → QA (verify, risk gate)
+    ↓                    ↑
+    ├── MEDIUM → fix ────┘ (max 2 rework loops)
+    ├── HIGH → redesign (back to Numbuh 2)
+    ├── CRITICAL → STOP (escalate to human)
+    └── LOW ↓
+Numbuh 5  → Review (final gate, PR package)
+    ↓
+Human Approval
+```
+
+The pipeline state machine lives in `internal/pipeline/pipeline.go`. Risk assessment in `riskgate.go` determines whether work loops back or proceeds. Conditional specialists (`triggers.go`) deploy based on content signals (files changed, patterns detected).
 
 ---
 
 ## AI Backend Integration
 
-Each backend implements:
-
-```go
-type Backend interface {
-    Name() string
-    Available() bool
-    Deploy(agent Agent, task string) error
-    Stream() <-chan string  // live output (optional)
-}
-```
+Each backend implements detection and deployment. The system uses `SafeEnv()` to prevent leaking sensitive environment variables to subprocesses.
 
 | Backend | How it deploys |
 |---------|---------------|
-| **kiro-cli** | `kiro-cli chat --agent <name>` with piped task |
-| **codex** | `codex --prompt <system_prompt> <task>` |
-| **openai** | API call with agent prompt as system message |
-| **anthropic** | API call with agent prompt as system message |
-| **ollama** | `ollama run <model>` with system prompt |
-| **clipboard** | Copies full prompt to clipboard (fallback for any tool) |
+| **kiro-cli** | `syscall.Exec` replaces process — full TTY control |
+| **codex** | CLI invocation with agent prompt |
+| **clipboard** | Copies full composed prompt (fallback for any tool) |
+
+Backend detection happens at runtime via `exec.LookPath` and environment variable checks.
 
 ---
 
-## CLI Commands (non-TUI mode)
+## CLI Commands
 
 ```bash
 moonbase                    # launch TUI dashboard
-moonbase list               # print operative roster
-moonbase deploy <numbuh>    # deploy specific operative (opens AI backend)
+moonbase init               # scaffold .kiro/ in any project
+moonbase deploy <numbuh>    # deploy specific operative (interactive session)
 moonbase mission <task>     # run full council pipeline
-moonbase status             # show current mission status
-moonbase backends           # list available AI backends
-moonbase install            # symlink agents to ~/.kiro/agents/ for Kiro compat
+moonbase install [--all]    # install agents to .kiro/agents/
+moonbase status             # environment health check
+moonbase lint               # validate all agent .md files
+moonbase config             # show current configuration
+moonbase list               # print operative roster (dynamic from registry)
+moonbase snippet save/list  # manage prompt snippets
+moonbase export <id>        # export mission history
 moonbase help               # operations manual
 ```
 
 ---
 
-## Key Bindings
+## Security
 
-### Global
-| Key | Action |
-|-----|--------|
-| `?` | Toggle help overlay |
-| `q` | Quit (with confirmation if mission active) |
-| `tab` | Cycle focus between panels |
-| `esc` | Back / close overlay |
-| `/` | Search operatives |
-
-### Dashboard
-| Key | Action |
-|-----|--------|
-| `0-9`, `F1` | Select operative by numbuh |
-| `k` | Select KND Council |
-| `m` | New mission briefing |
-| `d` | Quick git diff |
-| `g` | Quick git status |
-| `l` | View activity log |
-
-### Dossier (operative selected)
-| Key | Action |
-|-----|--------|
-| `enter` | Deploy operative with current backend |
-| `c` | Copy full system prompt to clipboard |
-| `p` | Preview full prompt in viewport |
-| `t` | Run spawn hook and show output |
-| `h` | Show handoff chain |
-| `i` | Toggle full info |
-
-### Pipeline (mission active)
-| Key | Action |
-|-----|--------|
-| `n` | Advance to next phase |
-| `r` | Retry current phase |
-| `s` | Skip phase |
-| `l` | View full log |
-| `esc` | Abort mission (with confirmation) |
-
----
-
-## Configuration
-
-`~/.config/moonbase/config.json`:
-
-```json
-{
-  "agentsDir": "./agents",
-  "steeringDir": "./.kiro/steering",
-  "defaultBackend": "kiro-cli",
-  "theme": "moonbase",
-  "backends": {
-    "openai": {
-      "apiKey": "$OPENAI_API_KEY",
-      "model": "gpt-4o"
-    },
-    "anthropic": {
-      "apiKey": "$ANTHROPIC_API_KEY",
-      "model": "claude-sonnet-4-20250514"
-    },
-    "ollama": {
-      "model": "llama3.1"
-    },
-    "kiro": {
-      "binary": "kiro-cli"
-    }
-  }
-}
-```
-
----
-
-## Design Tokens (Lipgloss Theme)
-
-```go
-// Colors
-ColorActive    = lipgloss.Color("#00FF88")  // green — active/success
-ColorWarning   = lipgloss.Color("#FFAA00")  // amber — in progress
-ColorError     = lipgloss.Color("#FF4444")  // red — error/critical
-ColorInfo      = lipgloss.Color("#00BBFF")  // cyan — info/highlight
-ColorDim       = lipgloss.Color("#555555")  // gray — inactive
-ColorHeader    = lipgloss.Color("#FF6600")  // orange — KND brand
-
-// Borders
-BorderActive   = lipgloss.NormalBorder()
-BorderPanel    = lipgloss.RoundedBorder()
-
-// Badges
-BadgeActive    = "◉"
-BadgeInactive  = "○"
-BadgePass      = "✅"
-BadgeRunning   = "🔄"
-BadgeWaiting   = "⏳"
-BadgeFail      = "❌"
-```
+- **SafeEnv** — child processes get allowlisted env vars only (no secret leakage)
+- **Hook guard** — `isValidAgentID()` restricts to `[a-zA-Z0-9-]`, prevents path traversal
+- **Input validation** — snippet names validated (length, no path separators, no control chars)
+- **File permissions** — user data written with `0600`/`0700`
+- **Pipe input limit** — stdin capped at 1MB to prevent OOM
+- **No secrets in config** — API keys come from environment variables only
 
 ---
 
@@ -284,64 +224,14 @@ BadgeFail      = "❌"
 
 ```bash
 # Development
-make run              # go run cmd/moonbase/main.go
-make build            # go build -o bin/moonbase cmd/moonbase/main.go
+make run              # go run ./cmd/moonbase
+make build            # go build -o bin/moonbase ./cmd/moonbase
 make test             # go test ./...
 
-# Install globally
-make install          # copies binary to /usr/local/bin/moonbase
-
-# Cross-compile
-make release          # builds for darwin-arm64, darwin-amd64, linux-amd64
+# Release (via goreleaser on tag)
+git tag v1.0.1 && git push --tags
+# GitHub Actions produces: darwin/linux × amd64/arm64 binaries
 ```
-
----
-
-## Milestones
-
-### v0.1 — Foundation
-- [ ] Project scaffold (go mod, directory structure)
-- [ ] Agent JSON loader and registry
-- [ ] Basic TUI with sidebar + main panel
-- [ ] Lipgloss theme and styling
-- [ ] Dashboard view with operative roster
-- [ ] Key navigation (select operative, tab between panels)
-
-### v0.2 — Dossier & Deploy
-- [ ] Dossier view (full operative profile)
-- [ ] Backend detection (which AI tools are available)
-- [ ] Deploy operative (open AI backend with prompt loaded)
-- [ ] Copy prompt to clipboard
-- [ ] Spawn hook execution + display
-
-### v0.3 — Pipeline
-- [ ] Pipeline state machine
-- [ ] Mission briefing input
-- [ ] Phase tracking view with timing
-- [ ] Risk gate logic
-- [ ] Live output viewport
-
-### v0.4 — Backend Integrations
-- [ ] kiro-cli integration
-- [ ] codex integration
-- [ ] openai API direct
-- [ ] anthropic API direct
-- [ ] ollama integration
-
-### v0.5 — Polish
-- [ ] Help overlay
-- [ ] System status panel (git, docker, resources)
-- [ ] Intel feed (activity log with timestamps)
-- [ ] Mission history
-- [ ] `moonbase install` (symlink agents to .kiro/agents)
-- [ ] CLI subcommands (list, deploy, mission, status)
-
-### v1.0 — Release
-- [ ] Cross-platform builds
-- [ ] README with screenshots
-- [ ] Homebrew formula
-- [ ] Config file support
-- [ ] Theme customization
 
 ---
 
@@ -349,7 +239,8 @@ make release          # builds for darwin-arm64, darwin-amd64, linux-amd64
 
 1. **Tool-agnostic** — works with any AI backend, locks into none
 2. **Portable agents** — agent files are plain markdown with YAML frontmatter, usable anywhere
-3. **Command-center UX** — Pentagon/Moonbase energy, not a toy
-4. **Useful first, pretty second** — every pixel serves a purpose
+3. **Command-center UX** — tactical operations energy, not a toy
+4. **Useful first, pretty second** — every element serves a purpose
 5. **Single binary** — no runtime deps, no install complexity
-6. **KND-flavored** — the lore isn't decoration, it's the UX language
+6. **Spec-driven** — understand before building, spec the non-trivial
+7. **Security by default** — env isolation, input validation, permission hardening

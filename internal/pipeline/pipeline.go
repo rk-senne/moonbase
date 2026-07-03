@@ -42,12 +42,6 @@ type Pipeline struct {
 	MaxRework int              // Maximum rework loops before escalation (default 2)
 }
 
-// Backend is the interface the pipeline uses to deploy agents.
-// It is satisfied by the backend package implementations (kiro-cli, codex, etc.).
-type Backend interface {
-	Deploy(agentName string, prompt string, input string) (string, error)
-}
-
 // New creates a new pipeline for a given task.
 func New(task string) *Pipeline {
 	return &Pipeline{

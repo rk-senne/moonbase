@@ -10,6 +10,7 @@ import (
 	"github.com/f5508037/moonbase/internal/agents"
 	"github.com/f5508037/moonbase/internal/backend"
 	"github.com/f5508037/moonbase/internal/discovery"
+	"github.com/f5508037/moonbase/internal/logging"
 	"github.com/f5508037/moonbase/internal/pipeline"
 )
 
@@ -27,13 +28,12 @@ type PhaseResultMsg struct {
 // PipelineAbortedMsg is sent when the user aborts the pipeline.
 type PipelineAbortedMsg struct{}
 
-// pipelineRunning tracks whether a phase is currently executing.
-// Prevents double-dispatch.
-var pipelineRunning bool
+// pipelineRunning is tracked on the App struct to prevent double-dispatch.
 
 // executePhase returns a tea.Cmd that runs an agent via the backend.
 // It's non-blocking: runs in a goroutine, returns result as PhaseResultMsg.
 func executePhase(
+	ctx context.Context,
 	phase pipeline.Phase,
 	reg *agents.Registry,
 	be backend.Backend,
@@ -59,7 +59,7 @@ func executePhase(
 		composed := discovery.ComposePrompt(agent.Prompt, projectCtx, phaseInput)
 
 		// Execute with timeout
-		ctx, cancel := context.WithTimeout(context.Background(), PhaseTimeout)
+		timeoutCtx, cancel := context.WithTimeout(ctx, PhaseTimeout)
 		defer cancel()
 
 		// Run backend deployment in a channel so we can respect timeout
@@ -74,7 +74,14 @@ func executePhase(
 		}()
 
 		select {
-		case <-ctx.Done():
+		case <-timeoutCtx.Done():
+			if ctx.Err() != nil {
+				return PhaseResultMsg{
+					Phase:   phase.Number,
+					Err:     fmt.Errorf("phase %d cancelled", phase.Number),
+					Elapsed: time.Since(start),
+				}
+			}
 			return PhaseResultMsg{
 				Phase:   phase.Number,
 				Err:     fmt.Errorf("phase %d timed out after 120s", phase.Number),
@@ -95,20 +102,27 @@ func executePhase(
 // Returns the tea.Cmd to execute, or nil if pipeline is complete.
 func (a *App) startNextPhase() tea.Cmd {
 	if a.pipelineState == nil || !a.pipelineState.Active {
-		pipelineRunning = false
+		a.pipelineRunning = false
 		return nil
 	}
 
 	// Check if we have a backend that can actually execute
 	if a.activeBackend == nil || a.activeBackend.Name() == "clipboard" {
 		// No real backend — stay in simulated mode
-		pipelineRunning = false
+		a.pipelineRunning = false
 		return nil
+	}
+
+	// Ensure pipeline context exists for graceful shutdown
+	if a.pipelineCtx == nil {
+		ctx, cancel := context.WithCancel(context.Background())
+		a.pipelineCtx = ctx
+		a.cancelPipeline = cancel
 	}
 
 	phase := a.pipelineState.CurrentPhase()
 	if phase == nil {
-		pipelineRunning = false
+		a.pipelineRunning = false
 		return nil
 	}
 
@@ -130,7 +144,15 @@ func (a *App) startNextPhase() tea.Cmd {
 
 	// Start the phase
 	phase.Status = pipeline.StatusRunning
-	pipelineRunning = true
+	a.pipelineRunning = true
+
+	if logging.Logger != nil {
+		logging.Logger.Info("pipeline phase starting",
+			"phase", phase.Number,
+			"name", phase.Name,
+			"operative", phase.Operative,
+		)
+	}
 
 	a.pipelineChat = append(a.pipelineChat,
 		PipelineMsg{"", "───────────────────────────────────"},
@@ -138,6 +160,7 @@ func (a *App) startNextPhase() tea.Cmd {
 	)
 
 	return executePhase(
+		a.pipelineCtx,
 		*phase,
 		a.registry,
 		a.activeBackend,
@@ -148,10 +171,17 @@ func (a *App) startNextPhase() tea.Cmd {
 
 // handlePhaseResult processes a completed phase and advances the pipeline.
 func (a *App) handlePhaseResult(msg PhaseResultMsg) tea.Cmd {
-	pipelineRunning = false
+	a.pipelineRunning = false
 
 	if msg.Err != nil {
 		// Phase failed
+		if logging.Logger != nil {
+			logging.Logger.Error("pipeline phase failed",
+				"phase", msg.Phase,
+				"error", msg.Err.Error(),
+				"elapsed", msg.Elapsed.String(),
+			)
+		}
 		a.pipelineChat = append(a.pipelineChat,
 			PipelineMsg{"", fmt.Sprintf("❌ Phase %d failed: %v", msg.Phase, msg.Err)},
 			PipelineMsg{"", "Press [r] to retry or [s] to skip."},
@@ -163,6 +193,12 @@ func (a *App) handlePhaseResult(msg PhaseResultMsg) tea.Cmd {
 	}
 
 	// Phase succeeded — record output
+	if logging.Logger != nil {
+		logging.Logger.Info("pipeline phase complete",
+			"phase", msg.Phase,
+			"elapsed", msg.Elapsed.String(),
+		)
+	}
 	a.pipelineState.Context.RecordPhase(msg.Phase, msg.Output)
 
 	// Show summary in chat (truncated)
