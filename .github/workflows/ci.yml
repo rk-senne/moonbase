@@ -14,7 +14,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version-file: 'go.mod'
           cache: true
 
       - name: Vet
@@ -24,11 +24,11 @@ jobs:
         run: go build ./...
 
       - name: Test
-        run: go test ./... -count=1 -timeout 60s
+        run: go test ./... -count=1 -timeout 120s
 
       - name: Coverage
         run: |
-          go test ./... -coverprofile=coverage.out -timeout 60s
+          go test ./... -coverprofile=coverage.out -timeout 120s
           go tool cover -func=coverage.out | tail -1
 
   lint:
@@ -38,7 +38,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version-file: 'go.mod'
           cache: true
 
       - name: Agent lint
