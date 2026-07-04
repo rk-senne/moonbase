@@ -58,6 +58,11 @@ moonbase status
 | `moonbase lint` | Validate all agent `.md` files |
 | `moonbase config` | Show current YAML configuration |
 | `moonbase list` | Show operative roster |
+| `moonbase history` | Show mission history (`--json`, `--all`, `--limit N`) |
+| `moonbase replay <id>` | Replay a previous mission (`--dry-run`) |
+| `moonbase export <id>` | Export mission details |
+| `moonbase snippet save <name>` | Save a prompt snippet from stdin |
+| `moonbase snippet list` | List saved snippets |
 | `moonbase help` | Operations manual |
 
 **Pipe mode:**
@@ -154,7 +159,7 @@ moonbase/
 │   ├── specs/           ← Feature specs (requirements, design, tasks)
 │   ├── steering/        ← Project-wide dev rules
 │   └── agents/          ← Installed agents for kiro-cli
-├── internal/            ← Go source (15 packages)
+├── internal/            ← Go source (16 packages)
 │   ├── agents/          ← YAML frontmatter parser + registry
 │   ├── pipeline/        ← Orchestrator, risk gate, triggers
 │   ├── discovery/       ← Project context (.kiro/specs, stack detection)
@@ -213,7 +218,7 @@ make test             # go test ./...
 cp bin/moonbase /usr/local/bin/
 
 # Release (produces cross-platform binaries)
-git tag v1.0.1 && git push --tags
+git tag v1.4.0 && git push --tags
 # GitHub Actions builds: darwin/linux × amd64/arm64
 ```
 
@@ -223,10 +228,10 @@ git tag v1.0.1 && git push --tags
 
 | Metric | Value |
 |--------|-------|
-| Tests | 144 |
-| Packages tested | 15/15 (100%) |
-| Go LOC | 9,266 |
-| Direct dependencies | 6 |
+| Tests | 1,218 |
+| Packages tested | 16/16 (100%) |
+| Go LOC | 9,308 |
+| Direct dependencies | 8 |
 | CI | GitHub Actions (vet + build + test on every push) |
 | Releases | goreleaser (4 platform binaries on tag) |
 | Agent lint | `moonbase lint` validates all 14 agents |
