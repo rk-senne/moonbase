@@ -14,7 +14,10 @@ import (
 // runStatus prints a quick health check of the moonbase environment.
 func runStatus() {
 	fmt.Println("🌙 Moonbase Status")
+	fmt.Println("═══════════════════")
 	fmt.Println()
+
+	allGood := true
 
 	// Backend
 	preferred := backend.Preferred()
@@ -24,6 +27,9 @@ func runStatus() {
 		backendStatus = fmt.Sprintf("✅ %s", preferred.Name())
 	} else if len(available) > 0 {
 		backendStatus = fmt.Sprintf("⚠️  clipboard only (%d backends detected)", len(available))
+		allGood = false
+	} else {
+		allGood = false
 	}
 	fmt.Printf("   Backend:    %s\n", backendStatus)
 
@@ -31,9 +37,10 @@ func runStatus() {
 	dir := findAgentsDirQuiet()
 	if dir != "" {
 		files, _ := filepath.Glob(filepath.Join(dir, "*.md"))
-		fmt.Printf("   Agents:     %d loaded from %s\n", len(files), dir)
+		fmt.Printf("   Agents:     ✅ %d loaded from %s\n", len(files), dir)
 	} else {
 		fmt.Println("   Agents:     ❌ not found")
+		allGood = false
 	}
 
 	// Project context
@@ -41,19 +48,36 @@ func runStatus() {
 	ctx, _ := discovery.Discover(cwd)
 	if ctx != nil {
 		if ctx.HasSpecs() || ctx.HasSteering() || ctx.Stack.Language != "" {
-			fmt.Printf("   Project:    %s\n", ctx.Summary())
+			fmt.Printf("   Project:    ✅ %s\n", ctx.Summary())
 		} else {
-			fmt.Println("   Project:    (no .kiro/ found — run 'moonbase init')")
+			fmt.Println("   Project:    ⚠️  no .kiro/ found")
+			allGood = false
 		}
 	}
 
 	// Kiro agents installed locally?
 	localAgents := filepath.Join(cwd, ".kiro", "agents")
 	if files, err := filepath.Glob(filepath.Join(localAgents, "*.md")); err == nil && len(files) > 0 {
-		fmt.Printf("   Local:      %d agents in .kiro/agents/\n", len(files))
+		fmt.Printf("   Local:      ✅ %d agents in .kiro/agents/\n", len(files))
 	}
 
 	fmt.Println()
+
+	// Actionable next steps when something is missing
+	if !allGood {
+		fmt.Println("   💡 Next steps:")
+		if dir == "" {
+			fmt.Println("      • Run 'moonbase install --all' to install agents")
+		}
+		if preferred == nil || preferred.Name() == "clipboard" {
+			fmt.Println("      • Install kiro-cli, codex, or ollama for AI backend")
+			fmt.Println("        Or set OPENAI_API_KEY / ANTHROPIC_API_KEY env var")
+		}
+		if ctx == nil || (!ctx.HasSpecs() && !ctx.HasSteering()) {
+			fmt.Println("      • Run 'moonbase init' to make this project agent-ready")
+		}
+		fmt.Println()
+	}
 }
 
 // findAgentsDirQuiet finds agents dir without printing errors.
@@ -86,13 +110,13 @@ func runLint() {
 	dir := findAgentsDirQuiet()
 	if dir == "" {
 		fmt.Fprintln(os.Stderr, "❌ Cannot find agents directory. Run 'moonbase init' or run from project root.")
-		os.Exit(1)
+		osExit(1)
 	}
 
 	files, _ := filepath.Glob(filepath.Join(dir, "*.md"))
 	if len(files) == 0 {
 		fmt.Fprintln(os.Stderr, "❌ No agent .md files found in agents directory.")
-		os.Exit(1)
+		osExit(1)
 	}
 
 	var allAgents []*agents.Agent
@@ -132,7 +156,7 @@ func runLint() {
 	fmt.Println()
 	if errors > 0 {
 		fmt.Printf("   %d issue(s) found.\n", errors)
-		os.Exit(1)
+		osExit(1)
 	}
 	fmt.Printf("   All %d agents valid.\n", len(allAgents))
 }

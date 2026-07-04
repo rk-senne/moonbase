@@ -439,6 +439,62 @@ func TestStream_NoAPIKey(t *testing.T) {
 	}
 }
 
+func TestStream_CustomModel(t *testing.T) {
+	// Test Stream uses custom model from env var
+	server := mockSSEServer([]string{contentBlockDelta("ok")}, true)
+	defer server.Close()
+
+	t.Setenv("ANTHROPIC_API_KEY", "test-key")
+	t.Setenv("ANTHROPIC_MODEL", "claude-custom-model")
+
+	// We can't easily intercept Stream since it hardcodes the URL,
+	// but we can test the streamFrom function directly with a custom model
+	conv := testConversation()
+	ch := streamFrom(server.URL, "test-key", "claude-custom-model", conv, server.Client())
+
+	chunks := collectChunks(ch, 5*time.Second)
+
+	var gotText bool
+	for _, chunk := range chunks {
+		if chunk.Text == "ok" {
+			gotText = true
+		}
+	}
+	if !gotText {
+		t.Error("expected text chunk with custom model")
+	}
+}
+
+func TestStream_ConnectionRefused(t *testing.T) {
+	// Test streamFrom with a URL that refuses connections
+	conv := testConversation()
+	ch := streamFrom("http://127.0.0.1:1", "test-key", "test-model", conv, &http.Client{Timeout: 2 * time.Second})
+
+	chunks := collectChunks(ch, 5*time.Second)
+
+	if len(chunks) != 1 {
+		t.Fatalf("expected 1 error chunk, got %d: %+v", len(chunks), chunks)
+	}
+	if chunks[0].Err == nil {
+		t.Fatal("expected error for connection refused")
+	}
+}
+
+func TestStream_InvalidURL(t *testing.T) {
+	// Test streamFrom with a completely invalid URL that causes http.NewRequest to fail
+	conv := testConversation()
+	ch := streamFrom("://invalid-url", "test-key", "test-model", conv, &http.Client{})
+
+	chunks := collectChunks(ch, 5*time.Second)
+
+	if len(chunks) != 1 {
+		t.Fatalf("expected 1 error chunk, got %d: %+v", len(chunks), chunks)
+	}
+	if chunks[0].Err == nil {
+		t.Fatal("expected error for invalid URL")
+	}
+}
+
 func TestStream_NonSSELines(t *testing.T) {
 	// Server sends event/id/retry fields mixed with data lines
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

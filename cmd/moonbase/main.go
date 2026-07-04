@@ -21,7 +21,7 @@ const maxPipeInputSize = 1 << 20
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {
-		os.Exit(1)
+		osExit(1)
 	}
 }
 
@@ -176,8 +176,15 @@ func agentsDir() string {
 	cfg := config.Load()
 	dir, err := agents.FindAgentsDir(cfg.AgentsDir)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "❌ Cannot find agents directory. Run from moonbase project or install agents first.")
-		os.Exit(1)
+		fmt.Fprintln(os.Stderr, "❌ Cannot find agents directory.")
+		fmt.Fprintln(os.Stderr, "")
+		fmt.Fprintln(os.Stderr, "   To fix, try one of:")
+		fmt.Fprintln(os.Stderr, "     • Run from the moonbase project root (where agents/ lives)")
+		fmt.Fprintln(os.Stderr, "     • Run 'moonbase install --all' in your project")
+		fmt.Fprintln(os.Stderr, "     • Run 'moonbase init' to set up a new project")
+		fmt.Fprintln(os.Stderr, "")
+		fmt.Fprintln(os.Stderr, "   Run 'moonbase status' for diagnostics.")
+		osExit(1)
 	}
 	return dir
 }
@@ -189,13 +196,23 @@ func runDeploy(numbuh string) {
 	// SECURITY: Validate agent identifier — prevents path traversal via ../
 	if !isValidAgentID(numbuh) {
 		fmt.Fprintf(os.Stderr, "❌ Invalid agent identifier: %s\n", numbuh)
-		fmt.Fprintf(os.Stderr, "   Available: moonbase deploy <0-5|9|13|86|274|362|999|z|council>\n")
-		os.Exit(1)
+		fmt.Fprintf(os.Stderr, "\n")
+		fmt.Fprintf(os.Stderr, "   Valid identifiers:\n")
+		fmt.Fprintf(os.Stderr, "     Core:        0, 1, 2, 3, 4, 5\n")
+		fmt.Fprintf(os.Stderr, "     Specialists: 9, 13, 86, 274, 362, 999\n")
+		fmt.Fprintf(os.Stderr, "     Special:     z (Sector Z), council (KND Council)\n")
+		fmt.Fprintf(os.Stderr, "\n")
+		fmt.Fprintf(os.Stderr, "   Try: moonbase deploy 1 \"your task here\"\n")
+		fmt.Fprintf(os.Stderr, "   Or:  moonbase deploy   (interactive picker)\n")
+		osExit(1)
 	}
 
 	// Check if there's a task argument after the numbuh
 	var task string
-	if len(os.Args) > 3 {
+	if deployTask != "" {
+		// --task/-t flag takes priority
+		task = deployTask
+	} else if len(os.Args) > 3 {
 		task = strings.Join(os.Args[3:], " ")
 	}
 
@@ -215,9 +232,13 @@ func runDeploy(numbuh string) {
 	// Parse the agent .md file
 	agent, err := agents.ParseAgentFile(agentFile)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Agent not found: %s\n   (looked for %s)\n", numbuh, agentFile)
-		fmt.Fprintf(os.Stderr, "\n   Available: moonbase deploy <0-5|9|13|86|274|362|999|z|council>\n")
-		os.Exit(1)
+		fmt.Fprintf(os.Stderr, "❌ Agent not found: %s\n", numbuh)
+		fmt.Fprintf(os.Stderr, "   Looked for: %s\n\n", agentFile)
+		fmt.Fprintf(os.Stderr, "   To fix:\n")
+		fmt.Fprintf(os.Stderr, "     • Run 'moonbase install --all' to install agents\n")
+		fmt.Fprintf(os.Stderr, "     • Or run 'moonbase list' to see available operatives\n")
+		fmt.Fprintf(os.Stderr, "     • Or run 'moonbase deploy' for interactive picker\n")
+		osExit(1)
 	}
 
 	// Discover project context

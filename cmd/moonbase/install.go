@@ -29,14 +29,14 @@ func runInstall() {
 	agentsSource, err := findAgentsSource()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "❌ %v\n", err)
-		os.Exit(1)
+		osExit(1)
 	}
 
 	// List available agents
 	files, err := filepath.Glob(filepath.Join(agentsSource, "*.md"))
 	if err != nil || len(files) == 0 {
 		fmt.Fprintf(os.Stderr, "❌ No agent .md files found in %s\n", agentsSource)
-		os.Exit(1)
+		osExit(1)
 	}
 
 	// Determine target directory
@@ -53,7 +53,7 @@ func runInstall() {
 	// Agent files are not secrets but we don't want other users modifying them.
 	if err := os.MkdirAll(targetDir, 0o755); err != nil {
 		fmt.Fprintf(os.Stderr, "❌ Cannot create %s: %v\n", targetDir, err)
-		os.Exit(1)
+		osExit(1)
 	}
 
 	// Select agents to install

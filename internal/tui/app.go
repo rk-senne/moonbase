@@ -62,6 +62,11 @@ type PipelineMsg struct {
 	Agent   string // agent name (empty = system message)
 	Content string
 }
+
+// testMode disables resource-heavy operations (file watcher) during testing.
+// Overridden to true by TestMain in test files.
+var testMode = false
+
 type App struct {
 	view           View
 	registry       *agents.Registry
@@ -158,11 +163,14 @@ func NewApp() App {
 
 	cwd, _ := os.Getwd()
 
-	// Start file watcher
-	fw, _ := watcher.New()
-	if fw != nil {
-		cwd, _ := os.Getwd()
-		fw.Start(cwd)
+	// Start file watcher (skip in test mode to avoid FD exhaustion)
+	var fw *watcher.Watcher
+	if !testMode {
+		fw, _ = watcher.New()
+		if fw != nil {
+			cwd, _ := os.Getwd()
+			fw.Start(cwd)
+		}
 	}
 
 	// Load mission history for sidebar display

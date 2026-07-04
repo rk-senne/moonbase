@@ -235,3 +235,84 @@ func TestOpenAI_Deploy_StreamCloseWithoutDone(t *testing.T) {
 		t.Errorf("expected 'partial', got: %q", output)
 	}
 }
+
+func TestOpenAI_Deploy_MalformedSSEData(t *testing.T) {
+	// Test that malformed JSON in SSE events is silently discarded
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+		// Non-data lines (should be skipped)
+		fmt.Fprintf(w, ": comment line\n\n")
+		fmt.Fprintf(w, "event: ping\n\n")
+		// Malformed JSON (should be discarded)
+		fmt.Fprintf(w, "data: {not valid json\n\n")
+		// Valid chunk
+		fmt.Fprintf(w, "data: %s\n\n", `{"choices":[{"delta":{"content":"good"},"finish_reason":null}]}`)
+		fmt.Fprintf(w, "data: [DONE]\n\n")
+	}))
+	defer server.Close()
+
+	t.Setenv("OPENAI_API_KEY", "test-key")
+	t.Setenv("OPENAI_BASE_URL", server.URL)
+
+	o := &OpenAI{}
+	agent := agents.Agent{Name: "test", Prompt: "test"}
+	output, err := o.Deploy(agent, &discovery.ProjectContext{}, "test")
+	if err != nil {
+		t.Fatalf("Deploy failed: %v", err)
+	}
+	if output != "good" {
+		t.Errorf("expected 'good' (malformed events skipped), got: %q", output)
+	}
+}
+
+func TestOpenAI_Deploy_BaseURLWithTrailingSlash(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, "data: %s\n\n", `{"choices":[{"delta":{"content":"ok"},"finish_reason":null}]}`)
+		fmt.Fprintf(w, "data: [DONE]\n\n")
+	}))
+	defer server.Close()
+
+	// Set base URL with trailing slash
+	t.Setenv("OPENAI_API_KEY", "test-key")
+	t.Setenv("OPENAI_BASE_URL", server.URL+"/")
+
+	o := &OpenAI{}
+	agent := agents.Agent{Name: "test", Prompt: "test"}
+	output, err := o.Deploy(agent, &discovery.ProjectContext{}, "test")
+	if err != nil {
+		t.Fatalf("Deploy failed: %v", err)
+	}
+	if output != "ok" {
+		t.Errorf("expected 'ok', got: %q", output)
+	}
+}
+
+func TestOpenAI_Deploy_EmptyChoices(t *testing.T) {
+	// Test handling of events with empty choices array
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+		// Event with empty choices
+		fmt.Fprintf(w, "data: %s\n\n", `{"choices":[]}`)
+		// Normal event
+		fmt.Fprintf(w, "data: %s\n\n", `{"choices":[{"delta":{"content":"text"},"finish_reason":null}]}`)
+		fmt.Fprintf(w, "data: [DONE]\n\n")
+	}))
+	defer server.Close()
+
+	t.Setenv("OPENAI_API_KEY", "test-key")
+	t.Setenv("OPENAI_BASE_URL", server.URL)
+
+	o := &OpenAI{}
+	agent := agents.Agent{Name: "test", Prompt: "test"}
+	output, err := o.Deploy(agent, &discovery.ProjectContext{}, "test")
+	if err != nil {
+		t.Fatalf("Deploy failed: %v", err)
+	}
+	if output != "text" {
+		t.Errorf("expected 'text', got: %q", output)
+	}
+}

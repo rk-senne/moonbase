@@ -5,8 +5,9 @@ import (
 )
 
 var listCmd = &cobra.Command{
-	Use:   "list",
-	Short: "Show operative roster",
+	Use:     "list",
+	Aliases: []string{"ls", "roster"},
+	Short:   "Show operative roster",
 	Run: func(cmd *cobra.Command, args []string) {
 		runList()
 	},

@@ -87,3 +87,33 @@ func TestLoad_ReturnsNilForNonExistentAgent(t *testing.T) {
 		t.Errorf("expected nil for non-existent agent, got %+v", loaded)
 	}
 }
+
+func TestLoad_ReturnsNilForCorruptJSON(t *testing.T) {
+	home := overrideHome(t)
+
+	// Write invalid JSON to the chat file
+	dir := filepath.Join(home, ".config", "moonbase", "chats")
+	os.MkdirAll(dir, 0700)
+	os.WriteFile(filepath.Join(dir, "corrupt-agent.json"), []byte("{not valid json!!!"), 0600)
+
+	loaded := Load("corrupt-agent", "some prompt")
+	if loaded != nil {
+		t.Errorf("expected nil for corrupt JSON, got %+v", loaded)
+	}
+}
+
+func TestSave_MkdirAllError(t *testing.T) {
+	// Point HOME to a path that can't have subdirectories (a file, not a dir)
+	tmpDir := t.TempDir()
+	blocker := filepath.Join(tmpDir, "blocker")
+	os.WriteFile(blocker, []byte("I am a file"), 0600)
+	t.Setenv("HOME", blocker) // chatDir() will resolve to blocker/.config/moonbase/chats
+
+	conv := NewConversation("test-agent", "system")
+	conv.Add(RoleUser, "hello")
+
+	err := Save(conv)
+	if err == nil {
+		t.Error("expected error when MkdirAll fails, got nil")
+	}
+}

@@ -29,25 +29,33 @@ func Available() bool {
 	return err == nil
 }
 
+// osName is the detected operating system. It defaults to runtime.GOOS
+// but can be overridden in tests to exercise platform-specific paths.
+var osName = runtime.GOOS
+
+// lookPath is the function used to look up executables. It defaults to
+// exec.LookPath but can be overridden in tests.
+var lookPath = exec.LookPath
+
 // clipboardCmd returns the appropriate clipboard command for the current OS.
 func clipboardCmd() (*exec.Cmd, error) {
-	switch runtime.GOOS {
+	switch osName {
 	case "darwin":
-		if path, err := exec.LookPath("pbcopy"); err == nil {
+		if path, err := lookPath("pbcopy"); err == nil {
 			return exec.Command(path), nil
 		}
 	case "linux":
-		if path, err := exec.LookPath("xclip"); err == nil {
+		if path, err := lookPath("xclip"); err == nil {
 			return exec.Command(path, "-selection", "clipboard"), nil
 		}
-		if path, err := exec.LookPath("xsel"); err == nil {
+		if path, err := lookPath("xsel"); err == nil {
 			return exec.Command(path, "--clipboard", "--input"), nil
 		}
-		if path, err := exec.LookPath("wl-copy"); err == nil {
+		if path, err := lookPath("wl-copy"); err == nil {
 			return exec.Command(path), nil
 		}
 	case "windows":
-		if path, err := exec.LookPath("clip"); err == nil {
+		if path, err := lookPath("clip"); err == nil {
 			return exec.Command(path), nil
 		}
 	}

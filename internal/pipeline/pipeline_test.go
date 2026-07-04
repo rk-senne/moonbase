@@ -565,3 +565,284 @@ func TestPipeline_RouteToPhase_InvalidTarget(t *testing.T) {
 		t.Errorf("expected 'not found' in error, got: %v", err)
 	}
 }
+
+// === Additional coverage tests ===
+
+func TestPipelineContext_ForPhase_QA(t *testing.T) {
+	ctx := NewPipelineContext("build widget")
+	ctx.RecordPhase(1, "Requirements output")
+	ctx.RecordPhase(3, "Implementation output with changes to internal/widget/widget.go")
+
+	input := ctx.ForPhase(4)
+	if !strings.Contains(input, "Requirements") {
+		t.Error("expected requirements in phase 4 (QA) input")
+	}
+	if !strings.Contains(input, "Implementation") {
+		t.Error("expected implementation output in phase 4 (QA) input")
+	}
+}
+
+func TestPipelineContext_ForPhase_Review(t *testing.T) {
+	ctx := NewPipelineContext("build widget")
+	ctx.RecordPhase(1, "Requirements output")
+	ctx.RecordPhase(2, "Design output")
+	ctx.RecordPhase(3, "Implementation output")
+	ctx.RecordPhase(4, "QA output all good")
+
+	input := ctx.ForPhase(5)
+	if !strings.Contains(input, "Requirements (from Phase 1)") {
+		t.Error("expected requirements summary in phase 5 input")
+	}
+	if !strings.Contains(input, "Design (from Phase 2)") {
+		t.Error("expected design summary in phase 5 input")
+	}
+	if !strings.Contains(input, "Implementation (from Phase 3)") {
+		t.Error("expected implementation summary in phase 5 input")
+	}
+	if !strings.Contains(input, "QA Report (from Phase 4)") {
+		t.Error("expected QA report in phase 5 input")
+	}
+}
+
+func TestPipelineContext_ForPhase_Specialist(t *testing.T) {
+	ctx := NewPipelineContext("big refactor")
+	ctx.RecordPhase(1, "Requirements")
+	ctx.RecordPhase(2, "Design")
+	ctx.RecordPhase(3, "Implementation")
+	ctx.RecordPhase(4, "QA")
+	ctx.RecordPhase(5, "Review")
+
+	// Phase > 5 gets the "default" specialist view
+	input := ctx.ForPhase(6)
+	if !strings.Contains(input, "Phase 1 Output") {
+		t.Error("expected Phase 1 Output in specialist input")
+	}
+	if !strings.Contains(input, "Phase 5 Output") {
+		t.Error("expected Phase 5 Output in specialist input")
+	}
+}
+
+func TestPipelineContext_ForPhase_FilesChanged(t *testing.T) {
+	ctx := NewPipelineContext("test")
+	ctx.FilesChanged = []string{"internal/foo/bar.go", "internal/baz/qux.go"}
+
+	input := ctx.ForPhase(2)
+	if !strings.Contains(input, "Files Changed") {
+		t.Error("expected Files Changed section")
+	}
+	if !strings.Contains(input, "internal/foo/bar.go") {
+		t.Error("expected file path in Files Changed section")
+	}
+}
+
+func TestPipelineContext_ForPhase_Implementer_NoRework(t *testing.T) {
+	ctx := NewPipelineContext("add feature")
+	ctx.RecordPhase(1, "Requirements")
+	ctx.RecordPhase(2, "Design")
+	// No rework, reworkCount = 0
+
+	input := ctx.ForPhase(3)
+	if strings.Contains(input, "REWORK") {
+		t.Error("should NOT contain REWORK when rework count is 0")
+	}
+	if !strings.Contains(input, "Requirements") {
+		t.Error("expected requirements in phase 3 input")
+	}
+	if !strings.Contains(input, "Design") {
+		t.Error("expected design in phase 3 input")
+	}
+}
+
+func TestSummarize_ShortOutput(t *testing.T) {
+	// When output is shorter than maxLen, should return as-is
+	short := "hello world"
+	result := summarize(short, 100)
+	if result != short {
+		t.Errorf("expected %q, got %q", short, result)
+	}
+}
+
+func TestSummarize_LongOutput(t *testing.T) {
+	long := strings.Repeat("x", 200)
+	result := summarize(long, 50)
+	if len(result) <= 50 {
+		t.Error("expected truncated result to be longer than maxLen due to suffix")
+	}
+	if !strings.Contains(result, "truncated") {
+		t.Error("expected truncation notice")
+	}
+	if !strings.HasPrefix(result, strings.Repeat("x", 50)) {
+		t.Error("expected result to start with first 50 chars")
+	}
+}
+
+func TestContains_Hit(t *testing.T) {
+	slice := []string{"a", "b", "c"}
+	if !contains(slice, "b") {
+		t.Error("expected contains to find 'b'")
+	}
+}
+
+func TestContains_Miss(t *testing.T) {
+	slice := []string{"a", "b", "c"}
+	if contains(slice, "z") {
+		t.Error("expected contains to NOT find 'z'")
+	}
+}
+
+func TestContains_Empty(t *testing.T) {
+	if contains(nil, "a") {
+		t.Error("expected contains to return false for nil slice")
+	}
+}
+
+func TestPipeline_ApplyRiskGate_High(t *testing.T) {
+	p := New("test")
+	p.Current = 3
+
+	routing, err := p.ApplyRiskGate("## Verdict\nHIGH\n\nNeeds redesign.")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if routing.Level != RiskHigh {
+		t.Errorf("expected HIGH, got: %s", routing.Level)
+	}
+	// Should route back to phase 2 (design, index 1)
+	if p.Current != 1 {
+		t.Errorf("expected reroute to index 1 (design), got %d", p.Current)
+	}
+}
+
+func TestPipeline_ApplyRiskGate_Unknown(t *testing.T) {
+	p := New("test")
+	p.Current = 3
+
+	routing, err := p.ApplyRiskGate("some random text without any risk keywords at all that is also very long to avoid the short-line heuristic")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if routing.Level != RiskMedium {
+		t.Errorf("expected MEDIUM (from unknown default), got: %s", routing.Level)
+	}
+}
+
+func TestPipeline_Skip_LastPhase(t *testing.T) {
+	p := New("test")
+	p.Current = len(p.Phases) - 1
+	p.Phases[p.Current].Status = StatusRunning
+
+	p.Skip()
+
+	if p.Active {
+		t.Error("expected pipeline to be inactive after skipping last phase")
+	}
+	if p.Phases[len(p.Phases)-1].Status != StatusSkipped {
+		t.Error("expected last phase to be skipped")
+	}
+}
+
+func TestStatusIcon_Default(t *testing.T) {
+	// Use an invalid status to trigger the default case
+	result := statusIcon(PhaseStatus(99))
+	if result != "?" {
+		t.Errorf("expected '?' for unknown status, got: %s", result)
+	}
+}
+
+// === Additional trigger category tests ===
+
+func TestEvaluateTrigger_Migration(t *testing.T) {
+	ctx := NewPipelineContext("upgrade framework")
+	ctx.RecordPhase(3, "Performed migration from v1 to v2 with breaking change in API")
+
+	result := EvaluateTrigger("upgrade, migration, breaking change, deprecation, framework version", ctx)
+	if !result.Invoke {
+		t.Error("expected migration trigger to fire")
+	}
+	if !strings.Contains(result.Reason, "migration") {
+		t.Errorf("expected migration reason, got: %s", result.Reason)
+	}
+}
+
+func TestEvaluateTrigger_DeadCode(t *testing.T) {
+	ctx := NewPipelineContext("cleanup")
+	ctx.RecordPhase(3, "Removed dead code and unused imports, found zombie function")
+
+	result := EvaluateTrigger("dead code, unused, stale, deprecated, zombie features", ctx)
+	if !result.Invoke {
+		t.Error("expected dead code trigger to fire")
+	}
+	if !strings.Contains(result.Reason, "tech debt") {
+		t.Errorf("expected tech debt reason, got: %s", result.Reason)
+	}
+}
+
+func TestEvaluateTrigger_EdgeCase(t *testing.T) {
+	ctx := NewPipelineContext("improve parser")
+	ctx.RecordPhase(3, "Added edge case handling for parser when input is empty or malformed")
+
+	result := EvaluateTrigger("edge case, fragile, user-facing, parser, state machine", ctx)
+	if !result.Invoke {
+		t.Error("expected edge case trigger to fire")
+	}
+	if !strings.Contains(result.Reason, "edge case") {
+		t.Errorf("expected edge case reason, got: %s", result.Reason)
+	}
+}
+
+func TestEvaluateTrigger_Documentation(t *testing.T) {
+	ctx := NewPipelineContext("add docs")
+	ctx.RecordPhase(3, "Updated the README and added API documentation")
+
+	result := EvaluateTrigger("readme, api doc, adr, changelog, onboarding", ctx)
+	if !result.Invoke {
+		t.Error("expected documentation trigger to fire")
+	}
+	if !strings.Contains(result.Reason, "documentation") {
+		t.Errorf("expected documentation reason, got: %s", result.Reason)
+	}
+}
+
+func TestEvaluateTrigger_Legacy(t *testing.T) {
+	ctx := NewPipelineContext("fix old module")
+	ctx.RecordPhase(3, "Touched legacy code that nobody knows how it works, used git blame")
+
+	result := EvaluateTrigger("old, mysterious, undocumented, legacy, nobody-knows", ctx)
+	if !result.Invoke {
+		t.Error("expected legacy trigger to fire")
+	}
+	if !strings.Contains(result.Reason, "legacy") {
+		t.Errorf("expected legacy reason, got: %s", result.Reason)
+	}
+}
+
+func TestEvaluateTrigger_CoreLogic(t *testing.T) {
+	ctx := NewPipelineContext("refactor")
+	ctx.RecordPhase(3, "Refactored the state machine and introduced new design pattern for orchestration")
+
+	result := EvaluateTrigger("core logic, orchestration, pipeline, architecture, new pattern", ctx)
+	if !result.Invoke {
+		t.Error("expected core logic trigger to fire")
+	}
+	if !strings.Contains(result.Reason, "core logic") {
+		t.Errorf("expected core logic reason, got: %s", result.Reason)
+	}
+}
+
+func TestEvaluateTrigger_MultipleReasons(t *testing.T) {
+	ctx := NewPipelineContext("big change")
+	ctx.FilesChanged = []string{"a.go", "b.go", "c.go", "d.go", "e.go", "f.go", "g.go"}
+	ctx.RecordPhase(3, "Refactored core architecture with new design pattern for the state machine")
+
+	result := EvaluateTrigger(">5 files changed, core logic changed, orchestration/pipeline changed", ctx)
+	if !result.Invoke {
+		t.Error("expected trigger to fire with multiple reasons")
+	}
+	// Should contain both reasons
+	if !strings.Contains(result.Reason, "more than 5 files") {
+		t.Errorf("expected file count reason, got: %s", result.Reason)
+	}
+	if !strings.Contains(result.Reason, "core logic") {
+		t.Errorf("expected core logic reason, got: %s", result.Reason)
+	}
+}

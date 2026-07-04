@@ -5,8 +5,9 @@ import (
 )
 
 var lintCmd = &cobra.Command{
-	Use:   "lint",
-	Short: "Validate all agent .md files",
+	Use:     "lint",
+	Aliases: []string{"validate"},
+	Short:   "Validate all agent .md files",
 	Run: func(cmd *cobra.Command, args []string) {
 		runLint()
 	},

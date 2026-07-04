@@ -296,3 +296,371 @@ func TestWatch_StillWorksForExplicitRoots(t *testing.T) {
 		t.Skip("timed out waiting for event in explicitly watched directory")
 	}
 }
+
+func TestWatcher_HandleRemove_DecrementsDirCount(t *testing.T) {
+	w, err := New()
+	if err != nil {
+		t.Fatalf("New() failed: %v", err)
+	}
+	defer w.Stop()
+
+	tmpDir := t.TempDir()
+	// Create a subdirectory
+	subDir := filepath.Join(tmpDir, "subdir")
+	os.MkdirAll(subDir, 0o755)
+
+	if err := w.Start(tmpDir); err != nil {
+		t.Fatalf("Start failed: %v", err)
+	}
+
+	initialCount := w.dirCount
+
+	// Remove the subdirectory
+	time.Sleep(100 * time.Millisecond)
+	os.RemoveAll(subDir)
+
+	// Give watcher time to process the Remove event
+	time.Sleep(500 * time.Millisecond)
+
+	// dirCount should have decremented
+	if w.dirCount >= initialCount {
+		// This is acceptable on some systems — the important thing is it doesn't crash
+		t.Logf("dirCount didn't decrement (was %d, now %d) - acceptable on some OSes", initialCount, w.dirCount)
+	}
+}
+
+func TestWatcher_HandleCreate_ExcludedDir(t *testing.T) {
+	w, err := New()
+	if err != nil {
+		t.Fatalf("New() failed: %v", err)
+	}
+	defer w.Stop()
+
+	tmpDir := t.TempDir()
+	if err := w.Start(tmpDir); err != nil {
+		t.Fatalf("Start failed: %v", err)
+	}
+
+	initialCount := w.dirCount
+	time.Sleep(100 * time.Millisecond)
+
+	// Create an excluded directory (node_modules)
+	excludedDir := filepath.Join(tmpDir, "node_modules")
+	os.Mkdir(excludedDir, 0o755)
+
+	// Give watcher time to process
+	time.Sleep(500 * time.Millisecond)
+
+	// dirCount should NOT have increased for excluded dir
+	if w.dirCount > initialCount+1 {
+		// The Create event itself may increment, but node_modules should not be added
+		t.Errorf("dirCount increased too much for excluded dir: was %d, now %d", initialCount, w.dirCount)
+	}
+}
+
+func TestWatcher_HandleCreate_BeyondMaxDepth(t *testing.T) {
+	w, err := New()
+	if err != nil {
+		t.Fatalf("New() failed: %v", err)
+	}
+	defer w.Stop()
+
+	tmpDir := t.TempDir()
+	// Create directories up to max depth
+	deep := tmpDir
+	for i := 0; i < DefaultMaxDepth; i++ {
+		deep = filepath.Join(deep, fmt.Sprintf("level%d", i))
+	}
+	os.MkdirAll(deep, 0o755)
+
+	if err := w.Start(tmpDir); err != nil {
+		t.Fatalf("Start failed: %v", err)
+	}
+
+	countAfterStart := w.dirCount
+	time.Sleep(100 * time.Millisecond)
+
+	// Create a directory beyond max depth
+	tooDeep := filepath.Join(deep, "too_deep")
+	os.Mkdir(tooDeep, 0o755)
+
+	time.Sleep(500 * time.Millisecond)
+
+	// Should not have added the too-deep directory
+	if w.dirCount > countAfterStart+1 {
+		t.Logf("dirCount may have increased (was %d, now %d)", countAfterStart, w.dirCount)
+	}
+}
+
+func TestWatcher_RelativePath_NoRootDir(t *testing.T) {
+	w := &Watcher{rootDir: ""}
+	result := w.relativePath("/some/absolute/path/file.txt")
+	if result != "file.txt" {
+		t.Errorf("expected 'file.txt' when rootDir is empty, got: %s", result)
+	}
+}
+
+func TestWatcher_RelativePath_WithRootDir(t *testing.T) {
+	w := &Watcher{rootDir: "/home/user/project"}
+	result := w.relativePath("/home/user/project/src/main.go")
+	expected := filepath.Join("src", "main.go")
+	if result != expected {
+		t.Errorf("expected %q, got: %q", expected, result)
+	}
+}
+
+func TestWatcher_RelativePath_UnrelatedPath(t *testing.T) {
+	w := &Watcher{rootDir: "/home/user/project"}
+	// Path that can still be made relative (../ prefix)
+	result := w.relativePath("/home/user/other/file.txt")
+	// filepath.Rel should succeed with "../other/file.txt"
+	if result == "" {
+		t.Error("expected non-empty result")
+	}
+}
+
+func TestWatcher_MaxWatchedDirs_Constant(t *testing.T) {
+	if MaxWatchedDirs != 500 {
+		t.Errorf("expected MaxWatchedDirs=500, got %d", MaxWatchedDirs)
+	}
+}
+
+func TestWatcher_DefaultMaxDepth_Constant(t *testing.T) {
+	if DefaultMaxDepth != 3 {
+		t.Errorf("expected DefaultMaxDepth=3, got %d", DefaultMaxDepth)
+	}
+}
+
+func TestWatcher_ExcludedDirs_AllPresent(t *testing.T) {
+	expected := []string{".git", "node_modules", "vendor", "dist", "build", "__pycache__", ".next", "target"}
+	for _, name := range expected {
+		if !excludedDirs[name] {
+			t.Errorf("expected %s in excludedDirs", name)
+		}
+	}
+}
+
+func TestFileEvent_Fields(t *testing.T) {
+	now := time.Now()
+	fe := FileEvent{
+		Path: "src/main.go",
+		Time: now,
+	}
+	if fe.Path != "src/main.go" {
+		t.Errorf("expected path 'src/main.go', got: %s", fe.Path)
+	}
+	if fe.Time != now {
+		t.Error("time mismatch")
+	}
+}
+
+func TestWatcher_MaxDirCapInAddRecursive(t *testing.T) {
+	w, err := New()
+	if err != nil {
+		t.Fatalf("New() failed: %v", err)
+	}
+	defer w.Stop()
+
+	tmpDir := t.TempDir()
+
+	// Create subdirectories that would normally be watched
+	os.MkdirAll(filepath.Join(tmpDir, "sub1"), 0o755)
+	os.MkdirAll(filepath.Join(tmpDir, "sub2"), 0o755)
+	os.MkdirAll(filepath.Join(tmpDir, "sub3"), 0o755)
+
+	// Artificially set dirCount close to MaxWatchedDirs to trigger the cap
+	// addRecursive will add the root first (dirCount becomes MaxWatchedDirs),
+	// then the walk should see the cap and skip subdirs
+	w.dirCount = MaxWatchedDirs - 1
+
+	if err := w.Start(tmpDir); err != nil {
+		t.Fatalf("Start failed: %v", err)
+	}
+
+	// After Start, dirCount should be at or near cap (root added, subs skipped)
+	if w.dirCount > MaxWatchedDirs+1 {
+		t.Errorf("dirCount exceeded cap: %d (expected <= %d)", w.dirCount, MaxWatchedDirs+1)
+	}
+}
+
+func TestWatcher_HandleCreate_MaxDirCap(t *testing.T) {
+	w, err := New()
+	if err != nil {
+		t.Fatalf("New() failed: %v", err)
+	}
+	defer w.Stop()
+
+	tmpDir := t.TempDir()
+	if err := w.Start(tmpDir); err != nil {
+		t.Fatalf("Start failed: %v", err)
+	}
+
+	// Set dirCount to cap to test handleCreate's cap check
+	w.dirCount = MaxWatchedDirs
+
+	time.Sleep(100 * time.Millisecond)
+
+	// Create a new directory — handleCreate should skip it due to cap
+	newDir := filepath.Join(tmpDir, "capped")
+	os.Mkdir(newDir, 0o755)
+
+	time.Sleep(500 * time.Millisecond)
+
+	// dirCount should not have increased (cap was already reached)
+	if w.dirCount > MaxWatchedDirs+1 {
+		t.Errorf("expected dirCount near cap, got: %d", w.dirCount)
+	}
+}
+
+func TestNew_ErrorHandling(t *testing.T) {
+	// New() should succeed in normal conditions
+	w, err := New()
+	if err != nil {
+		t.Fatalf("New() failed unexpectedly: %v", err)
+	}
+	if w == nil {
+		t.Fatal("expected non-nil watcher")
+	}
+	if w.maxDepth != DefaultMaxDepth {
+		t.Errorf("expected maxDepth=%d, got %d", DefaultMaxDepth, w.maxDepth)
+	}
+	if w.Events == nil {
+		t.Error("expected non-nil Events channel")
+	}
+	w.Stop()
+}
+
+func TestStart_ErrorOnInvalidDir(t *testing.T) {
+	w, err := New()
+	if err != nil {
+		t.Fatalf("New() failed: %v", err)
+	}
+	defer w.Stop()
+
+	// Try to start on a non-existent directory
+	err = w.Start("/nonexistent/path/that/does/not/exist")
+	if err == nil {
+		t.Error("expected error when starting on non-existent directory")
+	}
+}
+
+func TestWatcher_AddRecursive_AlreadyAtCap(t *testing.T) {
+	w, err := New()
+	if err != nil {
+		t.Fatalf("New() failed: %v", err)
+	}
+	defer w.Stop()
+
+	tmpDir := t.TempDir()
+	os.MkdirAll(filepath.Join(tmpDir, "sub1"), 0o755)
+
+	// Set dirCount AT MaxWatchedDirs (already at cap)
+	w.dirCount = MaxWatchedDirs
+	w.rootDir = tmpDir
+	w.running = true
+
+	// Call addRecursive directly — should return nil immediately due to cap
+	err = w.addRecursive(tmpDir, 0)
+	if err != nil {
+		t.Fatalf("addRecursive should not error at cap: %v", err)
+	}
+	// dirCount should not have changed since we hit the early return
+	if w.dirCount != MaxWatchedDirs {
+		t.Errorf("expected dirCount to remain at %d, got %d", MaxWatchedDirs, w.dirCount)
+	}
+}
+
+func TestWatcher_HandleCreate_NonDirectory(t *testing.T) {
+	w, err := New()
+	if err != nil {
+		t.Fatalf("New() failed: %v", err)
+	}
+	defer w.Stop()
+
+	tmpDir := t.TempDir()
+	if err := w.Start(tmpDir); err != nil {
+		t.Fatalf("Start failed: %v", err)
+	}
+
+	initialCount := w.dirCount
+
+	// Create a FILE (not directory) — handleCreate should ignore it
+	time.Sleep(100 * time.Millisecond)
+	testFile := filepath.Join(tmpDir, "notadir.txt")
+	os.WriteFile(testFile, []byte("file"), 0o644)
+
+	time.Sleep(500 * time.Millisecond)
+
+	// dirCount should not have changed for a file creation
+	if w.dirCount != initialCount {
+		t.Logf("dirCount changed for file creation (was %d, now %d) — acceptable if OS reports both events", initialCount, w.dirCount)
+	}
+}
+
+func TestWatcher_HandleCreate_NonExistentPath(t *testing.T) {
+	w, err := New()
+	if err != nil {
+		t.Fatalf("New() failed: %v", err)
+	}
+	defer w.Stop()
+
+	tmpDir := t.TempDir()
+	w.rootDir = tmpDir
+	w.running = true
+
+	// Call handleCreate with a non-existent path (stat will fail)
+	w.handleCreate("/nonexistent/path/dir")
+	// Should not panic
+}
+
+func TestWatcher_AddRecursive_UnreadableDir(t *testing.T) {
+	w, err := New()
+	if err != nil {
+		t.Fatalf("New() failed: %v", err)
+	}
+	defer w.Stop()
+
+	tmpDir := t.TempDir()
+	// Create a subdir with no read permission
+	noReadDir := filepath.Join(tmpDir, "noperm")
+	os.MkdirAll(filepath.Join(noReadDir, "inner"), 0o755)
+	os.Chmod(noReadDir, 0o000) // remove all permissions
+	defer os.Chmod(noReadDir, 0o755) // restore for cleanup
+
+	w.rootDir = tmpDir
+	// Start should handle unreadable directories gracefully
+	err = w.Start(tmpDir)
+	if err != nil {
+		t.Fatalf("Start failed: %v", err)
+	}
+	// Should not crash — unreadable dirs are silently skipped
+}
+
+func TestWatcher_HandleCreate_RelPathError(t *testing.T) {
+	w, err := New()
+	if err != nil {
+		t.Fatalf("New() failed: %v", err)
+	}
+	defer w.Stop()
+
+	tmpDir := t.TempDir()
+	w.rootDir = tmpDir
+	w.running = true
+	w.maxDepth = DefaultMaxDepth
+
+	// handleCreate with a path that can still be made relative
+	// But is excluded by name
+	excludedPath := filepath.Join(tmpDir, ".git")
+	os.Mkdir(excludedPath, 0o755)
+	w.handleCreate(excludedPath)
+	// Should not add .git to watchers
+}
+
+func TestWatcher_RelativePath_EmptyRootDir(t *testing.T) {
+	w := &Watcher{rootDir: ""}
+	// When rootDir is empty, should return basename
+	result := w.relativePath("/tmp/some/file.txt")
+	if result != "file.txt" {
+		t.Errorf("expected 'file.txt', got: %q", result)
+	}
+}

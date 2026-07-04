@@ -14,9 +14,10 @@ var historyJSON bool
 var historyLimit int
 
 var historyCmd = &cobra.Command{
-	Use:   "history",
-	Short: "Show past missions",
-	Long:  "List past mission executions with ID, date, task, outcome, and duration.\n\nExamples:\n  moonbase history\n  moonbase history --all\n  moonbase history --limit 5\n  moonbase history --json",
+	Use:     "history",
+	Aliases: []string{"h", "log"},
+	Short:   "Show past missions",
+	Long:  "List past mission executions with ID, date, task, outcome, and duration.\n\nExamples:\n  moonbase history\n  moonbase h                             (alias)\n  moonbase history --all\n  moonbase history --limit 5\n  moonbase history --json",
 	Run: func(cmd *cobra.Command, args []string) {
 		runHistory()
 	},
@@ -44,7 +45,7 @@ func runHistory() {
 		data, err := json.MarshalIndent(missions, "", "  ")
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "❌ Failed to marshal history: %v\n", err)
-			os.Exit(1)
+			osExit(1)
 		}
 		fmt.Println(string(data))
 		return

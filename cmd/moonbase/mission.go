@@ -27,7 +27,7 @@ func runMission(task string) {
 	msg := loadCmd()
 	if loaded, ok := msg.(agents.AgentsLoadedMsg); ok && loaded.Err != nil {
 		fmt.Fprintf(os.Stderr, "❌ Failed to load agents: %v\n", loaded.Err)
-		os.Exit(1)
+		osExit(1)
 	}
 
 	// Discover project context

@@ -27,16 +27,16 @@ var snippetSaveCmd = &cobra.Command{
 		// Validate snippet name
 		if len(name) > 100 {
 			fmt.Fprintf(os.Stderr, "❌ Snippet name too long (%d chars, max 100)\n", len(name))
-			os.Exit(1)
+			osExit(1)
 		}
 		if strings.ContainsAny(name, "/\\") {
 			fmt.Fprintf(os.Stderr, "❌ Snippet name must not contain path separators (/ or \\)\n")
-			os.Exit(1)
+			osExit(1)
 		}
 		for _, r := range name {
 			if r < 32 {
 				fmt.Fprintf(os.Stderr, "❌ Snippet name must not contain control characters\n")
-				os.Exit(1)
+				osExit(1)
 			}
 		}
 

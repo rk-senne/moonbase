@@ -28,7 +28,18 @@ var debug bool
 var rootCmd = &cobra.Command{
 	Use:   "moonbase",
 	Short: "KND Tactical Operations Terminal",
-	Long:  "🌙 Moonbase — KND Tactical Operations Terminal\n\nA 14-agent AI development pipeline with spec-driven methodology.",
+	Long: `🌙 Moonbase — KND Tactical Operations Terminal
+
+A 14-agent AI development pipeline with spec-driven methodology.
+
+Quick Start:
+  moonbase init                    Make any project agent-ready
+  moonbase deploy 4 "check auth"  Deploy Numbuh 4 with a task
+  moonbase mission "add pagination" Run full pipeline
+  moonbase                         Launch TUI dashboard
+
+Pipe Mode:
+  echo "fix the auth bug" | moonbase`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		logging.Init(debug)
 	},
@@ -94,4 +105,60 @@ func init() {
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(historyCmd)
 	rootCmd.AddCommand(replayCmd)
+
+	// Custom grouped help for root only
+	defaultHelp := rootCmd.HelpFunc()
+	rootCmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
+		if cmd == rootCmd {
+			fmt.Print(groupedHelp)
+		} else {
+			defaultHelp(cmd, args)
+		}
+	})
 }
+
+var groupedHelp = `🌙 Moonbase — KND Tactical Operations Terminal
+
+A 14-agent AI development pipeline with spec-driven methodology.
+
+Quick Start:
+  moonbase init                    Make any project agent-ready
+  moonbase deploy 4 "check auth"  Deploy Numbuh 4 with a task
+  moonbase mission "add pagination" Run full pipeline
+  moonbase                         Launch TUI dashboard
+
+Pipe Mode:
+  echo "fix the auth bug" | moonbase
+
+Usage:
+  moonbase [flags]
+  moonbase [command]
+
+Core Workflow:
+  deploy      Deploy operative by numbuh            (aliases: d, run)
+  mission     Run full KND Council pipeline         (aliases: m, go)
+  list        Show operative roster                 (aliases: ls, roster)
+
+Pipeline:
+  history     Show past missions                    (aliases: h, log)
+  replay      Re-run a past mission                 (alias: re)
+  export      Export a mission's details
+
+Project Setup:
+  init        Scaffold .kiro/ in any project        (alias: setup)
+  install     Install agents to .kiro/agents/
+  status      Show environment health check         (aliases: s, check)
+
+Utilities:
+  config      Show current configuration
+  lint        Validate all agent .md files          (alias: validate)
+  snippet     Manage saved prompt snippets
+  version     Print version information
+
+Flags:
+      --debug   enable debug output
+  -h, --help    help for moonbase
+
+Use "moonbase [command] --help" for more information about a command.
+Use "moonbase completion [bash|zsh|fish]" to generate shell completions.
+`

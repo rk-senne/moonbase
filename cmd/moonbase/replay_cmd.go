@@ -12,9 +12,10 @@ import (
 var replayDryRun bool
 
 var replayCmd = &cobra.Command{
-	Use:   "replay <mission-id>",
-	Short: "Re-run a past mission",
-	Long:  "Load a mission from history and re-execute it with the original task string.\n\nExamples:\n  moonbase replay 3\n  moonbase replay 3 --dry-run",
+	Use:     "replay <mission-id>",
+	Aliases: []string{"re"},
+	Short:   "Re-run a past mission",
+	Long:  "Load a mission from history and re-execute it with the original task string.\n\nExamples:\n  moonbase replay 3\n  moonbase replay 3 --dry-run\n  moonbase re 3                          (alias)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		runReplay(args[0])
@@ -28,15 +29,16 @@ func init() {
 func runReplay(idStr string) {
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Invalid mission ID: %s (must be a number)\n", idStr)
-		os.Exit(1)
+		fmt.Fprintf(os.Stderr, "❌ Invalid mission ID: %s\n", idStr)
+		fmt.Fprintf(os.Stderr, "   Must be a number. Run 'moonbase history' to see mission IDs.\n")
+		osExit(1)
 	}
 
 	mission := history.GetByID(id)
 	if mission == nil {
-		fmt.Fprintf(os.Stderr, "❌ Mission #%d not found in history.\n", id)
+		fmt.Fprintf(os.Stderr, "❌ Mission #%d not found.\n", id)
 		fmt.Fprintf(os.Stderr, "   Run 'moonbase history' to see available missions.\n")
-		os.Exit(1)
+		osExit(1)
 	}
 
 	fmt.Printf("🌙 Replaying mission #%d: %s\n\n", mission.ID, mission.Task)

@@ -290,3 +290,135 @@ func TestExport_HandlesEmptyHistory(t *testing.T) {
 		t.Errorf("expected 'not found' for empty history, got: %q", result)
 	}
 }
+
+// === Additional coverage tests ===
+
+func TestUpdate_ReturnsErrorWhenHistoryFileDoesNotExist(t *testing.T) {
+	setHistoryPath(t)
+	// Don't create any file - historyPath points to non-existent file
+
+	m := Mission{ID: 1, Task: "ghost", Outcome: "complete"}
+	err := Update(m)
+	if err == nil {
+		t.Error("expected error when history file doesn't exist")
+	}
+	if !strings.Contains(err.Error(), "not found") {
+		t.Errorf("expected 'not found' error, got: %v", err)
+	}
+}
+
+func TestList_ReturnsNilWhenNoHistoryFile(t *testing.T) {
+	setHistoryPath(t)
+	// Don't create any file
+
+	result := List(5)
+	if result != nil {
+		t.Errorf("expected nil for no history file, got %v", result)
+	}
+}
+
+func TestList_NegativeLimit(t *testing.T) {
+	setHistoryPath(t)
+
+	Save(Mission{Task: "a", StartTime: time.Now(), Outcome: "complete"})
+	Save(Mission{Task: "b", StartTime: time.Now(), Outcome: "complete"})
+
+	// Negative limit should return all
+	result := List(-1)
+	if len(result) != 2 {
+		t.Errorf("expected 2 missions with negative limit, got %d", len(result))
+	}
+}
+
+func TestWriteHistory_MkdirAllError(t *testing.T) {
+	// Point historyPath to a location under a file (can't create dirs)
+	tmpDir := t.TempDir()
+	blocker := filepath.Join(tmpDir, "blocker")
+	os.WriteFile(blocker, []byte("I am a file"), 0600)
+	historyPath = filepath.Join(blocker, "subdir", "history.json")
+
+	missions := []Mission{{ID: 1, Task: "test", Outcome: "complete"}}
+	err := writeHistory(missions)
+	if err == nil {
+		t.Error("expected error when MkdirAll fails")
+	}
+	if !strings.Contains(err.Error(), "creating history directory") {
+		t.Errorf("expected 'creating history directory' error, got: %v", err)
+	}
+}
+
+func TestWriteHistory_WriteFileError(t *testing.T) {
+	// Create a directory where the temp file would go, but make it read-only
+	tmpDir := t.TempDir()
+	dir := filepath.Join(tmpDir, "readonly")
+	os.MkdirAll(dir, 0700)
+	historyPath = filepath.Join(dir, "history.json")
+
+	// Make directory read-only to prevent file creation
+	os.Chmod(dir, 0500)
+	defer os.Chmod(dir, 0700) // restore for cleanup
+
+	missions := []Mission{{ID: 1, Task: "test", Outcome: "complete"}}
+	err := writeHistory(missions)
+	if err == nil {
+		t.Error("expected error when WriteFile fails")
+	}
+	if !strings.Contains(err.Error(), "writing temp history file") {
+		t.Errorf("expected 'writing temp history file' error, got: %v", err)
+	}
+}
+
+func TestSave_WriteHistoryFailure(t *testing.T) {
+	// Point historyPath to unwritable location to trigger writeHistory error in Save
+	tmpDir := t.TempDir()
+	blocker := filepath.Join(tmpDir, "blocker")
+	os.WriteFile(blocker, []byte("I am a file"), 0600)
+	historyPath = filepath.Join(blocker, "subdir", "history.json")
+
+	m := Mission{Task: "will fail", StartTime: time.Now(), Outcome: "in-progress"}
+	_, err := Save(m)
+	if err == nil {
+		t.Error("expected error when writeHistory fails in Save")
+	}
+	if !strings.Contains(err.Error(), "saving mission") {
+		t.Errorf("expected 'saving mission' error, got: %v", err)
+	}
+}
+
+func TestLoad_CorruptJSON(t *testing.T) {
+	path := setHistoryPath(t)
+
+	// Write corrupt JSON
+	os.MkdirAll(filepath.Dir(path), 0700)
+	os.WriteFile(path, []byte("{not valid json!!!"), 0600)
+
+	result := Load()
+	if result != nil {
+		t.Errorf("expected nil for corrupt JSON, got %v", result)
+	}
+}
+
+func TestFormatMission_NoPhases(t *testing.T) {
+	m := Mission{
+		ID:        42,
+		Task:      "Empty mission",
+		StartTime: time.Date(2026, 7, 1, 10, 0, 0, 0, time.UTC),
+		Duration:  "0s",
+		Outcome:   "aborted",
+		Phases:    nil,
+	}
+
+	result := formatMission(m)
+	if !strings.Contains(result, "Mission #42") {
+		t.Error("expected mission ID in output")
+	}
+	if !strings.Contains(result, "Empty mission") {
+		t.Error("expected task in output")
+	}
+	if !strings.Contains(result, "aborted") {
+		t.Error("expected outcome in output")
+	}
+	if !strings.Contains(result, "## Phases") {
+		t.Error("expected phases header in output")
+	}
+}
