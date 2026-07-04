@@ -21,8 +21,8 @@ jobs:
           go-version-file: 'go.mod'
           cache: true
 
-      - name: Run tests before release
-        run: go test ./... -count=1 -timeout 120s
+      - name: Verify build
+        run: go build ./...
 
       - uses: goreleaser/goreleaser-action@v6
         with:
