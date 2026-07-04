@@ -198,17 +198,22 @@ func (w *Watcher) handleCreate(path string) {
 	}
 
 	// Check cap
+	w.mu.Lock()
 	if w.dirCount >= MaxWatchedDirs {
+		w.mu.Unlock()
 		slog.Warn("max watched directories reached, cannot add new directory",
 			"limit", MaxWatchedDirs, "dir", path)
 		return
 	}
+	w.mu.Unlock()
 
 	if err := w.w.Add(path); err != nil {
 		slog.Warn("failed to watch new directory", "path", path, "error", err)
 		return
 	}
+	w.mu.Lock()
 	w.dirCount++
+	w.mu.Unlock()
 }
 
 // handleRemove attempts to remove a path from the watcher.
@@ -216,9 +221,11 @@ func (w *Watcher) handleRemove(path string) {
 	// fsnotify auto-removes watches for deleted paths on most systems,
 	// but we track the count for correctness.
 	_ = w.w.Remove(path)
+	w.mu.Lock()
 	if w.dirCount > 0 {
 		w.dirCount--
 	}
+	w.mu.Unlock()
 }
 
 // relativePath returns the path relative to rootDir, or the basename as fallback.
@@ -244,6 +251,20 @@ func (w *Watcher) Recent() []FileEvent {
 	cp := make([]FileEvent, len(w.recent))
 	copy(cp, w.recent)
 	return cp
+}
+
+// DirCount returns the current number of watched directories (thread-safe).
+func (w *Watcher) DirCount() int {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.dirCount
+}
+
+// SetDirCount sets the dirCount (for testing only).
+func (w *Watcher) SetDirCount(n int) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.dirCount = n
 }
 
 func (w *Watcher) Running() bool {

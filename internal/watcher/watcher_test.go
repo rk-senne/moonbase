@@ -152,8 +152,8 @@ func TestStart_RecursiveWalksSubdirectories(t *testing.T) {
 
 	// Verify we watch at least the root + 3 levels
 	// dirCount includes root + level1 + level2 + level3 = 4
-	if w.dirCount < 4 {
-		t.Errorf("expected at least 4 watched dirs, got %d", w.dirCount)
+	if w.DirCount() < 4 {
+		t.Errorf("expected at least 4 watched dirs, got %d", w.DirCount())
 	}
 
 	// Write a file in a subdirectory to verify it's being watched
@@ -192,8 +192,8 @@ func TestStart_ExcludesCommonDirs(t *testing.T) {
 	}
 
 	// root + src + src/pkg = 3 (excluded dirs should not be counted)
-	if w.dirCount != 3 {
-		t.Errorf("expected 3 watched dirs (root + src + src/pkg), got %d", w.dirCount)
+	if w.DirCount() != 3 {
+		t.Errorf("expected 3 watched dirs (root + src + src/pkg), got %d", w.DirCount())
 	}
 }
 
@@ -217,8 +217,8 @@ func TestStart_RespectsDepthLimit(t *testing.T) {
 	}
 
 	// root + d0 + d0/d1 + d0/d1/d2 = 4 (depth 3 means 3 levels below root)
-	if w.dirCount > 4 {
-		t.Errorf("expected max 4 watched dirs (depth limit 3), got %d", w.dirCount)
+	if w.DirCount() > 4 {
+		t.Errorf("expected max 4 watched dirs (depth limit 3), got %d", w.DirCount())
 	}
 }
 
@@ -313,7 +313,7 @@ func TestWatcher_HandleRemove_DecrementsDirCount(t *testing.T) {
 		t.Fatalf("Start failed: %v", err)
 	}
 
-	initialCount := w.dirCount
+	initialCount := w.DirCount()
 
 	// Remove the subdirectory
 	time.Sleep(100 * time.Millisecond)
@@ -323,9 +323,9 @@ func TestWatcher_HandleRemove_DecrementsDirCount(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 
 	// dirCount should have decremented
-	if w.dirCount >= initialCount {
+	if w.DirCount() >= initialCount {
 		// This is acceptable on some systems — the important thing is it doesn't crash
-		t.Logf("dirCount didn't decrement (was %d, now %d) - acceptable on some OSes", initialCount, w.dirCount)
+		t.Logf("dirCount didn't decrement (was %d, now %d) - acceptable on some OSes", initialCount, w.DirCount())
 	}
 }
 
@@ -341,7 +341,7 @@ func TestWatcher_HandleCreate_ExcludedDir(t *testing.T) {
 		t.Fatalf("Start failed: %v", err)
 	}
 
-	initialCount := w.dirCount
+	initialCount := w.DirCount()
 	time.Sleep(100 * time.Millisecond)
 
 	// Create an excluded directory (node_modules)
@@ -352,9 +352,9 @@ func TestWatcher_HandleCreate_ExcludedDir(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 
 	// dirCount should NOT have increased for excluded dir
-	if w.dirCount > initialCount+1 {
+	if w.DirCount() > initialCount+1 {
 		// The Create event itself may increment, but node_modules should not be added
-		t.Errorf("dirCount increased too much for excluded dir: was %d, now %d", initialCount, w.dirCount)
+		t.Errorf("dirCount increased too much for excluded dir: was %d, now %d", initialCount, w.DirCount())
 	}
 }
 
@@ -377,7 +377,7 @@ func TestWatcher_HandleCreate_BeyondMaxDepth(t *testing.T) {
 		t.Fatalf("Start failed: %v", err)
 	}
 
-	countAfterStart := w.dirCount
+	countAfterStart := w.DirCount()
 	time.Sleep(100 * time.Millisecond)
 
 	// Create a directory beyond max depth
@@ -387,8 +387,8 @@ func TestWatcher_HandleCreate_BeyondMaxDepth(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 
 	// Should not have added the too-deep directory
-	if w.dirCount > countAfterStart+1 {
-		t.Logf("dirCount may have increased (was %d, now %d)", countAfterStart, w.dirCount)
+	if w.DirCount() > countAfterStart+1 {
+		t.Logf("dirCount may have increased (was %d, now %d)", countAfterStart, w.DirCount())
 	}
 }
 
@@ -471,15 +471,15 @@ func TestWatcher_MaxDirCapInAddRecursive(t *testing.T) {
 	// Artificially set dirCount close to MaxWatchedDirs to trigger the cap
 	// addRecursive will add the root first (dirCount becomes MaxWatchedDirs),
 	// then the walk should see the cap and skip subdirs
-	w.dirCount = MaxWatchedDirs - 1
+	w.SetDirCount(MaxWatchedDirs - 1)
 
 	if err := w.Start(tmpDir); err != nil {
 		t.Fatalf("Start failed: %v", err)
 	}
 
 	// After Start, dirCount should be at or near cap (root added, subs skipped)
-	if w.dirCount > MaxWatchedDirs+1 {
-		t.Errorf("dirCount exceeded cap: %d (expected <= %d)", w.dirCount, MaxWatchedDirs+1)
+	if w.DirCount() > MaxWatchedDirs+1 {
+		t.Errorf("dirCount exceeded cap: %d (expected <= %d)", w.DirCount(), MaxWatchedDirs+1)
 	}
 }
 
@@ -496,7 +496,7 @@ func TestWatcher_HandleCreate_MaxDirCap(t *testing.T) {
 	}
 
 	// Set dirCount to cap to test handleCreate's cap check
-	w.dirCount = MaxWatchedDirs
+	w.SetDirCount(MaxWatchedDirs)
 
 	time.Sleep(100 * time.Millisecond)
 
@@ -507,8 +507,8 @@ func TestWatcher_HandleCreate_MaxDirCap(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 
 	// dirCount should not have increased (cap was already reached)
-	if w.dirCount > MaxWatchedDirs+1 {
-		t.Errorf("expected dirCount near cap, got: %d", w.dirCount)
+	if w.DirCount() > MaxWatchedDirs+1 {
+		t.Errorf("expected dirCount near cap, got: %d", w.DirCount())
 	}
 }
 
@@ -555,7 +555,7 @@ func TestWatcher_AddRecursive_AlreadyAtCap(t *testing.T) {
 	os.MkdirAll(filepath.Join(tmpDir, "sub1"), 0o755)
 
 	// Set dirCount AT MaxWatchedDirs (already at cap)
-	w.dirCount = MaxWatchedDirs
+	w.SetDirCount(MaxWatchedDirs)
 	w.rootDir = tmpDir
 	w.running = true
 
@@ -565,8 +565,8 @@ func TestWatcher_AddRecursive_AlreadyAtCap(t *testing.T) {
 		t.Fatalf("addRecursive should not error at cap: %v", err)
 	}
 	// dirCount should not have changed since we hit the early return
-	if w.dirCount != MaxWatchedDirs {
-		t.Errorf("expected dirCount to remain at %d, got %d", MaxWatchedDirs, w.dirCount)
+	if w.DirCount() != MaxWatchedDirs {
+		t.Errorf("expected dirCount to remain at %d, got %d", MaxWatchedDirs, w.DirCount())
 	}
 }
 
@@ -582,7 +582,7 @@ func TestWatcher_HandleCreate_NonDirectory(t *testing.T) {
 		t.Fatalf("Start failed: %v", err)
 	}
 
-	initialCount := w.dirCount
+	initialCount := w.DirCount()
 
 	// Create a FILE (not directory) — handleCreate should ignore it
 	time.Sleep(100 * time.Millisecond)
@@ -592,8 +592,8 @@ func TestWatcher_HandleCreate_NonDirectory(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 
 	// dirCount should not have changed for a file creation
-	if w.dirCount != initialCount {
-		t.Logf("dirCount changed for file creation (was %d, now %d) — acceptable if OS reports both events", initialCount, w.dirCount)
+	if w.DirCount() != initialCount {
+		t.Logf("dirCount changed for file creation (was %d, now %d) — acceptable if OS reports both events", initialCount, w.DirCount())
 	}
 }
 
