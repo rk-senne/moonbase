@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -479,6 +480,10 @@ func TestSnippetSaveCmd_NameWithControlChar(t *testing.T) {
 // === runDeploy: clipboard fallback path when kiro-cli not in PATH ===
 
 func TestRunDeploy_NoKiroCLI_ClipboardSuccess(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("clipboard test only runs on macOS (requires pbcopy)")
+	}
+
 	origDir, _ := os.Getwd()
 	defer os.Chdir(origDir)
 
@@ -522,6 +527,10 @@ func TestRunDeploy_NoKiroCLI_ClipboardSuccess(t *testing.T) {
 }
 
 func TestRunDeploy_NoKiroCLI_NoTask_ClipboardSuccess(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("clipboard test only runs on macOS (requires pbcopy)")
+	}
+
 	origDir, _ := os.Getwd()
 	defer os.Chdir(origDir)
 
