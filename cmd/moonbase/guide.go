@@ -52,6 +52,7 @@ TIPS
   • Run 'moonbase guide --all' to see all agent guides
   • Spec non-trivial work first (agents work better with specs)
   • Agents auto-discover .kiro/specs/ and .kiro/steering/
+  • Run 'moonbase update' to self-update to the latest release
 
 `)
 }

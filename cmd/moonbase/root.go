@@ -61,7 +61,8 @@ Pipe Mode:
 			fmt.Printf("🌙 Pipe mode — task: %s\n", task)
 			fmt.Println("Deploy to kiro-cli with knd-council...")
 			if kiro, err := exec.LookPath("kiro-cli"); err == nil {
-				execCmd := exec.Command(kiro, "chat", "--agent", "knd-council")
+				execCmd := exec.Command(kiro, "chat", "--agent", "knd-council",
+					"--trust-all-tools", "--no-interactive")
 				execCmd.Stdin = strings.NewReader(task)
 				execCmd.Stdout = os.Stdout
 				execCmd.Stderr = os.Stderr
@@ -107,6 +108,7 @@ func init() {
 	rootCmd.AddCommand(replayCmd)
 	rootCmd.AddCommand(setupCmd)
 	rootCmd.AddCommand(guideCmd)
+	rootCmd.AddCommand(updateCmd)
 
 	// Custom grouped help for root only
 	defaultHelp := rootCmd.HelpFunc()
@@ -157,6 +159,7 @@ Utilities:
   config      Show current configuration
   lint        Validate all agent .md files          (alias: validate)
   snippet     Manage saved prompt snippets
+  update      Self-update to latest release         (aliases: upgrade, self-update)
   version     Print version information
 
 Flags:
@@ -164,5 +167,4 @@ Flags:
   -h, --help    help for moonbase
 
 Use "moonbase [command] --help" for more information about a command.
-Use "moonbase completion [bash|zsh|fish]" to generate shell completions.
 `
