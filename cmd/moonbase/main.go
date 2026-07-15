@@ -179,11 +179,11 @@ func agentsDir() string {
 		fmt.Fprintln(os.Stderr, "❌ Cannot find agents directory.")
 		fmt.Fprintln(os.Stderr, "")
 		fmt.Fprintln(os.Stderr, "   To fix, try one of:")
-		fmt.Fprintln(os.Stderr, "     • Run from the moonbase project root (where agents/ lives)")
-		fmt.Fprintln(os.Stderr, "     • Run 'moonbase install --all' in your project")
-		fmt.Fprintln(os.Stderr, "     • Run 'moonbase init' to set up a new project")
+		fmt.Fprintln(os.Stderr, "     • Run 'moonbase setup' to install agents globally (~/.moonbase/agents/)")
+		fmt.Fprintln(os.Stderr, "     • Run 'make install' from the moonbase source directory")
+		fmt.Fprintln(os.Stderr, "     • Run 'moonbase install --all' to install agents into this project")
 		fmt.Fprintln(os.Stderr, "")
-		fmt.Fprintln(os.Stderr, "   Run 'moonbase status' for diagnostics.")
+		fmt.Fprintln(os.Stderr, "   Run 'moonbase status' for diagnostics")
 		osExit(1)
 	}
 	return dir

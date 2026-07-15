@@ -105,6 +105,8 @@ func init() {
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(historyCmd)
 	rootCmd.AddCommand(replayCmd)
+	rootCmd.AddCommand(setupCmd)
+	rootCmd.AddCommand(guideCmd)
 
 	// Custom grouped help for root only
 	defaultHelp := rootCmd.HelpFunc()
@@ -145,11 +147,13 @@ Pipeline:
   export      Export a mission's details
 
 Project Setup:
-  init        Scaffold .kiro/ in any project        (alias: setup)
+  init        Scaffold .kiro/ in any project
+  setup       Install agents globally (~/.moonbase/agents/)
   install     Install agents to .kiro/agents/
   status      Show environment health check         (aliases: s, check)
 
 Utilities:
+  guide       Show usage guide for agents           (aliases: man, howto)
   config      Show current configuration
   lint        Validate all agent .md files          (alias: validate)
   snippet     Manage saved prompt snippets

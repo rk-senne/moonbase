@@ -39,6 +39,11 @@ setup: build
 
 install: build
 	cp $(BUILD_DIR)/$(APP_NAME) /usr/local/bin/$(APP_NAME)
+	@mkdir -p $(HOME)/.moonbase/agents
+	@cp agents/*.md $(HOME)/.moonbase/agents/
+	@echo "✓ moonbase installed to /usr/local/bin/moonbase"
+	@echo "✓ agents installed to ~/.moonbase/agents/"
+	@echo "  You can now run moonbase from any project directory."
 
 release:
 	GOOS=darwin GOARCH=arm64 go build -o $(BUILD_DIR)/$(APP_NAME)-darwin-arm64 $(MAIN)

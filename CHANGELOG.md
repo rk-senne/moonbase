@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-07-15
+
+### Added
+- `moonbase setup` command — installs agents globally to `~/.moonbase/agents/` so moonbase works from any project directory without per-project agent installation
+- `moonbase guide` command — per-agent usage guides with when-to-use, examples, and tools reference (aliases: `man`, `howto`)
+  - `moonbase guide` — general operations overview
+  - `moonbase guide <n>` — detailed guide for specific agent
+  - `moonbase guide --all` — full guide for all 14 agents
+- `make install` now installs agents globally alongside the binary
+
+### Changed
+- Agent directory resolution reordered: `~/.moonbase/agents/` is now checked before CWD, making global install the primary mechanism for portable usage
+- Improved error messages when agents directory is not found — now suggests `moonbase setup`
+- Removed `setup` alias from `init` command (reassigned to the new global setup command)
+
 ## [1.2.0] - 2026-07-03
 
 ### Added
