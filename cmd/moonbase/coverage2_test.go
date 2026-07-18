@@ -248,13 +248,24 @@ func TestRunInit_WriteTemplateFails_ReadOnlyDir(t *testing.T) {
 // === runInstall coverage: global flag with uncreatable target dir ===
 
 func TestRunInstall_GlobalFlag_TargetDirCannotBeCreated(t *testing.T) {
+	// This test relies on overriding HOME to point at a file, causing MkdirAll
+	// to fail. On macOS with cgo, os.UserHomeDir() ignores $HOME and uses the
+	// system directory service, making this test impossible to run reliably.
+	origHome := os.Getenv("HOME")
+	testHome := t.TempDir()
+	os.Setenv("HOME", testHome)
+	got, _ := os.UserHomeDir()
+	os.Setenv("HOME", origHome)
+	if got != testHome {
+		t.Skip("os.UserHomeDir does not respect $HOME on this platform")
+	}
+
 	origDir, _ := os.Getwd()
 	defer os.Chdir(origDir)
 
 	origArgs := os.Args
 	defer func() { os.Args = origArgs }()
 
-	origHome := os.Getenv("HOME")
 	defer os.Setenv("HOME", origHome)
 
 	// Set HOME to a file (not a directory) so MkdirAll fails
@@ -270,6 +281,11 @@ func TestRunInstall_GlobalFlag_TargetDirCannotBeCreated(t *testing.T) {
 	writeTestAgent(t, srcDir, "numbuh-1", "Nigel", "Analyst")
 	os.Chdir(projectDir)
 	os.Args = []string{"moonbase", "install", "--all", "--global"}
+
+	// Set the cobra flag directly since we're calling runInstall() without cobra
+	origGlobal := installGlobal
+	installGlobal = true
+	defer func() { installGlobal = origGlobal }()
 
 	code := expectExit(t, func() {
 		runInstall()
@@ -581,6 +597,9 @@ func TestRunMission_AgentNotFoundInPhase(t *testing.T) {
 	origPath := os.Getenv("PATH")
 	defer os.Setenv("PATH", origPath)
 
+	origHome := os.Getenv("HOME")
+	defer os.Setenv("HOME", origHome)
+
 	tmpBin := t.TempDir()
 	fakeKiro := filepath.Join(tmpBin, "kiro-cli")
 	script := `#!/bin/sh
@@ -589,8 +608,10 @@ echo "phase output"
 	os.WriteFile(fakeKiro, []byte(script), 0o755)
 	os.Setenv("PATH", tmpBin+":"+origPath)
 
-	// Only create numbuh-1, missing numbuh-2 through 5
+	// Only create numbuh-1, missing numbuh-2 through 5.
+	// Set HOME to an empty temp dir so global agents are not found.
 	tmpDir := t.TempDir()
+	os.Setenv("HOME", tmpDir)
 	agDir := filepath.Join(tmpDir, "agents")
 	os.MkdirAll(agDir, 0o755)
 	writeTestAgent(t, agDir, "numbuh-1", "Nigel Uno", "Analyst")
