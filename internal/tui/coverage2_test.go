@@ -168,7 +168,7 @@ func TestHandleAgentsLoaded(t *testing.T) {
 	app := NewApp()
 	app.ready = true
 
-	msg := agents.AgentsLoadedMsg{
+	msg := AgentsLoadedMsg{
 		Agents: []agents.Agent{{Name: "numbuh-1"}},
 		Err:    nil,
 	}

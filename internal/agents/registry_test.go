@@ -33,8 +33,9 @@ func TestLoadMultipleDirs_MergesAgents(t *testing.T) {
 	createTestAgent(t, project, "numbuh-1", "Override Nigel", "Custom Analyst")
 
 	reg := NewRegistry(builtIn)
-	cmd := reg.LoadMultipleDirs(builtIn, user, project)
-	cmd() // execute synchronously
+	if err := reg.LoadMultipleDirsSync(builtIn, user, project); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	all := reg.All()
 	if len(all) != 3 {
@@ -81,8 +82,9 @@ func TestLoadMultipleDirs_UserOverridesBuiltIn(t *testing.T) {
 	createTestAgent(t, user, "numbuh-4", "User Override", "Custom QA")
 
 	reg := NewRegistry(builtIn)
-	cmd := reg.LoadMultipleDirs(builtIn, user, "")
-	cmd()
+	if err := reg.LoadMultipleDirsSync(builtIn, user, ""); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	n4 := reg.GetByName("numbuh-4")
 	if n4 == nil {
@@ -104,8 +106,9 @@ func TestLoadMultipleDirs_HandlesEmptyDirs(t *testing.T) {
 
 	reg := NewRegistry(builtIn)
 	// Empty user and project dirs
-	cmd := reg.LoadMultipleDirs(builtIn, "", "")
-	cmd()
+	if err := reg.LoadMultipleDirsSync(builtIn, "", ""); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	all := reg.All()
 	if len(all) != 1 {
@@ -124,8 +127,9 @@ func TestLoadMultipleDirs_HandlesNonexistentDirs(t *testing.T) {
 
 	reg := NewRegistry(builtIn)
 	// Point to non-existent dirs for user and project
-	cmd := reg.LoadMultipleDirs(builtIn, "/nonexistent/user", "/nonexistent/project")
-	cmd()
+	if err := reg.LoadMultipleDirsSync(builtIn, "/nonexistent/user", "/nonexistent/project"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	all := reg.All()
 	if len(all) != 1 {

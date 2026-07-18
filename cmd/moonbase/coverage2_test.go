@@ -691,9 +691,11 @@ exit 1
 
 	output, err := deployToBackend(agent, "test prompt", "test task")
 	if err != nil {
-		// On some systems clipboard may not be available either
-		// which is also a valid test path (returns error)
-		if !strings.Contains(err.Error(), "no backend available") {
+		// Valid error paths:
+		// 1. kiro-cli found on PATH but fails after retries
+		// 2. No backend available (no kiro-cli + no clipboard)
+		if !strings.Contains(err.Error(), "no backend available") &&
+			!strings.Contains(err.Error(), "kiro-cli failed after") {
 			t.Fatalf("unexpected error: %v", err)
 		}
 	} else {
@@ -992,8 +994,22 @@ func TestRunMission_NoAgentsDir(t *testing.T) {
 	origDir, _ := os.Getwd()
 	defer os.Chdir(origDir)
 
+	origHome := os.Getenv("HOME")
+	defer os.Setenv("HOME", origHome)
+
+	origPath := os.Getenv("PATH")
+	defer os.Setenv("PATH", origPath)
+
 	tmpDir := t.TempDir()
 	os.Chdir(tmpDir)
+
+	// Override HOME so FindAgentsDir cannot find ~/.moonbase/agents
+	fakeHome := filepath.Join(tmpDir, "fakehome")
+	os.MkdirAll(fakeHome, 0o755)
+	os.Setenv("HOME", fakeHome)
+
+	// Remove kiro-cli from PATH so no backend is available
+	os.Setenv("PATH", "/nonexistent-xyz-path")
 
 	// No agents dir at all — should exit
 	code := expectExit(t, func() {

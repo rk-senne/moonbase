@@ -235,7 +235,7 @@ func (a App) Init() tea.Cmd {
 	return tea.Batch(
 		a.spinner.Tick,
 		bootTick(),
-		a.registry.Load(),
+		LoadAgentsCmd(a.registry),
 		detectSystem(),
 		clockTick(),
 		blinkTick(),
@@ -257,7 +257,7 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case bootDoneMsg:
 		return a.handleBootDone()
 
-	case agents.AgentsLoadedMsg:
+	case AgentsLoadedMsg:
 		return a.handleAgentsLoaded(msg)
 
 	case PhaseResultMsg:

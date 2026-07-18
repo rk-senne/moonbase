@@ -67,21 +67,15 @@ func TestRegistry_Load(t *testing.T) {
 	createTestAgent(t, tmpDir, "numbuh-2", "Hoagie", "Architect")
 
 	reg := NewRegistry(tmpDir)
-	cmd := reg.Load()
-	msg := cmd()
-
-	loaded, ok := msg.(AgentsLoadedMsg)
-	if !ok {
-		t.Fatalf("expected AgentsLoadedMsg, got %T", msg)
+	err := reg.LoadSync()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
-	if loaded.Err != nil {
-		t.Fatalf("unexpected error: %v", loaded.Err)
-	}
-	if len(loaded.Agents) != 2 {
-		t.Errorf("expected 2 agents, got %d", len(loaded.Agents))
+	if reg.Count() != 2 {
+		t.Errorf("expected 2 agents, got %d", reg.Count())
 	}
 	// All should be tagged as built-in
-	for _, a := range loaded.Agents {
+	for _, a := range reg.All() {
 		if a.Source != SourceBuiltIn {
 			t.Errorf("expected source %q, got %q for %s", SourceBuiltIn, a.Source, a.Name)
 		}
@@ -92,19 +86,13 @@ func TestRegistry_Load_EmptyDir(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	reg := NewRegistry(tmpDir)
-	cmd := reg.Load()
-	msg := cmd()
-
-	loaded, ok := msg.(AgentsLoadedMsg)
-	if !ok {
-		t.Fatalf("expected AgentsLoadedMsg, got %T", msg)
-	}
+	err := reg.LoadSync()
 	// Empty dir is not an error, just returns no agents
-	if loaded.Err != nil {
-		t.Fatalf("unexpected error for empty dir: %v", loaded.Err)
+	if err != nil {
+		t.Fatalf("unexpected error for empty dir: %v", err)
 	}
-	if len(loaded.Agents) != 0 {
-		t.Errorf("expected 0 agents from empty dir, got %d", len(loaded.Agents))
+	if reg.Count() != 0 {
+		t.Errorf("expected 0 agents from empty dir, got %d", reg.Count())
 	}
 }
 
@@ -410,15 +398,12 @@ func TestLoadMultipleDirs_ErrorFromBuiltIn(t *testing.T) {
 	createTestAgent(t, tmpDir, "numbuh-1", "Nigel", "Analyst")
 
 	reg := NewRegistry(tmpDir)
-	cmd := reg.LoadMultipleDirs(tmpDir, "/nonexistent-user", "/nonexistent-project")
-	msg := cmd()
-
-	loaded := msg.(AgentsLoadedMsg)
-	if loaded.Err != nil {
-		t.Fatalf("unexpected error: %v", loaded.Err)
+	err := reg.LoadMultipleDirsSync(tmpDir, "/nonexistent-user", "/nonexistent-project")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(loaded.Agents) != 1 {
-		t.Errorf("expected 1 agent, got %d", len(loaded.Agents))
+	if reg.Count() != 1 {
+		t.Errorf("expected 1 agent, got %d", reg.Count())
 	}
 }
 

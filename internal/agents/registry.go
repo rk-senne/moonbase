@@ -6,8 +6,6 @@ import (
 	"strings"
 
 	"github.com/f5508037/moonbase/internal/logging"
-
-	tea "github.com/charmbracelet/bubbletea"
 )
 
 // AgentSource constants for identifying where an agent was loaded from.
@@ -16,12 +14,6 @@ const (
 	SourceUser    = "user"
 	SourceProject = "project"
 )
-
-// AgentsLoadedMsg is the Bubbletea message sent when agents finish loading from disk.
-type AgentsLoadedMsg struct {
-	Agents []Agent
-	Err    error
-}
 
 // Registry holds all loaded agents and provides lookup by name, index, or role.
 type Registry struct {
@@ -32,38 +24,6 @@ type Registry struct {
 // NewRegistry creates a new Registry that will load agents from the given directory.
 func NewRegistry(dir string) *Registry {
 	return &Registry{dir: dir}
-}
-
-// Load returns a Bubbletea command that loads all agents from disk asynchronously.
-func (r *Registry) Load() tea.Cmd {
-	return func() tea.Msg {
-		agents, err := loadFromDir(r.dir)
-		if err != nil {
-			return AgentsLoadedMsg{Err: err}
-		}
-		// Tag all agents loaded via single-dir as built-in
-		for i := range agents {
-			if agents[i].Source == "" {
-				agents[i].Source = SourceBuiltIn
-			}
-		}
-		r.agents = agents
-		return AgentsLoadedMsg{Agents: agents}
-	}
-}
-
-// LoadMultipleDirs loads agents from multiple directories and merges them.
-// Priority order: later directories override earlier ones (same agent name).
-// Typically called as LoadMultipleDirs(builtinDir, userDir, projectDir).
-func (r *Registry) LoadMultipleDirs(dirs ...string) tea.Cmd {
-	return func() tea.Msg {
-		merged, err := loadAndMergeDirs(dirs...)
-		if err != nil {
-			return AgentsLoadedMsg{Err: err}
-		}
-		r.agents = merged
-		return AgentsLoadedMsg{Agents: merged}
-	}
 }
 
 // LoadSync loads agents from the registry's directory synchronously.

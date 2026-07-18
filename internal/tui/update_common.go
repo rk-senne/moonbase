@@ -10,7 +10,6 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/f5508037/moonbase/internal/agents"
 	"github.com/f5508037/moonbase/internal/backend"
 )
 
@@ -47,7 +46,7 @@ func (a App) handleBootDone() (tea.Model, tea.Cmd) {
 }
 
 // handleAgentsLoaded processes the registry load result.
-func (a App) handleAgentsLoaded(msg agents.AgentsLoadedMsg) (tea.Model, tea.Cmd) {
+func (a App) handleAgentsLoaded(msg AgentsLoadedMsg) (tea.Model, tea.Cmd) {
 	if msg.Err == nil {
 		a.backends = backend.DetectAll()
 	}
