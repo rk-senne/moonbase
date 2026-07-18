@@ -167,6 +167,21 @@ Refusing unclear scope is professional, not obstructionist. A clear 'I cannot pr
 
 The professional says: 'I will not do this until I understand it well enough to do it right.'
 
+### The Kata Cycle (Continuous Improvement)
+
+Moonbase improves through repetition and reflection, not through grand redesigns.
+
+The flywheel is the kata:
+1. Run missions (practice)
+2. Log execution data (observe)
+3. Analyze patterns with `moonbase flywheel` (reflect)
+4. Improve steering/skills/prompts based on findings (adapt)
+5. Run better missions (practice again)
+
+This is the professional's practice loop (Clean Coder, Chapter 6). Software craft improves through deliberate practice -- not just through shipping features.
+
+Every rework loop is a signal. Every timeout is a signal. Every CRITICAL risk gate is a signal. The flywheel captures these signals so they become improvements rather than forgotten incidents.
+
 ---
 
 ## Doctrine Governance
