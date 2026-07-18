@@ -219,7 +219,7 @@ func fetchLatestRelease() (*Release, error) {
 	client := &http.Client{Timeout: apiTimeout}
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating request: %w", err)
 	}
 	req.Header.Set("Accept", "application/vnd.github+json")
 	req.Header.Set("User-Agent", "moonbase-updater")
@@ -259,7 +259,7 @@ func downloadFile(url string, dest *os.File) error {
 	client := &http.Client{Timeout: downloadTimeout}
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("creating download request: %w", err)
 	}
 	req.Header.Set("User-Agent", "moonbase-updater")
 
@@ -324,13 +324,13 @@ func verifyChecksum(filePath, assetName, checksumURL string) error {
 	// Compute SHA256 of downloaded file
 	f, err := os.Open(filePath)
 	if err != nil {
-		return err
+		return fmt.Errorf("opening file for checksum: %w", err)
 	}
 	defer f.Close()
 
 	h := sha256.New()
 	if _, err := io.Copy(h, f); err != nil {
-		return err
+		return fmt.Errorf("reading file for checksum: %w", err)
 	}
 	actualHash := hex.EncodeToString(h.Sum(nil))
 
@@ -355,18 +355,18 @@ func listAssets(assets []Asset) string {
 func copyBinary(src, dst string, mode os.FileMode) error {
 	in, err := os.Open(src)
 	if err != nil {
-		return err
+		return fmt.Errorf("opening source %s: %w", src, err)
 	}
 	defer in.Close()
 
 	out, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, mode)
 	if err != nil {
-		return err
+		return fmt.Errorf("creating destination %s: %w", dst, err)
 	}
 	defer out.Close()
 
 	if _, err := io.Copy(out, in); err != nil {
-		return err
+		return fmt.Errorf("copying %s to %s: %w", src, dst, err)
 	}
 	return out.Close()
 }

@@ -53,17 +53,21 @@ moonbase status
 | `moonbase init` | Scaffold `.kiro/` in any project (specs, steering, agents) |
 | `moonbase deploy <n> [task]` | Deploy operative by numbuh (interactive kiro-cli session) |
 | `moonbase mission <task>` | Run full KND Council pipeline on a task |
-| `moonbase install [--all]` | Install agents to project's `.kiro/agents/` |
+| `moonbase mission --fast <task>` | Skip analysis/architecture, run implementation + QA only (use for trivial/well-specified tasks) |
+| `moonbase install [--all] [--global]` | Install agents to project's `.kiro/agents/` (or `~/.kiro/agents/` with `--global`) |
+| `moonbase setup` | Install agents globally to `~/.moonbase/agents/` |
 | `moonbase status` | Show environment health check |
 | `moonbase lint` | Validate all agent `.md` files |
 | `moonbase config` | Show current YAML configuration |
 | `moonbase list` | Show operative roster |
+| `moonbase guide [numbuh]` | Show usage guide for agents (aliases: `man`, `howto`) |
 | `moonbase history` | Show mission history (`--json`, `--all`, `--limit N`) |
 | `moonbase replay <id>` | Replay a previous mission (`--dry-run`) |
 | `moonbase export <id>` | Export mission details |
 | `moonbase snippet save <name>` | Save a prompt snippet from stdin |
 | `moonbase snippet list` | List saved snippets |
-| `moonbase help` | Operations manual |
+| `moonbase flywheel` | Show pipeline learning insights |
+| `moonbase version` | Print version information |
 
 **Pipe mode:**
 ```bash
@@ -163,7 +167,7 @@ moonbase/
 │   ├── agents/          ← YAML frontmatter parser + registry
 │   ├── pipeline/        ← Orchestrator, risk gate, triggers
 │   ├── discovery/       ← Project context (.kiro/specs, stack detection)
-│   ├── backend/         ← AI backend integrations (kiro-cli, clipboard)
+│   ├── backend/         ← AI backend integrations (kiro-cli, openai, anthropic, kimi, ollama, clipboard)
 │   ├── clipboard/       ← Cross-platform clipboard (macOS/Linux/Windows)
 │   ├── config/          ← YAML config (no secrets)
 │   ├── tui/             ← Bubbletea TUI (dashboard, pipeline, dossier)
@@ -203,6 +207,24 @@ When deployed, agents automatically find:
 - **Input validation** — agent IDs validated against `[a-zA-Z0-9-]`
 - **File permissions** — all user data written with `0600`/`0700`
 - **No secrets in config** — API keys come from environment variables only
+
+### Flywheel (Self-Improvement)
+
+Moonbase logs pipeline execution data to `~/.moonbase/flywheel.jsonl`.
+Over time, patterns emerge that reveal which agents struggle, which phases
+get reworked most, and where the pipeline bottlenecks.
+
+```bash
+moonbase flywheel          # Show learning insights
+```
+
+### Skills & Stored Prompts
+
+When `moonbase init` scaffolds a project, it creates:
+- `.kiro/skills/` — Domain-specific knowledge agents reference
+- `.kiro/prompts/` — Reusable named workflows
+
+Agents automatically discover and incorporate skills into their context.
 
 ---
 
@@ -245,7 +267,7 @@ git tag v1.4.0 && git push --tags
 | Language | Go 1.24 | Single binary, fast, cross-platform |
 | TUI | Bubbletea + Lipgloss | Elm architecture, terminal styling |
 | Agents | Markdown + YAML frontmatter | Portable, readable, versionable |
-| Backend | Kiro CLI (primary) | Tool execution, file access, multi-turn |
+| Backend | Kiro CLI (primary), OpenAI, Anthropic, Kimi, Ollama | Tool execution, API streaming, multi-turn |
 | Clipboard | pbcopy / xclip / xsel / wl-copy / clip | Cross-platform fallback |
 | CI | GitHub Actions | Automated quality gates |
 | Releases | goreleaser | Cross-platform binaries |

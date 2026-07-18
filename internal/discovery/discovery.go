@@ -13,11 +13,13 @@ import (
 
 // ProjectContext holds discovered information about the project an agent is working in.
 type ProjectContext struct {
-	Specs    []SpecFile    // Spec documents found in .kiro/specs/{feature}/
+	Specs    []SpecFile     // Spec documents found in .kiro/specs/{feature}/
 	Steering []SteeringFile // Steering rules from .kiro/steering/ (manual-inclusion files excluded)
-	Stack    StackInfo     // Detected technology stack from build config files
-	README   string        // Project README content (truncated to 2000 chars)
-	RootDir  string        // Absolute path to the project root directory
+	Skills   []SkillFile    // Skill definitions from .kiro/skills/
+	Prompts  []PromptFile   // Stored prompts from .kiro/prompts/
+	Stack    StackInfo      // Detected technology stack from build config files
+	README   string         // Project README content (truncated to 2000 chars)
+	RootDir  string         // Absolute path to the project root directory
 }
 
 // SpecFile represents a spec document from .kiro/specs/{feature}/.
@@ -33,6 +35,20 @@ type SteeringFile struct {
 	Name    string // Filename without extension (e.g., "dev-rules")
 	Path    string // Absolute file path
 	Content string // Full file content (including frontmatter if present)
+}
+
+// SkillFile represents a skill/knowledge document from .kiro/skills/.
+type SkillFile struct {
+	Name    string // Skill name (derived from filename or directory)
+	Path    string // Absolute file path
+	Content string // Full file content
+}
+
+// PromptFile represents a stored prompt from .kiro/prompts/.
+type PromptFile struct {
+	Name    string // Prompt name (derived from filename)
+	Path    string // Absolute file path
+	Content string // Full file content
 }
 
 // StackInfo holds detected technology stack information.
@@ -61,6 +77,18 @@ func Discover(projectDir string) (*ProjectContext, error) {
 		ctx.Steering = steering
 	}
 
+	// Discover skills
+	skills, err := discoverSkills(projectDir)
+	if err == nil {
+		ctx.Skills = skills
+	}
+
+	// Discover prompts
+	prompts, err := discoverPrompts(projectDir)
+	if err == nil {
+		ctx.Prompts = prompts
+	}
+
 	// Detect stack
 	ctx.Stack = detectStack(projectDir)
 
@@ -78,6 +106,16 @@ func (pc *ProjectContext) HasSpecs() bool {
 // HasSteering returns true if any steering rules were found.
 func (pc *ProjectContext) HasSteering() bool {
 	return len(pc.Steering) > 0
+}
+
+// HasSkills returns true if any skill files were found.
+func (pc *ProjectContext) HasSkills() bool {
+	return len(pc.Skills) > 0
+}
+
+// HasPrompts returns true if any stored prompts were found.
+func (pc *ProjectContext) HasPrompts() bool {
+	return len(pc.Prompts) > 0
 }
 
 // Summary returns a brief text summary of what was discovered.
@@ -100,6 +138,12 @@ func (pc *ProjectContext) Summary() string {
 			names = append(names, s.Name)
 		}
 		parts = append(parts, fmt.Sprintf("Steering: %s", strings.Join(names, ", ")))
+	}
+	if pc.HasSkills() {
+		parts = append(parts, fmt.Sprintf("Skills: %d", len(pc.Skills)))
+	}
+	if pc.HasPrompts() {
+		parts = append(parts, fmt.Sprintf("Prompts: %d", len(pc.Prompts)))
 	}
 	if pc.Stack.Language != "" {
 		parts = append(parts, fmt.Sprintf("Stack: %s/%s", pc.Stack.Language, pc.Stack.BuildTool))
@@ -203,4 +247,98 @@ func readREADME(projectDir string) string {
 	}
 
 	return ""
+}
+
+// discoverSkills finds skill/knowledge files in .kiro/skills/.
+// It loads SKILL.md from the skills directory itself, and any *.md files
+// from subdirectories within .kiro/skills/.
+func discoverSkills(projectDir string) ([]SkillFile, error) {
+	skillsDir := filepath.Join(projectDir, ".kiro", "skills")
+	if _, err := os.Stat(skillsDir); os.IsNotExist(err) {
+		return nil, nil
+	}
+
+	var skills []SkillFile
+
+	entries, err := os.ReadDir(skillsDir)
+	if err != nil {
+		return nil, fmt.Errorf("reading skills dir: %w", err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			// Read *.md files from subdirectories
+			subDir := filepath.Join(skillsDir, entry.Name())
+			subEntries, err := os.ReadDir(subDir)
+			if err != nil {
+				continue
+			}
+			for _, subEntry := range subEntries {
+				if subEntry.IsDir() || !strings.HasSuffix(strings.ToLower(subEntry.Name()), ".md") {
+					continue
+				}
+				path := filepath.Join(subDir, subEntry.Name())
+				content, err := os.ReadFile(path)
+				if err != nil {
+					continue
+				}
+				name := entry.Name() + "/" + strings.TrimSuffix(subEntry.Name(), ".md")
+				skills = append(skills, SkillFile{
+					Name:    name,
+					Path:    path,
+					Content: string(content),
+				})
+			}
+		} else if strings.ToUpper(entry.Name()) == "SKILL.MD" || strings.HasSuffix(strings.ToLower(entry.Name()), ".md") {
+			// Load SKILL.md or any top-level .md files
+			path := filepath.Join(skillsDir, entry.Name())
+			content, err := os.ReadFile(path)
+			if err != nil {
+				continue
+			}
+			name := strings.TrimSuffix(entry.Name(), ".md")
+			skills = append(skills, SkillFile{
+				Name:    name,
+				Path:    path,
+				Content: string(content),
+			})
+		}
+	}
+
+	return skills, nil
+}
+
+// discoverPrompts finds stored prompt files in .kiro/prompts/.
+// It loads all *.md files from the prompts directory.
+func discoverPrompts(projectDir string) ([]PromptFile, error) {
+	promptsDir := filepath.Join(projectDir, ".kiro", "prompts")
+	if _, err := os.Stat(promptsDir); os.IsNotExist(err) {
+		return nil, nil
+	}
+
+	var prompts []PromptFile
+
+	entries, err := os.ReadDir(promptsDir)
+	if err != nil {
+		return nil, fmt.Errorf("reading prompts dir: %w", err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(strings.ToLower(entry.Name()), ".md") {
+			continue
+		}
+		path := filepath.Join(promptsDir, entry.Name())
+		content, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+		name := strings.TrimSuffix(entry.Name(), ".md")
+		prompts = append(prompts, PromptFile{
+			Name:    name,
+			Path:    path,
+			Content: string(content),
+		})
+	}
+
+	return prompts, nil
 }

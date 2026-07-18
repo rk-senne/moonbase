@@ -19,7 +19,7 @@ var (
 // frontmatterDelim is the YAML frontmatter delimiter
 var frontmatterDelim = []byte("---")
 
-// SplitFrontmatter splits a markdown file with YAML frontmatter into its parts.
+// splitFrontmatter splits a markdown file with YAML frontmatter into its parts.
 // Expected format:
 //
 //	---
@@ -28,7 +28,7 @@ var frontmatterDelim = []byte("---")
 //	markdown body
 //
 // Returns (yamlBytes, bodyBytes, error).
-func SplitFrontmatter(content []byte) ([]byte, []byte, error) {
+func splitFrontmatter(content []byte) ([]byte, []byte, error) {
 	content = bytes.TrimLeft(content, "\n\r")
 
 	// Must start with ---
@@ -48,16 +48,18 @@ func SplitFrontmatter(content []byte) ([]byte, []byte, error) {
 
 	// Find closing delimiter (must be at start of a line)
 	closeIdx := bytes.Index(rest, append([]byte("\n"), frontmatterDelim...))
+	skipBytes := 1 // skip the \n before ---
 	if closeIdx == -1 {
 		// Try \r\n
 		closeIdx = bytes.Index(rest, append([]byte("\r\n"), frontmatterDelim...))
+		skipBytes = 2 // skip the \r\n before ---
 		if closeIdx == -1 {
 			return nil, nil, ErrMalformedFrontmatter
 		}
 	}
 
 	yamlBytes := rest[:closeIdx]
-	remaining := rest[closeIdx+1:] // skip the \n before ---
+	remaining := rest[closeIdx+skipBytes:] // skip the line ending before ---
 
 	// Skip the closing --- and any trailing newline
 	remaining = bytes.TrimPrefix(remaining, frontmatterDelim)
@@ -79,7 +81,7 @@ func ParseAgentFile(path string) (*Agent, error) {
 		return nil, fmt.Errorf("reading agent file %s: %w", path, err)
 	}
 
-	yamlBytes, body, err := SplitFrontmatter(content)
+	yamlBytes, body, err := splitFrontmatter(content)
 	if err != nil {
 		return nil, fmt.Errorf("parsing frontmatter in %s: %w", path, err)
 	}

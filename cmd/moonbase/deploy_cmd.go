@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/charmbracelet/huh"
 	"github.com/f5508037/moonbase/internal/agents"
@@ -10,6 +11,7 @@ import (
 )
 
 var deployTask string
+var deployCmux bool
 
 var deployCmd = &cobra.Command{
 	Use:     "deploy [numbuh] [task...]",
@@ -32,15 +34,21 @@ var deployCmd = &cobra.Command{
 			if numbuh == "" {
 				return // cancelled
 			}
-			runDeploy(numbuh)
+			runDeploy(numbuh, "")
 		} else {
-			runDeploy(args[0])
+			// args[0] is numbuh, args[1:] is the task
+			task := ""
+			if len(args) > 1 {
+				task = strings.Join(args[1:], " ")
+			}
+			runDeploy(args[0], task)
 		}
 	},
 }
 
 func init() {
 	deployCmd.Flags().StringVarP(&deployTask, "task", "t", "", "task description for the operative")
+	deployCmd.Flags().BoolVar(&deployCmux, "cmux", false, "deploy agent in a cmux split pane")
 }
 
 // selectAgent shows an interactive huh select form to pick an agent.

@@ -15,8 +15,8 @@ import (
 
 func TestDetectAll_Returns6Backends(t *testing.T) {
 	all := DetectAll()
-	if len(all) != 6 {
-		t.Errorf("expected 6 backends, got %d", len(all))
+	if len(all) != 7 {
+		t.Errorf("expected 7 backends, got %d", len(all))
 	}
 }
 
@@ -62,10 +62,10 @@ func TestPreferred_NeverNil(t *testing.T) {
 }
 
 func TestDetectAvailable_NeverEmpty(t *testing.T) {
-	// DetectAll always returns 6 backends (some may not be available)
+	// DetectAll always returns 7 backends (some may not be available)
 	all := DetectAll()
-	if len(all) != 6 {
-		t.Errorf("expected 6 backends, got %d", len(all))
+	if len(all) != 7 {
+		t.Errorf("expected 7 backends, got %d", len(all))
 	}
 }
 

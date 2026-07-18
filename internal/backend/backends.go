@@ -13,14 +13,23 @@ import (
 )
 
 // Kiro deploys agents via kiro-cli
-type Kiro struct{}
+type Kiro struct{
+	// TrustTools enables --trust-all-tools and --no-interactive for headless execution.
+	TrustTools bool
+}
 
 func (k *Kiro) Name() string   { return "kiro-cli" }
 func (k *Kiro) Available() bool { _, err := exec.LookPath("kiro-cli"); return err == nil }
 
 func (k *Kiro) Deploy(agent agents.Agent, context *discovery.ProjectContext, task string) (string, error) {
 	composed := discovery.ComposePrompt(agent.Prompt, context, task)
+	return k.DeployRaw(composed, task)
+}
 
+// DeployRaw sends a pre-composed prompt to kiro-cli without additional prompt composition.
+// Use this when the caller has already built the full prompt (e.g., mission pipeline
+// which injects per-phase context like file contents and git diffs).
+func (k *Kiro) DeployRaw(composed string, task string) (string, error) {
 	// Write the composed prompt to a temp file for kiro-cli to consume
 	tmpFile, err := os.CreateTemp("", "moonbase-prompt-*.md")
 	if err != nil {
@@ -35,10 +44,15 @@ func (k *Kiro) Deploy(agent agents.Agent, context *discovery.ProjectContext, tas
 	tmpFile.Close()
 
 	// Execute kiro-cli with the prompt
-	cmd := exec.Command("kiro-cli", "chat",
+	args := []string{"chat",
 		"--system-prompt", tmpFile.Name(),
 		"--message", task,
-	)
+	}
+	// Enhancement 1: headless execution flags for pipeline/pipe mode
+	if k.TrustTools {
+		args = append(args, "--trust-all-tools", "--no-interactive")
+	}
+	cmd := exec.Command("kiro-cli", args...)
 	// SECURITY: SafeEnv prevents leaking user's full environment to child process.
 	cmd.Env = SafeEnv()
 
@@ -166,9 +180,10 @@ func truncate(s string, maxLen int) string {
 // All child process execution (kiro-cli, codex, ollama) MUST use SafeEnv().
 // This is the primary defense against env var leakage. The allowlist contains:
 // - System vars (HOME, PATH, USER, TERM, LANG, SHELL) — needed for basic operation
-// - API keys (ANTHROPIC_API_KEY, OPENAI_API_KEY) — needed by backends
+// - API keys (ANTHROPIC_API_KEY, OPENAI_API_KEY, MOONSHOT_API_KEY) — needed by backends
 // - OPENAI_BASE_URL — needed for OpenAI-compatible endpoints (Azure, LM Studio, Ollama)
 // - OPENAI_MODEL — needed for model selection on OpenAI-compatible backends
+// - KIMI_MODEL — needed for model selection on Kimi/Moonshot backend
 // - OLLAMA_HOST — needed for custom ollama endpoint
 //
 // NEVER add: AWS_*, DATABASE_*, GITHUB_TOKEN, SSH_*, or other sensitive vars.
@@ -176,6 +191,7 @@ func truncate(s string, maxLen int) string {
 func SafeEnv() []string {
 	allowed := []string{"HOME", "PATH", "USER", "TERM", "LANG", "SHELL",
 		"ANTHROPIC_API_KEY", "OPENAI_API_KEY", "OPENAI_BASE_URL", "OPENAI_MODEL",
+		"MOONSHOT_API_KEY", "KIMI_MODEL",
 		"OLLAMA_HOST"}
 	var env []string
 	for _, key := range allowed {

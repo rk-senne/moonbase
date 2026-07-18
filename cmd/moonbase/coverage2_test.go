@@ -368,7 +368,7 @@ func TestRunDeploy_KiroCLIInPathButFails(t *testing.T) {
 	os.Setenv("PATH", tmpBin)
 
 	output := captureStdout(func() {
-		runDeploy("1")
+		runDeploy("1", "")
 	})
 
 	// Should fall through to clipboard fallback since exec fails
@@ -408,7 +408,7 @@ func TestRunDeploy_WithLocalKiroAgent(t *testing.T) {
 	os.Setenv("PATH", tmpBin)
 
 	output := captureStdout(func() {
-		runDeploy("3")
+		runDeploy("3", "")
 	})
 
 	// Should mention Deploying
@@ -441,7 +441,7 @@ func TestRunDeploy_NoClipboardNoKiroCLI(t *testing.T) {
 	os.Setenv("PATH", "/nonexistent-path-xyz")
 
 	output := captureStdout(func() {
-		runDeploy("4")
+		runDeploy("4", "")
 	})
 
 	// Should still produce output (either clipboard success on macOS with pbcopy
@@ -1117,7 +1117,7 @@ func TestRunDeploy_ClipboardNotAvailable(t *testing.T) {
 	os.Setenv("PATH", "")
 
 	output := captureStdout(func() {
-		runDeploy("2")
+		runDeploy("2", "")
 	})
 
 	if !strings.Contains(output, "Deploying") {
@@ -1265,7 +1265,7 @@ func TestRunDeploy_NoAgentsDir(t *testing.T) {
 	os.Args = []string{"moonbase", "deploy", "1"}
 
 	code := expectExit(t, func() {
-		runDeploy("1")
+		runDeploy("1", "")
 	})
 	if code != 1 {
 		t.Errorf("expected exit 1 when no agents dir, got %d", code)
@@ -1400,7 +1400,7 @@ func TestRunDeploy_AgentsDirNotFound_Exit(t *testing.T) {
 	os.Args = []string{"moonbase", "deploy", "1"}
 
 	code := expectExit(t, func() {
-		runDeploy("1")
+		runDeploy("1", "")
 	})
 	if code != 1 {
 		t.Errorf("expected exit 1, got %d", code)
@@ -1576,7 +1576,7 @@ func TestDeployCmd_NonTerminalNoArgs(t *testing.T) {
 	// We can't easily mock isTerminal(), but we can at least test
 	// that runDeploy with empty string is handled
 	code := expectExit(t, func() {
-		runDeploy("")
+		runDeploy("", "")
 	})
 	// Empty string should fail validation
 	if code != 1 {
@@ -1697,7 +1697,7 @@ func TestRunDeploy_InvalidID_WithAgentsDir(t *testing.T) {
 
 	// Now runDeploy will pass agentsDir() but fail at isValidAgentID
 	code := expectExit(t, func() {
-		runDeploy("../../../etc/passwd")
+		runDeploy("../../../etc/passwd", "")
 	})
 	if code != 1 {
 		t.Errorf("expected exit 1 for invalid agent ID, got %d", code)
@@ -1719,7 +1719,7 @@ func TestRunDeploy_InvalidID_UnicodeWithAgentsDir(t *testing.T) {
 	os.Args = []string{"moonbase", "deploy", "münchen"}
 
 	code := expectExit(t, func() {
-		runDeploy("münchen")
+		runDeploy("münchen", "")
 	})
 	if code != 1 {
 		t.Errorf("expected exit 1 for unicode agent ID, got %d", code)
@@ -1810,7 +1810,7 @@ func TestRunDeploy_ClipboardFails_ShowsFallbackMessage(t *testing.T) {
 	os.Setenv("PATH", tmpBin)
 
 	output := captureStdout(func() {
-		runDeploy("1")
+		runDeploy("1", "")
 	})
 
 	// After exec fails and clipboard fails, should show either:

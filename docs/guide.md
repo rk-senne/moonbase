@@ -296,10 +296,29 @@ moonbase lint      # check agent files are valid
 ```
 
 ### "No backend available"
-Moonbase needs kiro-cli for interactive sessions. Without it, prompts are copied to clipboard.
+Moonbase supports multiple AI backends. Set up at least one:
 ```bash
-which kiro-cli     # check if installed
+# Option 1: kiro-cli (preferred for interactive sessions)
+which kiro-cli
+
+# Option 2: OpenAI-compatible API
+export OPENAI_API_KEY=sk-...
+export OPENAI_MODEL=gpt-4o              # optional (default: gpt-4o)
+
+# Option 3: Anthropic
+export ANTHROPIC_API_KEY=sk-ant-...
+
+# Option 4: Kimi (Moonshot AI) — OpenAI-compatible, 1M context
+export MOONSHOT_API_KEY=sk-...
+export KIMI_MODEL=kimi-k3               # optional (default: kimi-k3)
+# Models: kimi-k3, kimi-k2.7-code, kimi-k2.6, kimi-k2.5
+
+# Option 5: Ollama (local)
+ollama pull llama3.1
+
+# Fallback: clipboard (always available — copies prompt for paste into any AI)
 ```
+Without any backend, prompts are copied to clipboard.
 
 ### "No project context"
 Agents work best with context. Run `moonbase init` in your project to create `.kiro/`.

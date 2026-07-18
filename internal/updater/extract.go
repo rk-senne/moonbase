@@ -19,7 +19,7 @@ import (
 func extractBinary(archivePath string) (string, error) {
 	f, err := os.Open(archivePath)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("opening archive: %w", err)
 	}
 	defer f.Close()
 
@@ -34,7 +34,7 @@ func extractBinary(archivePath string) (string, error) {
 	// Create temp dir for extraction
 	tmpDir, err := os.MkdirTemp("", "moonbase-extract-*")
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("creating temp directory: %w", err)
 	}
 
 	for {
@@ -74,7 +74,7 @@ func extractBinary(archivePath string) (string, error) {
 		dest, err := os.OpenFile(destPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o755)
 		if err != nil {
 			os.RemoveAll(tmpDir)
-			return "", err
+			return "", fmt.Errorf("creating extraction destination: %w", err)
 		}
 
 		written, err := io.Copy(dest, io.LimitReader(tr, maxBinarySize))

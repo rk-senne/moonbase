@@ -19,7 +19,7 @@ func TestView_Comms(t *testing.T) {
 	app.width = 120
 	app.height = 40
 	app.view = ViewComms
-	app.comms = NewCommsState("numbuh-1", "system prompt", 80, 40)
+	app.comms = newCommsState("numbuh-1", "system prompt", 80, 40)
 
 	output := app.View()
 	if output == "" {
@@ -46,7 +46,7 @@ func TestView_Docs(t *testing.T) {
 	app.width = 120
 	app.height = 40
 	app.view = ViewDocs
-	app.docs = NewDocsState(120, 40)
+	app.docs = newDocsState(120, 40)
 
 	output := app.View()
 	if output == "" {
@@ -60,7 +60,7 @@ func TestView_Projects(t *testing.T) {
 	app.width = 120
 	app.height = 40
 	app.view = ViewProjects
-	app.projectNav = NewProjectsState()
+	app.projectNav = newProjectsState()
 
 	output := app.View()
 	if output == "" {
@@ -131,7 +131,7 @@ func TestDocsKeys_Navigation(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDocs
 	app.ready = true
-	app.docs = NewDocsState(120, 40)
+	app.docs = newDocsState(120, 40)
 
 	if app.docs == nil || len(app.docs.files) == 0 {
 		t.Skip("no docs files available")
@@ -365,7 +365,7 @@ func TestAbortPendingTimedOut(t *testing.T) {
 // === FileBrowser methods ===
 
 func TestFileBrowser_UpDown(t *testing.T) {
-	fb := NewFileBrowser()
+	fb := newFileBrowser()
 	if len(fb.entries) == 0 {
 		t.Skip("no files in CWD for browser test")
 	}
@@ -388,7 +388,7 @@ func TestFileBrowser_UpDown(t *testing.T) {
 }
 
 func TestFileBrowser_SelectedPath(t *testing.T) {
-	fb := NewFileBrowser()
+	fb := newFileBrowser()
 	if len(fb.entries) == 0 {
 		t.Skip("no files")
 	}
@@ -400,7 +400,7 @@ func TestFileBrowser_SelectedPath(t *testing.T) {
 }
 
 func TestFileBrowser_SelectedIsFile(t *testing.T) {
-	fb := NewFileBrowser()
+	fb := newFileBrowser()
 	if len(fb.entries) == 0 {
 		t.Skip("no files")
 	}
@@ -412,7 +412,7 @@ func TestFileBrowser_EnterAndBack(t *testing.T) {
 	origDir, _ := os.Getwd()
 	defer os.Chdir(origDir)
 
-	fb := NewFileBrowser()
+	fb := newFileBrowser()
 	if len(fb.entries) == 0 {
 		t.Skip("no entries")
 	}

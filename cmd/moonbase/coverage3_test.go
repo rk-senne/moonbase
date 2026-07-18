@@ -506,7 +506,7 @@ func TestRunDeploy_NoKiroCLI_ClipboardSuccess(t *testing.T) {
 	os.Setenv("PATH", "/usr/bin:/bin")
 
 	output := captureStdout(func() {
-		runDeploy("1")
+		runDeploy("1", "")
 	})
 
 	// Should fall through to clipboard fallback and succeed
@@ -553,7 +553,7 @@ func TestRunDeploy_NoKiroCLI_NoTask_ClipboardSuccess(t *testing.T) {
 	os.Setenv("PATH", "/usr/bin:/bin")
 
 	output := captureStdout(func() {
-		runDeploy("2")
+		runDeploy("2", "")
 	})
 
 	// Should succeed with clipboard, no Task line shown

@@ -31,14 +31,37 @@ type Config struct {
 	Theme          string   `yaml:"theme"`                 // TUI color theme name
 	AgentsDir      string   `yaml:"agents_dir,omitempty"`  // Custom agents directory (empty = auto-detect)
 	AgentOrder     []string `yaml:"agent_order,omitempty"` // Display order for agents in TUI sidebar
+
+	// Pipeline execution options (Enhancement 1, 2, 7)
+	TrustTools      bool   `yaml:"trust_tools,omitempty"`      // Pass --trust-all-tools to kiro-cli (enables headless execution)
+	PipelineBackend string `yaml:"pipeline_backend,omitempty"` // Backend for analysis phases (anthropic/openai); kiro-cli used for implementation
+	FastThreshold   int    `yaml:"fast_threshold,omitempty"`   // Word count below which --fast mode auto-engages (0=disabled)
+
+	// Pipeline orchestration options.
+	// These control resilience and observability for multi-phase mission execution.
+	// Derived from production agent patterns (LangGraph state machines, AWS AgentCore).
+	PhaseTimeout  int  `yaml:"phase_timeout_seconds,omitempty"` // Max seconds per phase (default 300 = 5 min)
+	MaxOutputSize int  `yaml:"max_output_size,omitempty"`       // Max output bytes per phase (default 100000)
+	EnableTrace   bool `yaml:"enable_trace,omitempty"`          // Enable trace ID generation for pipeline runs
+	MaxRetries    int  `yaml:"max_retries,omitempty"`           // Max retries per phase before failure (default 1)
+
+	// cmux integration (manaflow-ai/cmux macOS terminal for AI agents).
+	UseCmux bool `yaml:"use_cmux,omitempty"` // Auto-enable cmux features when true (notifications, split panes)
 }
 
 // DefaultConfig returns a Config with sensible defaults.
 func DefaultConfig() Config {
 	return Config{
-		DefaultBackend: "kiro-cli",
-		Theme:          "moonbase",
-		AgentsDir:      "",
+		DefaultBackend:  "kiro-cli",
+		Theme:           "moonbase",
+		AgentsDir:       "",
+		TrustTools:      true, // Enable headless execution by default
+		PipelineBackend: "",   // Empty = use default_backend for all phases
+		FastThreshold:   0,    // 0 = disabled (user must pass --fast explicitly)
+		PhaseTimeout:    300,  // 5 minutes per phase
+		MaxOutputSize:   100000, // 100KB max output per phase
+		EnableTrace:     true,   // Trace IDs enabled by default for observability
+		MaxRetries:      1,      // One retry per phase before failure
 		AgentOrder: []string{
 			"numbuh-0", "numbuh-1", "numbuh-2", "numbuh-3", "numbuh-4", "numbuh-5",
 			"numbuh-362", "numbuh-274", "numbuh-86", "numbuh-999", "numbuh-13",

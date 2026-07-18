@@ -1,10 +1,11 @@
 package agents
 
 import (
-	"log"
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/f5508037/moonbase/internal/logging"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -63,6 +64,35 @@ func (r *Registry) LoadMultipleDirs(dirs ...string) tea.Cmd {
 		r.agents = merged
 		return AgentsLoadedMsg{Agents: merged}
 	}
+}
+
+// LoadSync loads agents from the registry's directory synchronously.
+// It stores the loaded agents in the registry and returns any error encountered.
+// This is the preferred method for non-TUI consumers that don't need tea.Cmd.
+func (r *Registry) LoadSync() error {
+	agents, err := loadFromDir(r.dir)
+	if err != nil {
+		return err
+	}
+	for i := range agents {
+		if agents[i].Source == "" {
+			agents[i].Source = SourceBuiltIn
+		}
+	}
+	r.agents = agents
+	return nil
+}
+
+// LoadMultipleDirsSync loads agents from multiple directories and merges them synchronously.
+// Priority order: later directories override earlier ones (same agent name).
+// This is the preferred method for non-TUI consumers that don't need tea.Cmd.
+func (r *Registry) LoadMultipleDirsSync(dirs ...string) error {
+	merged, err := loadAndMergeDirs(dirs...)
+	if err != nil {
+		return err
+	}
+	r.agents = merged
+	return nil
 }
 
 // ReloadMultipleDirs synchronously reloads agents from multiple directories.
@@ -193,7 +223,9 @@ func loadAndMergeDirs(dirs ...string) ([]Agent, error) {
 			// Log warning if overriding a pipeline agent
 			if existing, exists := agentMap[name]; exists {
 				if existing.IsPipeline() && source != SourceBuiltIn {
-					log.Printf("WARNING: %s agent '%s' overrides built-in pipeline agent", source, name)
+					if logging.Logger != nil {
+						logging.Logger.Warn("agent overrides built-in pipeline agent", "source", source, "agent", name)
+					}
 				}
 			}
 			agentMap[name] = agents[j]
@@ -227,7 +259,9 @@ func loadFromDir(dir string) ([]Agent, error) {
 		// Check if old .json files exist and warn
 		jsonFiles, _ := filepath.Glob(filepath.Join(dir, "*.json"))
 		if len(jsonFiles) > 0 {
-			log.Printf("WARNING: Found %d .json agent files but no .md files. JSON format is deprecated. Convert to .md with YAML frontmatter.", len(jsonFiles))
+			if logging.Logger != nil {
+				logging.Logger.Warn("found .json agent files but no .md files; JSON format is deprecated", "count", len(jsonFiles))
+			}
 		}
 		return nil, nil
 	}
@@ -235,7 +269,9 @@ func loadFromDir(dir string) ([]Agent, error) {
 	for _, file := range mdFiles {
 		agent, err := ParseAgentFile(file)
 		if err != nil {
-			log.Printf("WARNING: skipping %s: %v", filepath.Base(file), err)
+			if logging.Logger != nil {
+				logging.Logger.Warn("skipping agent file", "file", filepath.Base(file), "error", err)
+			}
 			continue
 		}
 		agents = append(agents, *agent)

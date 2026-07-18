@@ -151,8 +151,8 @@ func (a *App) startNextPhase() tea.Cmd {
 		)
 	}
 
-	// Start the phase
-	phase.Status = pipeline.StatusRunning
+	// Start the phase (records start time for elapsed tracking)
+	phase.StartPhase()
 	a.pipelineRunning = true
 
 	if logging.Logger != nil {
@@ -201,14 +201,29 @@ func (a *App) handlePhaseResult(msg PhaseResultMsg) tea.Cmd {
 		return nil
 	}
 
-	// Phase succeeded — record output
+	// Phase succeeded — record output and mark completion time
 	if logging.Logger != nil {
 		logging.Logger.Info("pipeline phase complete",
 			"phase", msg.Phase,
 			"elapsed", msg.Elapsed.String(),
 		)
 	}
+	// Mark phase as complete with timing
+	if a.pipelineState != nil && a.pipelineState.CurrentPhase() != nil {
+		a.pipelineState.CurrentPhase().CompletePhase()
+	}
 	a.pipelineState.Context.RecordPhase(msg.Phase, msg.Output)
+
+	// Send cmux notification on phase completion
+	if backend.CmuxAvailable() {
+		phase := a.pipelineState.CurrentPhase()
+		if phase != nil {
+			backend.CmuxNotify(
+				fmt.Sprintf("Phase %d Complete", msg.Phase),
+				fmt.Sprintf("%s — %s", phase.Name, phase.Operative),
+			)
+		}
+	}
 
 	// Show summary in chat (truncated)
 	summary := strings.TrimSpace(msg.Output)
@@ -232,6 +247,10 @@ func (a *App) handlePhaseResult(msg PhaseResultMsg) tea.Cmd {
 			a.pipelineChat = append(a.pipelineChat,
 				PipelineMsg{"", "🛑 CRITICAL — Pipeline stopped. Human intervention required."},
 			)
+			// Notify via cmux on critical risk
+			if backend.CmuxAvailable() {
+				backend.CmuxNotify("🛑 CRITICAL Risk", "Pipeline stopped. Human intervention required.")
+			}
 			return nil
 		}
 		if err != nil {
@@ -256,6 +275,10 @@ func (a *App) handlePhaseResult(msg PhaseResultMsg) tea.Cmd {
 			PipelineMsg{"", "━━━ MISSION COMPLETE ━━━"},
 		)
 		a.addIntel("Mission complete: %s", a.pipelineState.Task)
+		// Notify via cmux on mission completion
+		if backend.CmuxAvailable() {
+			backend.CmuxNotify("━━━ MISSION COMPLETE ━━━", a.pipelineState.Task)
+		}
 		return nil
 	}
 

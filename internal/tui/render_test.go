@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestRenderMarkdown(t *testing.T) {
+func Test_renderMarkdown(t *testing.T) {
 	tests := []struct {
 		name  string
 		input string
@@ -23,7 +23,7 @@ func TestRenderMarkdown(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := RenderMarkdown(tt.input, tt.width)
+			result := renderMarkdown(tt.input, tt.width)
 			// Should not panic and should return something
 			if tt.input == "" && strings.TrimSpace(result) != "" {
 				// Empty input may produce whitespace from glamour, that's OK
@@ -35,7 +35,7 @@ func TestRenderMarkdown(t *testing.T) {
 	}
 }
 
-func TestRenderMarkdown_Fallback(t *testing.T) {
+func Test_renderMarkdown_Fallback(t *testing.T) {
 	// Edge cases that shouldn't crash
 	edgeCases := []string{
 		strings.Repeat("x", 10000),            // very long string
@@ -47,7 +47,7 @@ func TestRenderMarkdown_Fallback(t *testing.T) {
 	}
 
 	for i, input := range edgeCases {
-		result := RenderMarkdown(input, 80)
+		result := renderMarkdown(input, 80)
 		// Just ensure no panic — result can be anything
 		_ = result
 		if i < 0 {

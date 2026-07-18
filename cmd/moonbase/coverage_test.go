@@ -321,7 +321,7 @@ func TestRunInstall_GlobalFlag(t *testing.T) {
 
 func TestRunDeploy_InvalidID(t *testing.T) {
 	code := expectExit(t, func() {
-		runDeploy("../../../etc/passwd")
+		runDeploy("../../../etc/passwd", "")
 	})
 	if code != 1 {
 		t.Errorf("expected exit code 1 for invalid ID, got %d", code)
@@ -339,7 +339,7 @@ func TestRunDeploy_AgentNotFound(t *testing.T) {
 	os.Chdir(tmpDir)
 
 	code := expectExit(t, func() {
-		runDeploy("99")
+		runDeploy("99", "")
 	})
 	if code != 1 {
 		t.Errorf("expected exit code 1 for missing agent, got %d", code)
@@ -366,7 +366,7 @@ func TestRunDeploy_ValidAgent_ClipboardFallback(t *testing.T) {
 	defer os.Setenv("PATH", origPath)
 
 	output := captureStdout(func() {
-		runDeploy("1")
+		runDeploy("1", "")
 	})
 	if !strings.Contains(output, "Deploying") {
 		t.Errorf("expected 'Deploying' in output, got:\n%s", output)
@@ -392,7 +392,7 @@ func TestRunDeploy_WithTask(t *testing.T) {
 	defer os.Setenv("PATH", origPath)
 
 	output := captureStdout(func() {
-		runDeploy("4")
+		runDeploy("4", "")
 	})
 	if !strings.Contains(output, "Deploying") {
 		t.Errorf("expected 'Deploying' in output, got:\n%s", output)
@@ -606,7 +606,7 @@ func TestRunDeploy_Council(t *testing.T) {
 	defer os.Setenv("PATH", origPath)
 
 	output := captureStdout(func() {
-		runDeploy("council")
+		runDeploy("council", "")
 	})
 	if !strings.Contains(output, "Deploying") && !strings.Contains(output, "knd-council") {
 		t.Errorf("expected deploy output for council, got:\n%s", output)
@@ -633,7 +633,7 @@ func TestRunDeploy_SectorZ(t *testing.T) {
 	defer os.Setenv("PATH", origPath)
 
 	output := captureStdout(func() {
-		runDeploy("z")
+		runDeploy("z", "")
 	})
 	if !strings.Contains(output, "Deploying") && !strings.Contains(output, "sector-z") {
 		t.Errorf("expected deploy output for sector-z, got:\n%s", output)
@@ -663,7 +663,7 @@ func TestRunDeploy_ProjectContextIntegration(t *testing.T) {
 	defer os.Setenv("PATH", origPath)
 
 	output := captureStdout(func() {
-		runDeploy("5")
+		runDeploy("5", "")
 	})
 	if !strings.Contains(output, "Deploying") {
 		t.Errorf("expected 'Deploying' in output, got:\n%s", output)

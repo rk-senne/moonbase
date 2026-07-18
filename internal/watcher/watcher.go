@@ -1,6 +1,7 @@
 package watcher
 
 import (
+	"fmt"
 	"io/fs"
 	"log/slog"
 	"os"
@@ -80,7 +81,7 @@ func (w *Watcher) addRecursive(dir string, depth int) error {
 	}
 
 	if err := w.w.Add(dir); err != nil {
-		return err
+		return fmt.Errorf("watching directory %s: %w", dir, err)
 	}
 	w.dirCount++
 
@@ -242,7 +243,10 @@ func (w *Watcher) relativePath(path string) string {
 
 // Watch adds an additional directory to the watcher (explicit root addition).
 func (w *Watcher) Watch(dir string) error {
-	return w.w.Add(dir)
+	if err := w.w.Add(dir); err != nil {
+		return fmt.Errorf("watching directory %s: %w", dir, err)
+	}
+	return nil
 }
 
 func (w *Watcher) Recent() []FileEvent {

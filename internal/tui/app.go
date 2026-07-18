@@ -120,6 +120,8 @@ type App struct {
 	fileBrowser     *FileBrowser
 	browsing        bool // true = file browser mode, false = terminal mode
 	pipelineRunning bool // prevents double-dispatch of pipeline phases
+	toolCache       map[string]bool // cached exec.LookPath results (refreshed on timer)
+	toolCacheTime   time.Time       // last time toolCache was refreshed
 	streamCh        <-chan chat.StreamChunk // active stream channel for continued polling
 	pipelineCtx     context.Context    // context for active pipeline execution
 	cancelPipeline  context.CancelFunc // cancels the active pipeline context
@@ -222,8 +224,10 @@ func NewApp() App {
 		ctx:          platform.Detect(),
 		termInput:    ti2,
 		cwd:          cwd,
-		fileBrowser:  NewFileBrowser(),
+		fileBrowser:  newFileBrowser(),
 		browsing:     true, // start in file browser mode
+		toolCache:    refreshToolCache(),
+		toolCacheTime: time.Now(),
 	}
 }
 
@@ -267,6 +271,11 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case clockTickMsg:
 		a.clock = time.Time(msg).Format("15:04:05")
+		// Refresh tool cache every 30 seconds
+		if time.Since(a.toolCacheTime) > 30*time.Second {
+			a.toolCache = refreshToolCache()
+			a.toolCacheTime = time.Now()
+		}
 		return a, nil
 
 	case blinkTickMsg:

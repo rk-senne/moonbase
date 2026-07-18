@@ -109,6 +109,7 @@ func init() {
 	rootCmd.AddCommand(setupCmd)
 	rootCmd.AddCommand(guideCmd)
 	rootCmd.AddCommand(updateCmd)
+	rootCmd.AddCommand(flywheelCmd)
 
 	// Custom grouped help for root only
 	defaultHelp := rootCmd.HelpFunc()
@@ -147,6 +148,7 @@ Pipeline:
   history     Show past missions                    (aliases: h, log)
   replay      Re-run a past mission                 (alias: re)
   export      Export a mission's details
+  flywheel    Show pipeline learning insights
 
 Project Setup:
   init        Scaffold .kiro/ in any project

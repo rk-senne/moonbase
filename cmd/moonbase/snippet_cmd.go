@@ -73,7 +73,28 @@ var snippetListCmd = &cobra.Command{
 			fmt.Println("No snippets saved yet.")
 			return
 		}
-		fmt.Println(string(data))
+		var snippets []map[string]string
+		if err := json.Unmarshal(data, &snippets); err != nil {
+			fmt.Println("No snippets saved yet.")
+			return
+		}
+		if len(snippets) == 0 {
+			fmt.Println("No snippets saved yet.")
+			return
+		}
+		fmt.Printf("%-4s  %-20s  %s\n", "#", "NAME", "PREVIEW")
+		fmt.Printf("%-4s  %-20s  %s\n", "──", "────────────────────", "───────────────────────────────────")
+		for i, s := range snippets {
+			name := s["name"]
+			content := s["content"]
+			// Truncate preview
+			preview := strings.ReplaceAll(content, "\n", " ")
+			if len(preview) > 40 {
+				preview = preview[:40] + "..."
+			}
+			fmt.Printf("%-4d  %-20s  %s\n", i+1, name, preview)
+		}
+		fmt.Printf("\n%d snippet(s) saved.\n", len(snippets))
 	},
 }
 

@@ -214,8 +214,14 @@ func (a App) pollWatcher() tea.Cmd {
 		return nil
 	}
 	return func() tea.Msg {
-		ev := <-a.fileWatcher.Events
-		return fileChangeMsg{path: ev.Path}
+		select {
+		case ev, ok := <-a.fileWatcher.Events:
+			if !ok {
+				// Watcher closed, stop polling
+				return nil
+			}
+			return fileChangeMsg{path: ev.Path}
+		}
 	}
 }
 

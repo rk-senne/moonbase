@@ -14,7 +14,7 @@ type ProjectsState struct {
 	cursor int
 }
 
-func NewProjectsState() *ProjectsState {
+func newProjectsState() *ProjectsState {
 	return &ProjectsState{
 		list: projects.Discover(),
 	}
@@ -80,6 +80,6 @@ func (a *App) selectProject() {
 	os.Chdir(p.Path)
 	a.addIntel("Navigated to: %s", p.Name)
 	// Refresh docs for this project
-	a.docs = NewDocsState(a.width, a.height)
+	a.docs = newDocsState(a.width, a.height)
 	a.view = ViewDocs
 }

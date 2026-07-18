@@ -4,7 +4,10 @@
 package pipeline
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
+	"time"
 )
 
 // PhaseStatus represents the current state of a pipeline phase.
@@ -30,36 +33,114 @@ type Phase struct {
 	Summary     string      // Brief outcome or error message
 	Conditional bool        // If true, phase only runs when trigger conditions are met
 	TriggerSpec string      // Trigger conditions for conditional phases (from agent frontmatter)
+	StartedAt   time.Time   // When the phase began execution
+	CompletedAt time.Time   // When the phase finished execution
+}
+
+// StartPhase marks the phase as running and records the start time.
+func (ph *Phase) StartPhase() {
+	ph.Status = StatusRunning
+	ph.StartedAt = time.Now()
+	ph.CompletedAt = time.Time{}
+}
+
+// CompletePhase marks the phase as complete and records duration.
+func (ph *Phase) CompletePhase() {
+	ph.CompletedAt = time.Now()
+	ph.Status = StatusComplete
+	ph.Duration = ph.CompletedAt.Sub(ph.StartedAt).Round(time.Millisecond).String()
+}
+
+// ElapsedTime returns the elapsed time since the phase started.
+// Returns zero duration if the phase hasn't started yet.
+func (ph *Phase) ElapsedTime() time.Duration {
+	if ph.StartedAt.IsZero() {
+		return 0
+	}
+	if !ph.CompletedAt.IsZero() {
+		return ph.CompletedAt.Sub(ph.StartedAt)
+	}
+	return time.Since(ph.StartedAt)
+}
+
+// IsTimedOut returns true if the phase has been running longer than the given timeout.
+func (ph *Phase) IsTimedOut(timeout time.Duration) bool {
+	if ph.Status != StatusRunning || ph.StartedAt.IsZero() {
+		return false
+	}
+	return time.Since(ph.StartedAt) > timeout
 }
 
 // Pipeline manages the full council execution flow.
 type Pipeline struct {
-	Task      string           // The original task/mission description
-	Phases    []Phase          // All phases (mandatory + conditional)
-	Current   int              // Index of the currently active phase
-	Active    bool             // True while the pipeline is still executing
-	Context   *PipelineContext // Accumulated state across phases
-	MaxRework int              // Maximum rework loops before escalation (default 2)
+	Task          string           // The original task/mission description
+	Phases        []Phase          // All phases (mandatory + conditional)
+	Current       int              // Index of the currently active phase
+	Active        bool             // True while the pipeline is still executing
+	Context       *PipelineContext // Accumulated state across phases
+	MaxRework     int              // Maximum rework loops before escalation (default 2)
+	TraceID       string           // Unique identifier for observability and checkpointing
+	PhaseTimeout  time.Duration    // Maximum allowed duration per phase (default 5 minutes)
+	MaxOutputSize int              // Maximum allowed output size in bytes (default 100KB)
+	MaxRetries    int              // Maximum retries per phase (default 1)
+	Retries       map[int]int      // Phase number → retry count
 }
 
 // New creates a new pipeline for a given task.
 func New(task string) *Pipeline {
 	return &Pipeline{
-		Task:      task,
-		Active:    true,
-		MaxRework: 2,
-		Context:   NewPipelineContext(task),
+		Task:          task,
+		Active:        true,
+		MaxRework:     2,
+		TraceID:       generateTraceID(),
+		PhaseTimeout:  5 * time.Minute,
+		MaxOutputSize: 100000,
+		MaxRetries:    1,
+		Retries:       make(map[int]int),
+		Context:       NewPipelineContext(task),
 		Phases: []Phase{
-			{1, "Analysis", "Numbuh 1", "numbuh-1", StatusPending, "", "", false, ""},
-			{2, "Architecture", "Numbuh 2", "numbuh-2", StatusPending, "", "", false, ""},
-			{3, "Implementation", "Numbuh 3", "numbuh-3", StatusPending, "", "", false, ""},
-			{4, "QA", "Numbuh 4", "numbuh-4", StatusPending, "", "", false, ""},
-			{5, "Review", "Numbuh 5", "numbuh-5", StatusPending, "", "", false, ""},
-			{6, "Oversight", "Numbuh 0", "numbuh-0", StatusPending, "", "", true, ">5 files changed, core logic changed, orchestration/pipeline changed"},
-			{7, "Security", "Numbuh 274", "numbuh-274", StatusPending, "", "", true, "Auth/secrets/permissions changed, new endpoints, dependency CVEs"},
-			{8, "Deploy Prep", "Numbuh 362", "numbuh-362", StatusPending, "", "", true, "CI/CD changed, Docker/infra touched, new env vars, deployment config"},
+			{Number: 1, Name: "Analysis", Operative: "Numbuh 1", AgentName: "numbuh-1", Status: StatusPending},
+			{Number: 2, Name: "Architecture", Operative: "Numbuh 2", AgentName: "numbuh-2", Status: StatusPending},
+			{Number: 3, Name: "Implementation", Operative: "Numbuh 3", AgentName: "numbuh-3", Status: StatusPending},
+			{Number: 4, Name: "QA", Operative: "Numbuh 4", AgentName: "numbuh-4", Status: StatusPending},
+			{Number: 5, Name: "Review", Operative: "Numbuh 5", AgentName: "numbuh-5", Status: StatusPending},
+			{Number: 6, Name: "Oversight", Operative: "Numbuh 0", AgentName: "numbuh-0", Status: StatusPending, Conditional: true, TriggerSpec: ">5 files changed, core logic changed, orchestration/pipeline changed"},
+			{Number: 7, Name: "Security", Operative: "Numbuh 274", AgentName: "numbuh-274", Status: StatusPending, Conditional: true, TriggerSpec: "Auth/secrets/permissions changed, new endpoints, dependency CVEs"},
+			{Number: 8, Name: "Deploy Prep", Operative: "Numbuh 362", AgentName: "numbuh-362", Status: StatusPending, Conditional: true, TriggerSpec: "CI/CD changed, Docker/infra touched, new env vars, deployment config"},
 		},
 	}
+}
+
+// generateTraceID creates a unique trace identifier using timestamp + random suffix.
+func generateTraceID() string {
+	ts := time.Now().UTC().Format("20060102T150405")
+	suffix := make([]byte, 4)
+	rand.Read(suffix)
+	return fmt.Sprintf("%s-%s", ts, hex.EncodeToString(suffix))
+}
+
+// ValidateOutput checks if the output size is within the allowed limit.
+// Returns an error if the output exceeds MaxOutputSize bytes.
+func (p *Pipeline) ValidateOutput(output string) error {
+	if len(output) > p.MaxOutputSize {
+		return fmt.Errorf("output size %d bytes exceeds maximum %d bytes", len(output), p.MaxOutputSize)
+	}
+	return nil
+}
+
+// RetryPhase increments the retry count for the current phase and re-runs it.
+// Returns an error if the maximum retry count has been exceeded.
+func (p *Pipeline) RetryPhase() error {
+	phase := p.CurrentPhase()
+	if phase == nil {
+		return fmt.Errorf("no active phase to retry")
+	}
+	p.Retries[phase.Number]++
+	if p.Retries[phase.Number] > p.MaxRetries {
+		return fmt.Errorf("max retries (%d) exceeded for phase %d (%s)", p.MaxRetries, phase.Number, phase.Name)
+	}
+	phase.StartPhase()
+	return nil
 }
 
 // CurrentPhase returns the current phase.

@@ -287,7 +287,7 @@ func TestRenderMainPanel_BrowsingMode(t *testing.T) {
 	app.width = 120
 	app.height = 40
 	app.browsing = true
-	app.fileBrowser = NewFileBrowser()
+	app.fileBrowser = newFileBrowser()
 
 	result := app.renderMainPanel(80, 30)
 	if result == "" {
@@ -588,7 +588,7 @@ func TestRelayToAgent_DirectCall_TargetFound(t *testing.T) {
 	// Use names from the actual registry
 	firstAgent := app.registry.Get(0)
 	secondAgent := app.registry.Get(1)
-	app.comms = NewCommsState(firstAgent.Name, firstAgent.Prompt, 80, 40)
+	app.comms = newCommsState(firstAgent.Name, firstAgent.Prompt, 80, 40)
 	// Add an assistant message to relay
 	app.comms.conv.Add(chat.RoleAssistant, "Here is my analysis of the code.")
 
@@ -614,7 +614,7 @@ func TestRelayToAgent_DirectCall_WithExplicitMsg(t *testing.T) {
 	app.height = 40
 	firstAgent := app.registry.Get(0)
 	thirdAgent := app.registry.Get(2)
-	app.comms = NewCommsState(firstAgent.Name, firstAgent.Prompt, 80, 40)
+	app.comms = newCommsState(firstAgent.Name, firstAgent.Prompt, 80, 40)
 
 	cmd := app.relayToAgent(thirdAgent.Name, "please implement this feature")
 	if cmd == nil {
@@ -641,7 +641,7 @@ func TestRelayToAgent_DirectCall_NoAssistantMsg(t *testing.T) {
 	app.height = 40
 	firstAgent := app.registry.Get(0)
 	secondAgent := app.registry.Get(1)
-	app.comms = NewCommsState(firstAgent.Name, firstAgent.Prompt, 80, 40)
+	app.comms = newCommsState(firstAgent.Name, firstAgent.Prompt, 80, 40)
 	// No assistant messages — relay with empty msg should fail
 
 	cmd := app.relayToAgent(secondAgent.Name, "")
@@ -809,7 +809,7 @@ func TestLaunchNvim_BrowsingFile(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.browsing = true
-	app.fileBrowser = NewFileBrowser()
+	app.fileBrowser = newFileBrowser()
 	// Ensure there's at least one file entry
 	if len(app.fileBrowser.entries) > 0 {
 		// Find a non-dir entry
@@ -1287,13 +1287,13 @@ func TestAnimState_PulseBadge_States(t *testing.T) {
 	}
 }
 
-func TestGenerateCascade(t *testing.T) {
-	result := GenerateCascade(40, 5, 0)
+func Test_generateCascade(t *testing.T) {
+	result := generateCascade(40, 5, 0)
 	if result == "" {
 		t.Error("expected non-empty cascade")
 	}
 
-	result2 := GenerateCascade(40, 5, 10)
+	result2 := generateCascade(40, 5, 10)
 	if result2 == "" {
 		t.Error("expected non-empty cascade at frame 10")
 	}
@@ -1371,7 +1371,7 @@ func TestRenderDashboard_Browsing(t *testing.T) {
 	app.view = ViewDashboard
 	app.registry = newTestRegistry()
 	app.browsing = true
-	app.fileBrowser = NewFileBrowser()
+	app.fileBrowser = newFileBrowser()
 
 	result := app.renderDashboard()
 	if result == "" {
@@ -1403,7 +1403,7 @@ func TestSwitchCommsAgent_Found(t *testing.T) {
 	if app.registry.Count() == 0 {
 		t.Skip("no agents loaded")
 	}
-	app.comms = NewCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
 
 	app.switchCommsAgent("numbuh-4")
 	if app.comms.agent != "numbuh-4" {
@@ -1414,7 +1414,7 @@ func TestSwitchCommsAgent_Found(t *testing.T) {
 func TestSwitchCommsAgent_NotFoundAgent(t *testing.T) {
 	app := NewApp()
 	app.registry = newTestRegistry()
-	app.comms = NewCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
 
 	app.switchCommsAgent("nonexistent-xyz-999")
 	// Should stay as numbuh-1
@@ -1443,7 +1443,7 @@ func TestRenderComms_StreamingMode(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.view = ViewComms
-	app.comms = NewCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.comms.streaming = true
 	app.comms.buffer = "streaming response..."
 
@@ -1468,7 +1468,7 @@ func TestHandleStreamChunk_NilComms(t *testing.T) {
 func TestHandleStreamChunk_Error(t *testing.T) {
 	app := NewApp()
 	app.ready = true
-	app.comms = NewCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.comms.streaming = true
 
 	model, _ := app.Update(streamChunkMsg{err: os.ErrNotExist})
@@ -1481,7 +1481,7 @@ func TestHandleStreamChunk_Error(t *testing.T) {
 func TestHandleStreamChunk_Done(t *testing.T) {
 	app := NewApp()
 	app.ready = true
-	app.comms = NewCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.comms.streaming = true
 	app.comms.buffer = "completed response"
 
@@ -1647,7 +1647,7 @@ func TestHandleSearchKeys_Typing(t *testing.T) {
 // === FileBrowser Enter / SelectedPath / SelectedIsFile ===
 
 func TestFileBrowser_Enter_Dir(t *testing.T) {
-	fb := NewFileBrowser()
+	fb := newFileBrowser()
 	// Find a directory entry
 	for i, e := range fb.entries {
 		if e.IsDir {
@@ -1660,13 +1660,13 @@ func TestFileBrowser_Enter_Dir(t *testing.T) {
 }
 
 func TestFileBrowser_Enter_OutOfBounds(t *testing.T) {
-	fb := NewFileBrowser()
+	fb := newFileBrowser()
 	fb.cursor = 9999
 	fb.Enter() // should not panic
 }
 
 func TestFileBrowser_SelectedPath_OutOfBounds(t *testing.T) {
-	fb := NewFileBrowser()
+	fb := newFileBrowser()
 	fb.cursor = 9999
 	path := fb.SelectedPath()
 	if path != "" {
@@ -1675,7 +1675,7 @@ func TestFileBrowser_SelectedPath_OutOfBounds(t *testing.T) {
 }
 
 func TestFileBrowser_SelectedIsFile_OutOfBounds(t *testing.T) {
-	fb := NewFileBrowser()
+	fb := newFileBrowser()
 	fb.cursor = 9999
 	if fb.SelectedIsFile() {
 		t.Error("expected false for out of bounds")
@@ -1739,14 +1739,14 @@ func TestGitStatus_Dirty(t *testing.T) {
 	}
 }
 
-// === PortraitFor ===
+// === portraitFor ===
 
-func TestPortraitFor_Various(t *testing.T) {
+func Test_portraitFor_Various(t *testing.T) {
 	names := []string{"numbuh-1", "numbuh-2", "numbuh-3", "numbuh-4", "numbuh-5",
 		"numbuh-0", "numbuh-274", "numbuh-362", "numbuh-86", "numbuh-999",
 		"numbuh-13", "numbuh-9", "knd-council", "sector-z", "unknown-agent"}
 	for _, name := range names {
-		result := PortraitFor(name)
+		result := portraitFor(name)
 		if result == "" {
 			t.Errorf("expected non-empty portrait for %s", name)
 		}
@@ -1761,7 +1761,7 @@ func TestRenderComms_ContextFile(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.view = ViewComms
-	app.comms = NewCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.contextFile = true
 	app.contextInput.SetValue("/some/path")
 
@@ -1779,7 +1779,7 @@ func TestRenderComms_SnippetPicker(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.view = ViewComms
-	app.comms = NewCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.snippetPicker = true
 
 	result := app.renderComms()
@@ -1788,17 +1788,17 @@ func TestRenderComms_SnippetPicker(t *testing.T) {
 	}
 }
 
-// === RenderMarkdown ===
+// === renderMarkdown ===
 
-func TestRenderMarkdown_ZeroWidth(t *testing.T) {
-	result := RenderMarkdown("# Hello", 0)
+func Test_renderMarkdown_ZeroWidth(t *testing.T) {
+	result := renderMarkdown("# Hello", 0)
 	if result == "" {
 		t.Error("expected non-empty markdown render")
 	}
 }
 
-func TestRenderMarkdown_ValidMarkdown(t *testing.T) {
-	result := RenderMarkdown("# Title\n\nParagraph with **bold** text.", 60)
+func Test_renderMarkdown_ValidMarkdown(t *testing.T) {
+	result := renderMarkdown("# Title\n\nParagraph with **bold** text.", 60)
 	if result == "" {
 		t.Error("expected non-empty markdown render")
 	}
@@ -1833,7 +1833,7 @@ func TestCommsKeys_ContextFile_EnterValid(t *testing.T) {
 	app.ready = true
 	app.width = 100
 	app.height = 40
-	app.comms = NewCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.contextFile = true
 	app.contextInput.Focus()
 	app.contextInput.SetValue(tmpFile)
@@ -1851,7 +1851,7 @@ func TestCommsKeys_ContextFile_EnterInvalid(t *testing.T) {
 	app.ready = true
 	app.width = 100
 	app.height = 40
-	app.comms = NewCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.contextFile = true
 	app.contextInput.Focus()
 	app.contextInput.SetValue("/nonexistent/path/xyz.txt")
@@ -1880,7 +1880,7 @@ func TestCommsKeys_AtAgent(t *testing.T) {
 	}
 	// Use the second agent's actual name
 	targetAgent := app.registry.Get(1)
-	app.comms = NewCommsState(app.registry.Get(0).Name, "prompt", 80, 40)
+	app.comms = newCommsState(app.registry.Get(0).Name, "prompt", 80, 40)
 	app.commsInput.Focus()
 	app.commsInput.SetValue("@" + targetAgent.Name)
 
@@ -1947,7 +1947,7 @@ func TestFileBrowserKeys_BacktickToTerm(t *testing.T) {
 	app.ready = true
 	app.browsing = true
 	app.termActive = false
-	app.fileBrowser = NewFileBrowser()
+	app.fileBrowser = newFileBrowser()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'`'}})
 	result := model.(App)
@@ -1966,7 +1966,7 @@ func TestFileBrowserKeys_Edit(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = true
-	app.fileBrowser = NewFileBrowser()
+	app.fileBrowser = newFileBrowser()
 
 	// Find a file entry
 	for i, e := range app.fileBrowser.entries {
@@ -1988,7 +1988,7 @@ func TestFileBrowserKeys_DotRefresh(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = true
-	app.fileBrowser = NewFileBrowser()
+	app.fileBrowser = newFileBrowser()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'.'}})
 	result := model.(App)
@@ -2003,7 +2003,7 @@ func TestCommsKeys_CtrlS(t *testing.T) {
 	app.ready = true
 	app.width = 100
 	app.height = 40
-	app.comms = NewCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.commsInput.Focus()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
@@ -2021,7 +2021,7 @@ func TestCommsKeys_CtrlF(t *testing.T) {
 	app.ready = true
 	app.width = 100
 	app.height = 40
-	app.comms = NewCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.commsInput.Focus()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyCtrlF})
@@ -2039,7 +2039,7 @@ func TestCommsKeys_ContextFile_Esc(t *testing.T) {
 	app.ready = true
 	app.width = 100
 	app.height = 40
-	app.comms = NewCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.contextFile = true
 	app.contextInput.Focus()
 
@@ -2058,7 +2058,7 @@ func TestCommsKeys_ContextFile_Typing(t *testing.T) {
 	app.ready = true
 	app.width = 100
 	app.height = 40
-	app.comms = NewCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.contextFile = true
 	app.contextInput.Focus()
 
@@ -2077,7 +2077,7 @@ func TestCommsKeys_EscBack(t *testing.T) {
 	app.ready = true
 	app.width = 100
 	app.height = 40
-	app.comms = NewCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.commsInput.Focus()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
@@ -2095,7 +2095,7 @@ func TestCommsKeys_CtrlC(t *testing.T) {
 	app.ready = true
 	app.width = 100
 	app.height = 40
-	app.comms = NewCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.commsInput.Focus()
 
 	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
@@ -2112,7 +2112,7 @@ func TestCommsKeys_Typing(t *testing.T) {
 	app.ready = true
 	app.width = 100
 	app.height = 40
-	app.comms = NewCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.commsInput.Focus()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'h'}})
@@ -2130,7 +2130,7 @@ func TestCommsKeys_StreamingBlocked(t *testing.T) {
 	app.ready = true
 	app.width = 100
 	app.height = 40
-	app.comms = NewCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.comms.streaming = true
 	app.commsInput.Focus()
 	app.commsInput.SetValue("")
@@ -2356,7 +2356,7 @@ func TestRelayToAgent_InlineRegistry(t *testing.T) {
 	agent1 := reg.Get(1)
 	t.Logf("Testing relay from %s to %s (registry has %d agents)", agent0.Name, agent1.Name, reg.Count())
 
-	app.comms = NewCommsState(agent0.Name, agent0.Prompt, 80, 40)
+	app.comms = newCommsState(agent0.Name, agent0.Prompt, 80, 40)
 	app.comms.conv.Add(chat.RoleAssistant, "Here is my detailed analysis.")
 
 	// Relay with empty msg (should use last assistant message)
@@ -2410,7 +2410,7 @@ func TestSwitchCommsAgent_FoundReal(t *testing.T) {
 		t.Skip("need at least 2 agents")
 	}
 	agent1 := app.registry.Get(1)
-	app.comms = NewCommsState(app.registry.Get(0).Name, "prompt", 80, 40)
+	app.comms = newCommsState(app.registry.Get(0).Name, "prompt", 80, 40)
 
 	app.switchCommsAgent(agent1.Name)
 	if app.comms.agent != agent1.Name {
@@ -2573,7 +2573,7 @@ func TestCommsKeys_SnippetPicker_Enter(t *testing.T) {
 	app.ready = true
 	app.width = 100
 	app.height = 40
-	app.comms = NewCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.snippetPicker = true
 	app.snippetCursor = 0
 	// Empty list — enter should not crash
@@ -2590,7 +2590,7 @@ func TestCommsKeys_SnippetPicker_Esc(t *testing.T) {
 	app.ready = true
 	app.width = 100
 	app.height = 40
-	app.comms = NewCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.snippetPicker = true
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
@@ -2606,7 +2606,7 @@ func TestCommsKeys_SnippetPicker_Navigate(t *testing.T) {
 	app.ready = true
 	app.width = 100
 	app.height = 40
-	app.comms = NewCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.snippetPicker = true
 	app.snippetCursor = 0
 
@@ -2630,7 +2630,7 @@ func TestCommsKeys_DoubleArrow_NoSpace(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.registry = newTestRegistry()
-	app.comms = NewCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.commsInput.Focus()
 	app.commsInput.SetValue(">>numbuh-2") // no space = only 1 part
 
@@ -2815,11 +2815,11 @@ func TestRenderFileBrowser_ManyEntries(t *testing.T) {
 	}
 }
 
-// === NewDocsState with no files (line 31) ===
+// === newDocsState with no files (line 31) ===
 
-func TestNewDocsState_NoFiles(t *testing.T) {
-	// NewDocsState calls docs.Discover() which may find files in the project
-	ds := NewDocsState(100, 40)
+func Test_newDocsState_NoFiles(t *testing.T) {
+	// newDocsState calls docs.Discover() which may find files in the project
+	ds := newDocsState(100, 40)
 	_ = ds // should not panic
 }
 
@@ -2862,7 +2862,7 @@ func TestRenderDashboard_AllStatusModes(t *testing.T) {
 	// Test browsing mode
 	app.searching = false
 	app.browsing = true
-	app.fileBrowser = NewFileBrowser()
+	app.fileBrowser = newFileBrowser()
 	result = app.renderDashboard()
 	if result == "" {
 		t.Error("expected non-empty dashboard in browsing mode")
@@ -2913,7 +2913,7 @@ func TestCommsKeys_SnippetPicker_EnterWithItems(t *testing.T) {
 	app.ready = true
 	app.width = 100
 	app.height = 40
-	app.comms = NewCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.snippetPicker = true
 	app.snippetCursor = 0
 	// snippetList is populated by ForAgent — just verify empty list path
@@ -3025,10 +3025,10 @@ func TestAgentColor_Cases(t *testing.T) {
 	}
 }
 
-// === render.go RenderMarkdown error paths ===
+// === render.go renderMarkdown error paths ===
 
-func TestRenderMarkdown_EmptyString(t *testing.T) {
-	result := RenderMarkdown("", 80)
+func Test_renderMarkdown_EmptyString(t *testing.T) {
+	result := renderMarkdown("", 80)
 	// Should not crash on empty input
 	_ = result
 }
@@ -3049,7 +3049,7 @@ func TestRenderStatusBar_Narrow(t *testing.T) {
 // === CommsState AppendStreamToken ===
 
 func TestCommsState_StreamTokens(t *testing.T) {
-	cs := NewCommsState("test", "prompt", 80, 40)
+	cs := newCommsState("test", "prompt", 80, 40)
 	cs.AddUserMessage("hello")
 	cs.streaming = true
 	cs.AppendStreamToken("chunk1")
@@ -3437,7 +3437,7 @@ func TestCommsKeys_DefaultTyping(t *testing.T) {
 	app.ready = true
 	app.width = 100
 	app.height = 40
-	app.comms = NewCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.comms.streaming = false
 	app.commsInput.Focus()
 
@@ -3455,7 +3455,7 @@ func TestHandleStreamChunk_TextContent(t *testing.T) {
 
 	app := NewApp()
 	app.ready = true
-	app.comms = NewCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.comms.streaming = true
 	app.streamCh = ch
 

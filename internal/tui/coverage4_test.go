@@ -453,7 +453,7 @@ func TestHandleDocsKeys_Esc(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDocs
 	app.ready = true
-	app.docs = NewDocsState(100, 40)
+	app.docs = newDocsState(100, 40)
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
 	result := model.(App)
@@ -477,7 +477,7 @@ func TestHandleDocsKeys_Navigate(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDocs
 	app.ready = true
-	app.docs = NewDocsState(100, 40)
+	app.docs = newDocsState(100, 40)
 
 	// Navigate down
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
@@ -504,7 +504,7 @@ func TestHandleDocsKeys_Enter(t *testing.T) {
 	app.ready = true
 	app.width = 100
 	app.height = 40
-	app.docs = NewDocsState(100, 40)
+	app.docs = newDocsState(100, 40)
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
@@ -516,7 +516,7 @@ func TestHandleDocsKeys_PageDown(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDocs
 	app.ready = true
-	app.docs = NewDocsState(100, 40)
+	app.docs = newDocsState(100, 40)
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
 	result := model.(App)
@@ -527,7 +527,7 @@ func TestHandleDocsKeys_PageUp(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDocs
 	app.ready = true
-	app.docs = NewDocsState(100, 40)
+	app.docs = newDocsState(100, 40)
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyPgUp})
 	result := model.(App)
@@ -570,7 +570,7 @@ func TestRenderDocs_WithFiles(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.view = ViewDocs
-	app.docs = NewDocsState(100, 40)
+	app.docs = newDocsState(100, 40)
 
 	result := app.renderDocs()
 	if result == "" {
@@ -581,14 +581,14 @@ func TestRenderDocs_WithFiles(t *testing.T) {
 // === loadDoc ===
 
 func TestLoadDoc_InvalidIndex(t *testing.T) {
-	ds := NewDocsState(100, 40)
+	ds := newDocsState(100, 40)
 	ds.loadDoc(-1, 70)
 	ds.loadDoc(9999, 70)
 	// Should not panic
 }
 
 func TestLoadDoc_ValidIndex(t *testing.T) {
-	ds := NewDocsState(100, 40)
+	ds := newDocsState(100, 40)
 	if len(ds.files) > 0 {
 		ds.loadDoc(0, 70)
 		if !ds.loaded {
@@ -808,7 +808,7 @@ func TestCreatePR_ReturnsCmd(t *testing.T) {
 
 func TestSendCommsMessage_EmptyInput(t *testing.T) {
 	app := NewApp()
-	app.comms = NewCommsState("test-agent", "prompt", 80, 40)
+	app.comms = newCommsState("test-agent", "prompt", 80, 40)
 	app.commsInput.SetValue("")
 
 	cmd := app.sendCommsMessage()
@@ -819,7 +819,7 @@ func TestSendCommsMessage_EmptyInput(t *testing.T) {
 
 func TestSendCommsMessage_WithMessage(t *testing.T) {
 	app := NewApp()
-	app.comms = NewCommsState("test-agent", "prompt", 80, 40)
+	app.comms = newCommsState("test-agent", "prompt", 80, 40)
 	app.commsInput.SetValue("Hello agent")
 
 	cmd := app.sendCommsMessage()
@@ -858,7 +858,7 @@ func TestRelayToAgent_TargetNotFound(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.view = ViewComms
-	app.comms = NewCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.commsInput.Focus()
 	app.commsInput.SetValue(">>nonexistent-agent-xyz hello")
 
@@ -876,7 +876,7 @@ func TestRelayToAgent_WithExplicitMessage(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.view = ViewComms
-	app.comms = NewCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.commsInput.Focus()
 	app.commsInput.SetValue(">>numbuh-2 analyze this code")
 
@@ -904,7 +904,7 @@ func TestRelayToAgent_EmptyMsgNoHistory(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.view = ViewComms
-	app.comms = NewCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
 	// No messages in conversation — relay with empty msg should fail
 	app.commsInput.Focus()
 	app.commsInput.SetValue(">numbuh-2")
@@ -922,7 +922,7 @@ func TestRelayToAgent_EmptyMsgWithHistory(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.view = ViewComms
-	app.comms = NewCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
 	// Add an assistant message to relay
 	app.comms.conv.Add(chat.RoleAssistant, "previous response")
 	app.commsInput.Focus()
@@ -1264,7 +1264,7 @@ func TestView_DocsView(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.view = ViewDocs
-	app.docs = NewDocsState(100, 40)
+	app.docs = newDocsState(100, 40)
 
 	result := app.View()
 	if result == "" {
@@ -1278,7 +1278,7 @@ func TestView_ProjectsView(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.view = ViewProjects
-	app.projectNav = NewProjectsState()
+	app.projectNav = newProjectsState()
 
 	result := app.View()
 	if result == "" {
@@ -1380,7 +1380,7 @@ func TestCommsKeys_RelayPrefix_NoHistory(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.registry = newTestRegistry()
-	app.comms = NewCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.commsInput.Focus()
 	app.commsInput.SetValue(">numbuh-3")
 

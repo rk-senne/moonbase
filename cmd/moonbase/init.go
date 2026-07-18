@@ -40,6 +40,8 @@ func runInit() {
 		filepath.Join(kiroDir, "specs", "_templates"),
 		filepath.Join(kiroDir, "steering"),
 		filepath.Join(kiroDir, "agents"),
+		filepath.Join(kiroDir, "skills"),
+		filepath.Join(kiroDir, "prompts"),
 	}
 	for _, d := range dirs {
 		os.MkdirAll(d, 0o755)
@@ -62,6 +64,16 @@ func runInit() {
 		fmt.Printf("   ⚠️  Failed to write dev-rules.md: %v\n", err)
 	}
 
+	// Write skills README
+	if err := writeTemplate(filepath.Join(kiroDir, "skills", "README.md"), skillsReadme); err != nil {
+		fmt.Printf("   ⚠️  Failed to write skills/README.md: %v\n", err)
+	}
+
+	// Write prompts README
+	if err := writeTemplate(filepath.Join(kiroDir, "prompts", "README.md"), promptsReadme); err != nil {
+		fmt.Printf("   ⚠️  Failed to write prompts/README.md: %v\n", err)
+	}
+
 	// Install agents
 	agentsSource, err := findAgentsSource()
 	if err == nil {
@@ -76,6 +88,8 @@ func runInit() {
 
 	fmt.Println("   ✅ Created .kiro/specs/_templates/")
 	fmt.Printf("   ✅ Created .kiro/steering/dev-rules.md (detected: %s)\n", stack)
+	fmt.Println("   ✅ Created .kiro/skills/ (domain knowledge)")
+	fmt.Println("   ✅ Created .kiro/prompts/ (reusable workflows)")
 	fmt.Println()
 	fmt.Println("   Next steps:")
 	fmt.Println("   1. Edit .kiro/steering/dev-rules.md with your project conventions")
@@ -163,4 +177,29 @@ const tasksTemplate = `# Tasks: {Feature Name}
 - [ ] All tasks complete
 - [ ] Tests passing
 - [ ] Build succeeds
+`
+
+const skillsReadme = `# Skills
+
+Skills are domain-specific knowledge files that agents reference.
+Create subdirectories with a SKILL.md file for each domain.
+
+Example:
+  skills/
+    docker-build/
+      SKILL.md
+    git-workflow/
+      SKILL.md
+`
+
+const promptsReadme = `# Prompts
+
+Stored prompts are reusable workflows you can invoke by name.
+Create .md files here for common tasks.
+
+Example:
+  prompts/
+    implement.md    # Resume implementation from spec
+    review.md       # Run a code review
+    diagnose.md     # Debug from an issue report
 `

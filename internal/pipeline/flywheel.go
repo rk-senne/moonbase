@@ -1,0 +1,71 @@
+// Flywheel session logging for pipeline self-improvement.
+//
+// The flywheel pattern (adapted from Kiro CLI and AWS agent best practices):
+// every pipeline phase execution is logged as a JSONL entry. Over time,
+// patterns emerge -- which agents get reworked most, which phases are slow,
+// where risk gates trigger. This data feeds `moonbase flywheel` analysis.
+//
+// Log location: ~/.moonbase/flywheel.jsonl (append-only, 0600 permissions).
+package pipeline
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"time"
+)
+
+// FlywheelEntry records a single pipeline turn for later analysis.
+// The flywheel pattern (from Kiro/AWS): log agent interactions so patterns
+// of corrections, failures, and rework can be analyzed to improve config.
+type FlywheelEntry struct {
+	Timestamp   time.Time `json:"timestamp"`
+	TraceID     string    `json:"trace_id"`
+	Phase       int       `json:"phase"`
+	Agent       string    `json:"agent"`
+	Task        string    `json:"task"`
+	Outcome     string    `json:"outcome"`      // "complete", "rework", "failed", "skipped"
+	RiskLevel   string    `json:"risk_level,omitempty"`
+	DurationMs  int64     `json:"duration_ms"`
+	OutputSize  int       `json:"output_size"`
+	ReworkCount int       `json:"rework_count"`
+}
+
+// FlywheelLog manages append-only JSONL logging for flywheel analysis.
+type FlywheelLog struct {
+	path string
+}
+
+// NewFlywheelLog creates a flywheel logger. Logs to ~/.moonbase/flywheel.jsonl.
+func NewFlywheelLog() *FlywheelLog {
+	home, _ := os.UserHomeDir()
+	path := filepath.Join(home, ".moonbase", "flywheel.jsonl")
+	return &FlywheelLog{path: path}
+}
+
+// Append writes a flywheel entry to the log file.
+func (f *FlywheelLog) Append(entry FlywheelEntry) error {
+	if err := os.MkdirAll(filepath.Dir(f.path), 0o700); err != nil {
+		return fmt.Errorf("creating flywheel directory: %w", err)
+	}
+
+	file, err := os.OpenFile(f.path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+	if err != nil {
+		return fmt.Errorf("opening flywheel log: %w", err)
+	}
+	defer file.Close()
+
+	data, err := json.Marshal(entry)
+	if err != nil {
+		return fmt.Errorf("marshaling flywheel entry: %w", err)
+	}
+
+	_, err = file.Write(append(data, '\n'))
+	return err
+}
+
+// Path returns the flywheel log file path.
+func (f *FlywheelLog) Path() string {
+	return f.path
+}

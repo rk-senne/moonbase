@@ -7,10 +7,10 @@ import (
 	"testing"
 )
 
-func TestSplitFrontmatter_Valid(t *testing.T) {
+func Test_splitFrontmatter_Valid(t *testing.T) {
 	content := []byte("---\nname: numbuh-1\nrole: Analyst\n---\n# Numbuh 1\n\nBody content here.\n")
 
-	yamlBytes, body, err := SplitFrontmatter(content)
+	yamlBytes, body, err := splitFrontmatter(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -29,28 +29,28 @@ func TestSplitFrontmatter_Valid(t *testing.T) {
 	}
 }
 
-func TestSplitFrontmatter_NoFrontmatter(t *testing.T) {
+func Test_splitFrontmatter_NoFrontmatter(t *testing.T) {
 	content := []byte("# Just a markdown file\n\nNo frontmatter here.\n")
 
-	_, _, err := SplitFrontmatter(content)
+	_, _, err := splitFrontmatter(content)
 	if err != ErrNoFrontmatter {
 		t.Fatalf("expected ErrNoFrontmatter, got: %v", err)
 	}
 }
 
-func TestSplitFrontmatter_MalformedNoClosing(t *testing.T) {
+func Test_splitFrontmatter_MalformedNoClosing(t *testing.T) {
 	content := []byte("---\nname: broken\nno closing delimiter\n")
 
-	_, _, err := SplitFrontmatter(content)
+	_, _, err := splitFrontmatter(content)
 	if err != ErrMalformedFrontmatter {
 		t.Fatalf("expected ErrMalformedFrontmatter, got: %v", err)
 	}
 }
 
-func TestSplitFrontmatter_EmptyBody(t *testing.T) {
+func Test_splitFrontmatter_EmptyBody(t *testing.T) {
 	content := []byte("---\nname: empty\n---\n")
 
-	yamlBytes, body, err := SplitFrontmatter(content)
+	yamlBytes, body, err := splitFrontmatter(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -63,10 +63,10 @@ func TestSplitFrontmatter_EmptyBody(t *testing.T) {
 	}
 }
 
-func TestSplitFrontmatter_LeadingNewlines(t *testing.T) {
+func Test_splitFrontmatter_LeadingNewlines(t *testing.T) {
 	content := []byte("\n\n---\nname: padded\n---\n# Content\n")
 
-	yamlBytes, body, err := SplitFrontmatter(content)
+	yamlBytes, body, err := splitFrontmatter(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -79,7 +79,7 @@ func TestSplitFrontmatter_LeadingNewlines(t *testing.T) {
 	}
 }
 
-func TestSplitFrontmatter_MultilineValues(t *testing.T) {
+func Test_splitFrontmatter_MultilineValues(t *testing.T) {
 	content := []byte(`---
 name: numbuh-4
 description: >
@@ -95,7 +95,7 @@ tools:
 Body here.
 `)
 
-	yamlBytes, body, err := SplitFrontmatter(content)
+	yamlBytes, body, err := splitFrontmatter(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -223,20 +223,20 @@ func findAgentsDir(t *testing.T) string {
 
 // === Gap Coverage: Malformed YAML fields, empty file, invalid types ===
 
-func TestSplitFrontmatter_EmptyFile(t *testing.T) {
+func Test_splitFrontmatter_EmptyFile(t *testing.T) {
 	content := []byte("")
 
-	_, _, err := SplitFrontmatter(content)
+	_, _, err := splitFrontmatter(content)
 	if err != ErrNoFrontmatter {
 		t.Fatalf("expected ErrNoFrontmatter for empty file, got: %v", err)
 	}
 }
 
-func TestSplitFrontmatter_OnlyDelimiters(t *testing.T) {
+func Test_splitFrontmatter_OnlyDelimiters(t *testing.T) {
 	// With empty YAML content between delimiters (just a blank line)
 	content := []byte("---\n\n---\n")
 
-	yamlBytes, body, err := SplitFrontmatter(content)
+	yamlBytes, body, err := splitFrontmatter(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -249,10 +249,10 @@ func TestSplitFrontmatter_OnlyDelimiters(t *testing.T) {
 	}
 }
 
-func TestSplitFrontmatter_WhitespaceOnly(t *testing.T) {
+func Test_splitFrontmatter_WhitespaceOnly(t *testing.T) {
 	content := []byte("   \n  \n  ")
 
-	_, _, err := SplitFrontmatter(content)
+	_, _, err := splitFrontmatter(content)
 	if err != ErrNoFrontmatter {
 		t.Fatalf("expected ErrNoFrontmatter for whitespace-only, got: %v", err)
 	}

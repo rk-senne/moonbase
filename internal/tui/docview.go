@@ -18,7 +18,7 @@ type DocsState struct {
 	loaded   bool
 }
 
-func NewDocsState(width, height int) *DocsState {
+func newDocsState(width, height int) *DocsState {
 	files := docs.Discover()
 	vp := viewport.New(width-28, height-4)
 

@@ -217,7 +217,7 @@ func TestCommsKeys_Esc(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
 	app.ready = true
-	app.comms = NewCommsState("test-agent", "system prompt", 80, 40)
+	app.comms = newCommsState("test-agent", "system prompt", 80, 40)
 	app.commsInput.Focus()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
@@ -231,7 +231,7 @@ func TestCommsKeys_MessageInput(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
 	app.ready = true
-	app.comms = NewCommsState("test-agent", "system prompt", 80, 40)
+	app.comms = newCommsState("test-agent", "system prompt", 80, 40)
 	app.commsInput.Focus()
 
 	// Type a character

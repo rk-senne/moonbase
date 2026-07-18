@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -37,8 +38,7 @@ func runList() {
 
 	reg := agents.NewRegistry(builtIn)
 	if builtIn != "" || user != "" || project != "" {
-		loadCmd := reg.LoadMultipleDirs(builtIn, user, project)
-		loadCmd()
+		reg.LoadMultipleDirsSync(builtIn, user, project)
 	} else {
 		reg.Reload()
 	}
@@ -128,6 +128,9 @@ func runList() {
 	if os.Getenv("ANTHROPIC_API_KEY") != "" {
 		fmt.Println("  ✓ anthropic")
 	}
+	if os.Getenv("MOONSHOT_API_KEY") != "" {
+		fmt.Println("  ✓ kimi")
+	}
 	fmt.Println()
 }
 
@@ -189,8 +192,20 @@ func agentsDir() string {
 	return dir
 }
 
+// loadAgentRegistry creates and loads an agent registry from the default agents directory.
+// This is the shared helper for all commands that need the agent registry.
+func loadAgentRegistry() *agents.Registry {
+	dir := agentsDir()
+	reg := agents.NewRegistry(dir)
+	if err := reg.LoadSync(); err != nil {
+		fmt.Fprintf(os.Stderr, "❌ Failed to load agents: %v\n", err)
+		osExit(1)
+	}
+	return reg
+}
+
 // runDeploy deploys a single operative by numbuh to an interactive AI session.
-func runDeploy(numbuh string) {
+func runDeploy(numbuh string, taskArg string) {
 	dir := agentsDir()
 
 	// SECURITY: Validate agent identifier — prevents path traversal via ../
@@ -212,8 +227,19 @@ func runDeploy(numbuh string) {
 	if deployTask != "" {
 		// --task/-t flag takes priority
 		task = deployTask
-	} else if len(os.Args) > 3 {
-		task = strings.Join(os.Args[3:], " ")
+	} else if taskArg != "" {
+		// Task passed from cobra args
+		task = taskArg
+	}
+
+	// Support pipe mode: read stdin as task if not a terminal and no task yet
+	if task == "" && !isTerminal() {
+		limited := io.LimitReader(os.Stdin, maxPipeInputSize)
+		input, _ := io.ReadAll(limited)
+		pipeTask := strings.TrimSpace(string(input))
+		if pipeTask != "" {
+			task = pipeTask
+		}
 	}
 
 	// Resolve agent file name from input
@@ -256,6 +282,31 @@ func runDeploy(numbuh string) {
 
 	// Compose prompt with project context and task
 	composed := discovery.ComposePrompt(agent.Prompt, ctx, task)
+
+	// If --cmux flag set, deploy in a cmux split pane
+	if deployCmux {
+		if _, cmuxErr := exec.LookPath("cmux"); cmuxErr != nil {
+			fmt.Fprintln(os.Stderr, "❌ cmux not available. Install from: https://github.com/manaflow-ai/cmux")
+			osExit(1)
+		}
+		// Build the command to run in the cmux pane
+		kiroArgs := []string{"kiro-cli", "chat"}
+		localAgent := filepath.Join(cwd, ".kiro", "agents", agent.Name+".md")
+		if _, statErr := os.Stat(localAgent); statErr == nil {
+			kiroArgs = append(kiroArgs, "--agent", agent.Name)
+		}
+		if task != "" {
+			kiroArgs = append(kiroArgs, task)
+		}
+		shellCmd := strings.Join(kiroArgs, " ")
+		cmd := exec.Command("cmux", "split", "--direction", "right", "--command", shellCmd)
+		if err := cmd.Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "❌ cmux split failed: %v\n", err)
+			osExit(1)
+		}
+		fmt.Printf("✅ Deployed %s in cmux split pane\n", agent.Name)
+		return
+	}
 
 	// Try kiro-cli with syscall.Exec (replaces this process)
 	if kiro, kErr := exec.LookPath("kiro-cli"); kErr == nil {

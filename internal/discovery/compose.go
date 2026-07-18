@@ -13,12 +13,28 @@ const maxSteeringSize = 8000
 // maxSpecSize is the maximum bytes of spec content included per file.
 const maxSpecSize = 1500
 
+// maxSkillSize is the maximum bytes of skill content included per file.
+// Keeps individual skills from dominating the context window.
+const maxSkillSize = 2000
+
+// maxSkills is the maximum number of skills included in a prompt.
+// Prevents context bloat when many skills are defined.
+const maxSkills = 5
+
 // maxTotalComposedSize is the absolute maximum size of a composed prompt (512KB).
 // Guards against OOM if many large files are discovered.
 const maxTotalComposedSize = 512 * 1024
 
 // ComposePrompt builds the full prompt for an agent deployment.
-// Order: project steering rules → agent prompt → spec context → task
+// Order: project steering rules → agent prompt → spec context → skills → stack → task
+//
+// PROMPT CACHING OPTIMIZATION:
+// This ordering is deliberately designed for LLM prompt caching (e.g., Claude's
+// cache_control). Caching works by prefix matching — the more requests that share
+// a common prefix, the higher the cache hit rate. We place static/slow-changing
+// content first (steering, agent prompt) and dynamic/per-request content last (task).
+// Use ComposeCacheablePrefix() to get everything except the task, which backends
+// can mark as the cacheable prefix boundary.
 //
 // SECURITY TRUST BOUNDARY:
 // Content from steering and spec files is injected into the prompt structure.
@@ -87,7 +103,31 @@ func ComposePrompt(agentPrompt string, context *ProjectContext, task string) str
 		sections = append(sections, specBlock.String())
 	}
 
-	// 4. Stack info (brief)
+	// 4. Skills (domain knowledge available to the agent)
+	if context != nil && context.HasSkills() {
+		var skillBlock strings.Builder
+		skillBlock.WriteString("\n--- PROJECT SKILLS ---\n")
+		skillBlock.WriteString("The following domain knowledge is available:\n\n")
+
+		limit := len(context.Skills)
+		if limit > maxSkills {
+			limit = maxSkills
+		}
+		for _, skill := range context.Skills[:limit] {
+			skillBlock.WriteString(fmt.Sprintf("### %s\n", skill.Name))
+			content := skill.Content
+			if len(content) > maxSkillSize {
+				content = content[:maxSkillSize] + "\n...(truncated)"
+			}
+			skillBlock.WriteString(content)
+			skillBlock.WriteString("\n\n")
+		}
+
+		skillBlock.WriteString("--- END PROJECT SKILLS ---\n")
+		sections = append(sections, skillBlock.String())
+	}
+
+	// 5. Stack info (brief)
 	if context != nil && context.Stack.Language != "" {
 		stackInfo := fmt.Sprintf("\n--- PROJECT STACK ---\nLanguage: %s | Build: %s | Test: %s\n--- END PROJECT STACK ---\n",
 			context.Stack.Language, context.Stack.BuildTool, context.Stack.TestCommand)
@@ -96,7 +136,7 @@ func ComposePrompt(agentPrompt string, context *ProjectContext, task string) str
 
 	composed := strings.Join(sections, "\n")
 
-	// 5. Task (if provided — this is what the user actually wants done)
+	// 6. Task (if provided — this is what the user actually wants done)
 	if task != "" {
 		composed += fmt.Sprintf("\n\n--- TASK ---\n%s\n--- END TASK ---\n", task)
 	}
@@ -134,4 +174,17 @@ func stripFrontmatter(content string) string {
 	}
 
 	return body
+}
+
+// ComposeCacheablePrefix returns the cacheable portion of a composed prompt —
+// everything EXCEPT the task. This enables backends that support prompt caching
+// (e.g., Claude's cache_control, OpenAI's cached prompts) to mark the boundary
+// between the stable prefix and the per-request task suffix.
+//
+// Prompt caching works by prefix matching: requests sharing a common prefix hit
+// the cache. By separating the prefix (steering + agent + specs + skills + stack)
+// from the task, backends can cache the expensive static context and only process
+// the new task portion on each request.
+func ComposeCacheablePrefix(agentPrompt string, context *ProjectContext) string {
+	return ComposePrompt(agentPrompt, context, "")
 }

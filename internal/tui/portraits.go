@@ -171,8 +171,8 @@ var Portraits = map[string]string{
    ╰═══════╯`,
 }
 
-// PortraitFor returns the ANSI portrait for an agent by name, or a fallback
-func PortraitFor(name string) string {
+// portraitFor returns the ANSI portrait for an agent by name, or a fallback
+func portraitFor(name string) string {
 	if p, ok := Portraits[name]; ok {
 		return p
 	}

@@ -22,7 +22,7 @@ type FileBrowser struct {
 	preview string
 }
 
-func NewFileBrowser() *FileBrowser {
+func newFileBrowser() *FileBrowser {
 	cwd, _ := os.Getwd()
 	fb := &FileBrowser{dir: cwd}
 	fb.refresh()

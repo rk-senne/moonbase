@@ -104,7 +104,7 @@ func TestAnimState_TriggerTypewriter(t *testing.T) {
 // === CommsState tests ===
 
 func TestCommsState_AddUserMessage(t *testing.T) {
-	cs := NewCommsState("numbuh-1", "system", 80, 40)
+	cs := newCommsState("numbuh-1", "system", 80, 40)
 	cs.AddUserMessage("hello agent")
 	if len(cs.conv.Messages) != 1 {
 		t.Errorf("expected 1 message, got %d", len(cs.conv.Messages))
@@ -112,7 +112,7 @@ func TestCommsState_AddUserMessage(t *testing.T) {
 }
 
 func TestCommsState_AppendStreamToken(t *testing.T) {
-	cs := NewCommsState("numbuh-1", "system", 80, 40)
+	cs := newCommsState("numbuh-1", "system", 80, 40)
 	cs.streaming = true
 	cs.AppendStreamToken("hello ")
 	cs.AppendStreamToken("world")
@@ -122,7 +122,7 @@ func TestCommsState_AppendStreamToken(t *testing.T) {
 }
 
 func TestCommsState_FinishStream(t *testing.T) {
-	cs := NewCommsState("numbuh-1", "system", 80, 40)
+	cs := newCommsState("numbuh-1", "system", 80, 40)
 	cs.streaming = true
 	cs.buffer = "response content"
 	cs.FinishStream()
@@ -139,8 +139,8 @@ func TestCommsState_FinishStream(t *testing.T) {
 
 // === DocsState tests ===
 
-func TestNewDocsState(t *testing.T) {
-	ds := NewDocsState(80, 40)
+func Test_newDocsState(t *testing.T) {
+	ds := newDocsState(80, 40)
 	if ds == nil {
 		t.Fatal("expected non-nil DocsState")
 	}
@@ -149,8 +149,8 @@ func TestNewDocsState(t *testing.T) {
 
 // === ProjectsState tests ===
 
-func TestNewProjectsState(t *testing.T) {
-	ps := NewProjectsState()
+func Test_newProjectsState(t *testing.T) {
+	ps := newProjectsState()
 	if ps == nil {
 		t.Fatal("expected non-nil ProjectsState")
 	}
@@ -162,7 +162,7 @@ func TestCommsKeys_SnippetPickerNav(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
 	app.ready = true
-	app.comms = NewCommsState("test", "prompt", 80, 40)
+	app.comms = newCommsState("test", "prompt", 80, 40)
 	app.commsInput.Focus()
 	app.snippetPicker = true
 	app.snippetList = []snippets.Snippet{
@@ -202,7 +202,7 @@ func TestCommsKeys_RelayCommand(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
 	app.ready = true
-	app.comms = NewCommsState("test", "prompt", 80, 40)
+	app.comms = newCommsState("test", "prompt", 80, 40)
 	app.commsInput.Focus()
 	app.commsInput.SetValue(">>numbuh-1 hello there")
 
@@ -217,7 +217,7 @@ func TestCommsKeys_RelayLastResponse(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
 	app.ready = true
-	app.comms = NewCommsState("test", "prompt", 80, 40)
+	app.comms = newCommsState("test", "prompt", 80, 40)
 	app.commsInput.Focus()
 	app.commsInput.SetValue(">numbuh-2")
 
@@ -232,7 +232,7 @@ func TestCommsKeys_CtrlS_SnippetPicker(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
 	app.ready = true
-	app.comms = NewCommsState("test", "prompt", 80, 40)
+	app.comms = newCommsState("test", "prompt", 80, 40)
 	app.commsInput.Focus()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
@@ -246,7 +246,7 @@ func TestCommsKeys_CtrlF_ContextFile(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
 	app.ready = true
-	app.comms = NewCommsState("test", "prompt", 80, 40)
+	app.comms = newCommsState("test", "prompt", 80, 40)
 	app.commsInput.Focus()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyCtrlF})

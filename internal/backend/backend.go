@@ -1,5 +1,5 @@
 // Package backend provides AI tool integrations for deploying agents.
-// It supports multiple backends (kiro-cli, codex, ollama, openai, anthropic)
+// It supports multiple backends (kiro-cli, codex, ollama, openai, anthropic, kimi)
 // with automatic detection and a clipboard fallback for universal compatibility.
 package backend
 
@@ -20,11 +20,17 @@ type Backend interface {
 
 // DetectAll checks which backends are available on this system.
 func DetectAll() []Backend {
+	return DetectAllWithConfig(true) // default: trust tools enabled
+}
+
+// DetectAllWithConfig checks which backends are available, with configurable trust.
+func DetectAllWithConfig(trustTools bool) []Backend {
 	all := []Backend{
-		&Kiro{},
+		&Kiro{TrustTools: trustTools},
 		&Codex{},
 		&OpenAI{},
 		&Anthropic{},
+		&Kimi{},
 		&Ollama{},
 		&Clipboard{},
 	}

@@ -10,7 +10,7 @@ func TestCommsKeys_SnippetPicker(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
 	app.ready = true
-	app.comms = NewCommsState("test-agent", "system prompt", 80, 40)
+	app.comms = newCommsState("test-agent", "system prompt", 80, 40)
 	app.commsInput.Focus()
 	app.snippetPicker = true
 	app.snippetList = nil
@@ -32,7 +32,7 @@ func TestCommsKeys_ContextFile(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
 	app.ready = true
-	app.comms = NewCommsState("test-agent", "system prompt", 80, 40)
+	app.comms = newCommsState("test-agent", "system prompt", 80, 40)
 	app.commsInput.Focus()
 	app.contextFile = true
 	app.contextInput.Focus()
@@ -49,7 +49,7 @@ func TestCommsKeys_ContextFileEnter(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
 	app.ready = true
-	app.comms = NewCommsState("test-agent", "system prompt", 80, 40)
+	app.comms = newCommsState("test-agent", "system prompt", 80, 40)
 	app.commsInput.Focus()
 	app.contextFile = true
 	app.contextInput.Focus()
@@ -67,7 +67,7 @@ func TestCommsKeys_AtSwitch(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
 	app.ready = true
-	app.comms = NewCommsState("test-agent", "system prompt", 80, 40)
+	app.comms = newCommsState("test-agent", "system prompt", 80, 40)
 	app.commsInput.Focus()
 	app.commsInput.SetValue("@numbuh-1")
 
@@ -171,7 +171,7 @@ func TestApp_StreamChunkMsg_NilComms(t *testing.T) {
 func TestApp_StreamChunkMsg_Done(t *testing.T) {
 	app := NewApp()
 	app.ready = true
-	app.comms = NewCommsState("test-agent", "system prompt", 80, 40)
+	app.comms = newCommsState("test-agent", "system prompt", 80, 40)
 	app.comms.streaming = true
 
 	msg := streamChunkMsg{done: true}
@@ -185,7 +185,7 @@ func TestApp_StreamChunkMsg_Done(t *testing.T) {
 func TestApp_StreamChunkMsg_Error(t *testing.T) {
 	app := NewApp()
 	app.ready = true
-	app.comms = NewCommsState("test-agent", "system prompt", 80, 40)
+	app.comms = newCommsState("test-agent", "system prompt", 80, 40)
 	app.comms.streaming = true
 
 	msg := streamChunkMsg{err: errTestDummy}

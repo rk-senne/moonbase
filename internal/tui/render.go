@@ -4,9 +4,9 @@ import (
 	"github.com/charmbracelet/glamour"
 )
 
-// RenderMarkdown renders markdown text using glamour with auto-styling and word wrap.
+// renderMarkdown renders markdown text using glamour with auto-styling and word wrap.
 // Falls back to raw text if rendering fails.
-func RenderMarkdown(md string, width int) string {
+func renderMarkdown(md string, width int) string {
 	if width <= 0 {
 		width = 80
 	}

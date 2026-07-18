@@ -366,11 +366,11 @@ func createConditionalAgent(t *testing.T, dir, name, trigger string) {
 	}
 }
 
-// === Additional coverage: SplitFrontmatter \r\n paths ===
+// === Additional coverage: splitFrontmatter \r\n paths ===
 
-func TestSplitFrontmatter_CRLF(t *testing.T) {
+func Test_splitFrontmatter_CRLF(t *testing.T) {
 	content := []byte("---\r\nname: crlf\r\n---\r\n# Body\r\n")
-	yamlBytes, body, err := SplitFrontmatter(content)
+	yamlBytes, body, err := splitFrontmatter(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

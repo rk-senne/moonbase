@@ -16,8 +16,11 @@ type Agent struct {
 	Shell            *ShellConfig   `yaml:"shell,omitempty"`    // Shell command permissions
 	Write            *WriteConfig   `yaml:"write,omitempty"`    // File write permissions
 	Routing          *RoutingConfig `yaml:"routing,omitempty"`  // Which agents this operative can hand off to
-	Hooks            *HooksConfig   `yaml:"hooks,omitempty"`    // Lifecycle hook commands
-	PipelinePosition *int           `yaml:"pipeline_position,omitempty"` // Position in core pipeline (nil = not a pipeline agent)
+	Hooks            *HooksConfig      `yaml:"hooks,omitempty"`         // Lifecycle hook commands
+	Guardrails       *GuardrailsConfig `yaml:"guardrails,omitempty"`    // Runtime guardrails
+	Handoff          *HandoffConfig    `yaml:"handoff,omitempty"`       // Handoff format between agents
+	OutputSchema     string            `yaml:"output_schema,omitempty"` // Expected output format hint (e.g. 'json', 'markdown', 'structured')
+	PipelinePosition *int              `yaml:"pipeline_position,omitempty"` // Position in core pipeline (nil = not a pipeline agent)
 	Shortcut         string         `yaml:"shortcut"`           // Keyboard shortcut in TUI
 	Triggers         *string        `yaml:"triggers,omitempty"` // Trigger conditions for conditional specialists
 
@@ -49,13 +52,35 @@ type RoutingConfig struct {
 
 // HooksConfig defines lifecycle hooks for an agent.
 type HooksConfig struct {
-	OnActivate []Hook `yaml:"on_activate"` // Commands to run when the agent is activated
+	OnActivate  []Hook `yaml:"on_activate"`             // Commands to run when the agent is activated
+	PreToolUse  []Hook `yaml:"pre_tool_use,omitempty"`  // Run before tool calls (exit 2 = block)
+	PostToolUse []Hook `yaml:"post_tool_use,omitempty"` // Run after tool calls
+	OnComplete  []Hook `yaml:"on_complete,omitempty"`   // Run when agent finishes
 }
 
 // Hook represents a lifecycle hook command.
 type Hook struct {
 	Command   string `yaml:"command"`    // Shell command to execute
 	TimeoutMs int    `yaml:"timeout_ms"` // Maximum execution time in milliseconds
+}
+
+// GuardrailsConfig defines runtime guardrails for an agent.
+// Pattern adapted from OpenAI Agents SDK (tripwire guardrails) and AWS Bedrock
+// Guardrails (layered defense). These are evaluated by the pipeline orchestrator
+// and backends that support enforcement.
+type GuardrailsConfig struct {
+	MaxTurns    int      `yaml:"max_turns,omitempty"`    // Max LLM turns before forced stop (0=unlimited)
+	MaxOutput   int      `yaml:"max_output,omitempty"`   // Max output chars (0=unlimited)
+	InputRules  []string `yaml:"input_rules,omitempty"`  // Input validation rules (regex patterns to reject)
+	OutputRules []string `yaml:"output_rules,omitempty"` // Output validation rules (must-contain patterns)
+	StopWords   []string `yaml:"stop_words,omitempty"`   // Words that trigger immediate stop
+}
+
+// HandoffConfig defines the handoff format between agents.
+// Based on OpenAI Agents SDK handoff primitive and Kiro's spawn/delegation pattern.
+type HandoffConfig struct {
+	Format   string   `yaml:"format,omitempty"`   // 'structured' or 'freeform' (default: freeform)
+	Required []string `yaml:"required,omitempty"` // Required fields in handoff (e.g. ["next_agent", "reason", "risk"])
 }
 
 // HasShell returns true if the agent has shell tool access.
@@ -76,4 +101,35 @@ func (a *Agent) IsPipeline() bool {
 // IsConditional returns true if the agent has trigger conditions (conditional specialist).
 func (a *Agent) IsConditional() bool {
 	return a.Triggers != nil
+}
+
+// HasGuardrails returns true if guardrails are configured for this agent.
+func (a *Agent) HasGuardrails() bool {
+	return a.Guardrails != nil
+}
+
+// MaxTurnsLimit returns the max LLM turns limit, or 0 if guardrails are not configured.
+func (a *Agent) MaxTurnsLimit() int {
+	if a.Guardrails == nil {
+		return 0
+	}
+	return a.Guardrails.MaxTurns
+}
+
+// MaxOutputLimit returns the max output chars limit, or 0 if guardrails are not configured.
+func (a *Agent) MaxOutputLimit() int {
+	if a.Guardrails == nil {
+		return 0
+	}
+	return a.Guardrails.MaxOutput
+}
+
+// HasPreToolHooks returns true if the agent has pre-tool-use hooks configured.
+func (a *Agent) HasPreToolHooks() bool {
+	return a.Hooks != nil && len(a.Hooks.PreToolUse) > 0
+}
+
+// HasPostToolHooks returns true if the agent has post-tool-use hooks configured.
+func (a *Agent) HasPostToolHooks() bool {
+	return a.Hooks != nil && len(a.Hooks.PostToolUse) > 0
 }

@@ -80,8 +80,8 @@ func generateBootSequence() []string {
 	return msgs
 }
 
-// GenerateCascade creates a frame of the data cascade animation
-func GenerateCascade(width, height, frame int) string {
+// generateCascade creates a frame of the data cascade animation
+func generateCascade(width, height, frame int) string {
 	r := rand.New(rand.NewSource(int64(frame * 7919)))
 	runes := []rune(cascadeChars)
 

@@ -19,8 +19,16 @@ type CommsState struct {
 	agent     string
 }
 
-func NewCommsState(agent, systemPrompt string, width, height int) *CommsState {
-	vp := viewport.New(width-4, height-6)
+func newCommsState(agent, systemPrompt string, width, height int) *CommsState {
+	vpWidth := width - 4
+	vpHeight := height - 6
+	if vpWidth < 10 {
+		vpWidth = 10
+	}
+	if vpHeight < 4 {
+		vpHeight = 4
+	}
+	vp := viewport.New(vpWidth, vpHeight)
 	vp.SetContent("  Awaiting transmission...\n")
 
 	return &CommsState{
@@ -66,7 +74,7 @@ func (c *CommsState) rebuildContent() {
 			}
 		} else {
 			b.WriteString(dimStyle.Render(ts) + " " + nameStyle.Render(c.agent) + "\n")
-			rendered := RenderMarkdown(msg.Content, c.viewport.Width-4)
+			rendered := renderMarkdown(msg.Content, c.viewport.Width-4)
 			b.WriteString(rendered)
 		}
 		b.WriteString("\n")

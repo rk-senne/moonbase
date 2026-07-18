@@ -122,7 +122,7 @@ func extractRiskLevel(output string) RiskLevel {
 	return RiskUnknown
 }
 
-// matchRiskLevel checks if a string contains a risk level.
+// matchRiskLevel checks if a string contains a risk level keyword as a whole word.
 func matchRiskLevel(s string) RiskLevel {
 	upper := strings.ToUpper(strings.TrimSpace(s))
 
@@ -130,16 +130,47 @@ func matchRiskLevel(s string) RiskLevel {
 	upper = strings.Trim(upper, "*`_")
 	upper = strings.TrimSpace(upper)
 
+	// Use word boundary checks to avoid false positives like "HIGHLIGHTED" matching "HIGH"
+	// or "FOLLOWS" matching "LOW".
 	switch {
-	case strings.Contains(upper, "CRITICAL"):
+	case containsWord(upper, "CRITICAL"):
 		return RiskCritical
-	case strings.Contains(upper, "HIGH"):
+	case containsWord(upper, "HIGH"):
 		return RiskHigh
-	case strings.Contains(upper, "MEDIUM"):
+	case containsWord(upper, "MEDIUM"):
 		return RiskMedium
-	case strings.Contains(upper, "LOW"):
+	case containsWord(upper, "LOW"):
 		return RiskLow
 	}
 
 	return RiskUnknown
+}
+
+// containsWord checks if s contains word as a standalone word (not embedded in another word).
+func containsWord(s, word string) bool {
+	idx := strings.Index(s, word)
+	if idx == -1 {
+		return false
+	}
+	// Check left boundary
+	if idx > 0 {
+		ch := s[idx-1]
+		if isWordChar(ch) {
+			return false
+		}
+	}
+	// Check right boundary
+	end := idx + len(word)
+	if end < len(s) {
+		ch := s[end]
+		if isWordChar(ch) {
+			return false
+		}
+	}
+	return true
+}
+
+// isWordChar returns true if the byte is a letter or digit (word character).
+func isWordChar(ch byte) bool {
+	return (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9')
 }

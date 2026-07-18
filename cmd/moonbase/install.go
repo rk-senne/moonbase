@@ -8,27 +8,61 @@ import (
 	"strings"
 )
 
-// runInstall implements `moonbase install` — copies agent .md files into a project's .kiro/agents/ dir.
-// If run with --all flag (os.Args), installs all agents.
-// By default installs to .kiro/agents/ in the current working directory.
-// If --global flag is used, installs to ~/.kiro/agents/ (for global kiro-cli access).
+// runInstall implements `moonbase install` — copies agent .md files into a target directory.
+// Uses cobra-registered flags: installAll and installGlobal.
 func runInstall() {
-	// Parse flags
-	installAll := false
-	global := false
-	for _, arg := range os.Args[2:] {
-		switch arg {
-		case "--all", "-a":
-			installAll = true
-		case "--global", "-g":
-			global = true
+	// Determine target directory
+	var targetDir string
+	if installGlobal {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "❌ Cannot determine home directory: %v\n", err)
+			osExit(1)
 		}
+		targetDir = filepath.Join(home, ".kiro", "agents")
+	} else {
+		cwd, err := os.Getwd()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "❌ Cannot determine working directory: %v\n", err)
+			osExit(1)
+		}
+		targetDir = filepath.Join(cwd, ".kiro", "agents")
 	}
 
+	installAgentsTo(targetDir, installGlobal)
+}
+
+// runSetup installs agents globally to ~/.moonbase/agents/ so that moonbase
+// can be used from any project directory without per-project installation.
+func runSetup() {
+	fmt.Println("🌙 Moonbase Global Setup")
+	fmt.Println()
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "❌ Cannot determine home directory: %v\n", err)
+		osExit(1)
+	}
+	targetDir := filepath.Join(home, ".moonbase", "agents")
+	installAgentsTo(targetDir, true)
+
+	fmt.Println()
+	fmt.Println("   You can now run moonbase from any project directory:")
+	fmt.Println("     moonbase mission \"your task\"")
+	fmt.Println("     moonbase deploy 1 \"analyze auth flow\"")
+}
+
+// installAgentsTo copies agent .md files from the source directory to targetDir.
+// This is the shared implementation for both `install` and `setup` commands.
+func installAgentsTo(targetDir string, global bool) {
 	// Find the moonbase agents directory
 	agentsSource, err := findAgentsSource()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "❌ %v\n", err)
+		if global {
+			fmt.Fprintf(os.Stderr, "\n   Run this from the moonbase source directory, or ensure\n")
+			fmt.Fprintf(os.Stderr, "   agents are bundled with the binary.\n")
+		}
 		osExit(1)
 	}
 
@@ -39,64 +73,34 @@ func runInstall() {
 		osExit(1)
 	}
 
-	// Determine target directory
-	var targetDir string
-	if global {
-		home, _ := os.UserHomeDir()
-		targetDir = filepath.Join(home, ".kiro", "agents")
-	} else {
-		cwd, _ := os.Getwd()
-		targetDir = filepath.Join(cwd, ".kiro", "agents")
-	}
-
 	// SECURITY: Create target directory with restrictive permissions (0755).
-	// Agent files are not secrets but we don't want other users modifying them.
 	if err := os.MkdirAll(targetDir, 0o755); err != nil {
 		fmt.Fprintf(os.Stderr, "❌ Cannot create %s: %v\n", targetDir, err)
 		osExit(1)
 	}
 
-	// Select agents to install
-	var toInstall []string
-	if installAll {
-		toInstall = files
-	} else {
-		// In non-interactive mode, install all with a listing
-		fmt.Println("🌙 Moonbase Agent Installation")
-		fmt.Println()
-		for _, f := range files {
-			name := strings.TrimSuffix(filepath.Base(f), ".md")
-			fmt.Printf("  → %s\n", name)
-		}
-		fmt.Println()
-		toInstall = files
-	}
+	fmt.Printf("   Source: %s\n", agentsSource)
+	fmt.Printf("   Target: %s\n", targetDir)
+	fmt.Println()
 
-	if len(toInstall) == 0 {
-		fmt.Println("No agents selected.")
-		return
-	}
-
-	// Copy agents
-	fmt.Printf("Installing to %s\n\n", targetDir)
+	// Copy all agents
 	installed := 0
-	for _, src := range toInstall {
+	for _, src := range files {
 		base := filepath.Base(src)
 
 		// SECURITY: Validate that the source filename is safe (no path traversal).
-		// filepath.Glob should only return clean names, but belt-and-suspenders.
 		if strings.Contains(base, "..") || strings.ContainsAny(base, `/\`) {
 			fmt.Fprintf(os.Stderr, "  ⚠️  %s: suspicious filename, skipping\n", base)
 			continue
 		}
 
 		dst := filepath.Join(targetDir, base)
-
 		if err := copyFile(src, dst); err != nil {
 			fmt.Fprintf(os.Stderr, "  ⚠️  %s: %v\n", base, err)
 			continue
 		}
-		fmt.Printf("  ✅ %s\n", base)
+		name := strings.TrimSuffix(base, ".md")
+		fmt.Printf("  ✅ %s\n", name)
 		installed++
 	}
 
@@ -162,21 +166,21 @@ func isAgentsDir(path string) bool {
 
 // copyFile copies src to dst with explicit file permissions.
 // SECURITY: Destination is created with 0644 (owner rw, others read-only).
-// Agent .md files are not secrets, but we use explicit permissions rather
-// than relying on umask to ensure consistent behavior across systems.
 func copyFile(src, dst string) error {
 	source, err := os.Open(src)
 	if err != nil {
-		return err
+		return fmt.Errorf("copying %s to %s: %w", src, dst, err)
 	}
 	defer source.Close()
 
 	dest, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
 	if err != nil {
-		return err
+		return fmt.Errorf("copying %s to %s: %w", src, dst, err)
 	}
 	defer dest.Close()
 
-	_, err = io.Copy(dest, source)
-	return err
+	if _, err = io.Copy(dest, source); err != nil {
+		return fmt.Errorf("copying %s to %s: %w", src, dst, err)
+	}
+	return nil
 }

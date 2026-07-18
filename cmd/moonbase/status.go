@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -32,6 +33,13 @@ func runStatus() {
 		allGood = false
 	}
 	fmt.Printf("   Backend:    %s\n", backendStatus)
+
+	// cmux
+	if _, cmuxErr := exec.LookPath("cmux"); cmuxErr == nil {
+		fmt.Println("   Cmux:       ✅ available")
+	} else {
+		fmt.Println("   Cmux:       ─ not installed")
+	}
 
 	// Agents
 	dir := findAgentsDirQuiet()

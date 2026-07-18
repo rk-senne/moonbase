@@ -144,11 +144,11 @@ func (a App) handleDashboardKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "H":
 		a.view = ViewHistory
 	case "W":
-		a.docs = NewDocsState(a.width, a.height)
+		a.docs = newDocsState(a.width, a.height)
 		a.view = ViewDocs
 	case "p":
 		if a.view == ViewDashboard {
-			a.projectNav = NewProjectsState()
+			a.projectNav = newProjectsState()
 			a.view = ViewProjects
 		}
 	case "t":

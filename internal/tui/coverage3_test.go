@@ -97,7 +97,7 @@ func TestSwitchCommsAgent(t *testing.T) {
 	app.registry = newTestRegistry()
 	app.width = 100
 	app.height = 40
-	app.comms = NewCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
 
 	app.switchCommsAgent("numbuh-2")
 	// Should switch to new agent
@@ -111,7 +111,7 @@ func TestSwitchCommsAgent_NotFound(t *testing.T) {
 	app.registry = newTestRegistry()
 	app.width = 100
 	app.height = 40
-	app.comms = NewCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
 
 	app.switchCommsAgent("nonexistent-agent")
 	// Should not crash, agent stays the same or gets an error message
@@ -125,7 +125,7 @@ func TestRenderComms(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.view = ViewComms
-	app.comms = NewCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
 
 	result := app.renderComms()
 	if result == "" {
@@ -139,7 +139,7 @@ func TestRenderComms_Streaming(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.view = ViewComms
-	app.comms = NewCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.comms.streaming = true
 	app.comms.buffer = "partial response..."
 
@@ -248,7 +248,7 @@ func TestSelectProject_ValidProject(t *testing.T) {
 	app := NewApp()
 	app.width = 100
 	app.height = 40
-	app.projectNav = NewProjectsState()
+	app.projectNav = newProjectsState()
 	// selectProject changes CWD which can affect other tests
 	// Just test that it doesn't panic with no projects
 }
