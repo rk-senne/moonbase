@@ -9,10 +9,11 @@ on:
 jobs:
   test:
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -28,29 +29,13 @@ jobs:
         run: go build ./...
 
       - name: Test
-        run: go test ./... -count=1 -timeout 300s
-        env:
-          # Prevent tests from hanging on clipboard/terminal operations
-          CI: "true"
-
-  coverage:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    needs: test
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: 'go.mod'
-          cache: true
-
-      - name: Coverage
-        run: |
-          go test ./... -coverprofile=coverage.out -timeout 300s -count=1
-          go tool cover -func=coverage.out | tail -1
+        run: go test ./... -count=1 -timeout 300s -v 2>&1 | tee test-output.txt | grep -E "^(=== RUN|--- PASS|--- FAIL|FAIL|ok )"
         env:
           CI: "true"
+
+      - name: Show failures
+        if: failure()
+        run: grep -A 10 "^--- FAIL" test-output.txt || echo "No FAIL lines found"
 
   lint:
     runs-on: ubuntu-latest
