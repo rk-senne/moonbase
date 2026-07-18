@@ -111,6 +111,12 @@ Numbuh 1 asks the MOST questions of any agent. This is by design. He is expected
 ### Dependencies
 - {dependency}: {status}
 
+### Complexity Estimate
+- SCOPE: SMALL / MEDIUM / LARGE
+- CONFIDENCE: HIGH / MEDIUM / LOW (how confident in this estimate)
+- RATIONALE: {why this estimate}
+- SUGGESTED_TIMEOUT: {phase_timeout suggestion for pipeline config}
+
 ### Rollback
 - {how to undo if this goes wrong}
 
