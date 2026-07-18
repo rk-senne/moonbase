@@ -8,7 +8,11 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -24,15 +28,33 @@ jobs:
         run: go build ./...
 
       - name: Test
-        run: go test ./... -count=1 -timeout 120s
+        run: go test ./... -count=1 -timeout 300s
+        env:
+          # Prevent tests from hanging on clipboard/terminal operations
+          CI: "true"
+
+  coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+          cache: true
 
       - name: Coverage
         run: |
-          go test ./... -coverprofile=coverage.out -timeout 120s
+          go test ./... -coverprofile=coverage.out -timeout 300s -count=1
           go tool cover -func=coverage.out | tail -1
+        env:
+          CI: "true"
 
   lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
 
@@ -45,4 +67,4 @@ jobs:
         run: go run ./cmd/moonbase lint
 
       - name: Verify agents parse
-        run: go test ./internal/agents/ -run TestParseAgentFile_AllAgents -count=1
+        run: go test ./internal/agents/ -run TestParseAgentFile -count=1 -timeout 60s
