@@ -268,6 +268,10 @@ func (p *Pipeline) StatusSummary() string {
 	return fmt.Sprintf("Pipeline: %s\n%s", p.Task, joinLines(lines))
 }
 
+// statusIcon maps a PhaseStatus to a display emoji.
+// NOTE: This is a PRESENTATION concern (maps domain state to UI representation).
+// If the pipeline package needs to become framework-independent, move this function
+// and StatusSummary to the TUI layer (internal/tui) or a dedicated "view" package.
 func statusIcon(s PhaseStatus) string {
 	switch s {
 	case StatusPending:

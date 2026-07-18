@@ -91,9 +91,7 @@ func runMission(task string) {
 		// Deploy to backend
 		output, err := deployToBackend(agent, composed, phaseInput)
 		if err != nil {
-			fmt.Printf("   ❌ Phase %d failed: %v\n", phase.Number, err)
-			phase.Status = pipeline.StatusFailed
-			p.Stop(err.Error())
+			handlePhaseFailure(p, phase, err)
 			break
 		}
 
@@ -130,25 +128,13 @@ func runMission(task string) {
 
 		// Apply risk gate after QA (phase 4)
 		if phase.Number == 4 {
-			routing, rErr := p.ApplyRiskGate(output)
-			fmt.Printf("   🎯 Risk Gate: %s — %s\n", routing.Level, routing.Action)
-
-			if routing.Level == pipeline.RiskCritical {
-				fmt.Println("\n   🛑 CRITICAL RISK — Pipeline stopped. Escalating to human.")
+			shouldContinue, targetIdx := handleRiskGate(p, output)
+			if !shouldContinue {
 				break
 			}
-			if rErr != nil {
-				fmt.Printf("\n   🛑 %v\n", rErr)
-				break
-			}
-			if routing.Level == pipeline.RiskMedium || routing.Level == pipeline.RiskHigh {
+			if targetIdx >= 0 {
 				// Loop back — adjust i to re-run from the target phase
-				for j, ph := range p.Phases {
-					if ph.Number == routing.TargetPhase {
-						i = j - 1 // -1 because loop will increment
-						break
-					}
-				}
+				i = targetIdx - 1 // -1 because loop will increment
 				continue
 			}
 		}
@@ -405,7 +391,14 @@ func deployToBackend(agent *agents.Agent, composed string, task string) (string,
 		return output, nil
 	}
 
-	// Fallback: copy to clipboard and ask user to paste result
+	// No kiro-cli available — fall back to clipboard/stdin
+	return fallbackDeploy(composed, task)
+}
+
+// fallbackDeploy handles the case where no AI backend (kiro-cli) is available.
+// It copies the composed prompt to the clipboard and reads the response from stdin.
+// Returns the user-provided response or an error if no fallback mechanism is available.
+func fallbackDeploy(composed, task string) (string, error) {
 	if err := clip.Copy(composed); err == nil {
 		fmt.Printf("\n   📋 Prompt copied to clipboard (%d chars).\n", len(composed))
 		fmt.Printf("   Paste into your AI tool. When done, paste the response below.\n")
@@ -432,4 +425,42 @@ func deployToBackend(agent *agents.Agent, composed string, task string) (string,
 	}
 
 	return "", fmt.Errorf("no backend available — install kiro-cli or ensure clipboard is accessible")
+}
+
+// handlePhaseFailure prints the failure message, marks the phase as failed, and stops the pipeline.
+// Centralizes phase failure handling for consistent error reporting across mission types.
+func handlePhaseFailure(p *pipeline.Pipeline, phase *pipeline.Phase, err error) {
+	fmt.Printf("   ❌ Phase %d failed: %v\n", phase.Number, err)
+	phase.Status = pipeline.StatusFailed
+	p.Stop(err.Error())
+}
+
+// handleRiskGate applies the QA risk assessment and prints the routing decision.
+// Returns (shouldContinue, targetPhaseIndex) where:
+//   - shouldContinue=false means the pipeline should stop (CRITICAL risk or max rework exceeded)
+//   - targetPhaseIndex >= 0 means the pipeline should loop back to that index (MEDIUM/HIGH risk)
+//   - targetPhaseIndex < 0 means the pipeline should proceed normally (LOW risk)
+func handleRiskGate(p *pipeline.Pipeline, output string) (shouldContinue bool, targetPhaseIndex int) {
+	routing, rErr := p.ApplyRiskGate(output)
+	fmt.Printf("   🎯 Risk Gate: %s — %s\n", routing.Level, routing.Action)
+
+	if routing.Level == pipeline.RiskCritical {
+		fmt.Println("\n   🛑 CRITICAL RISK — Pipeline stopped. Escalating to human.")
+		return false, -1
+	}
+	if rErr != nil {
+		fmt.Printf("\n   🛑 %v\n", rErr)
+		return false, -1
+	}
+	if routing.Level == pipeline.RiskMedium || routing.Level == pipeline.RiskHigh {
+		// Find the target phase index to loop back to
+		for j, ph := range p.Phases {
+			if ph.Number == routing.TargetPhase {
+				return true, j
+			}
+		}
+	}
+
+	// LOW risk or unknown — proceed normally
+	return true, -1
 }
