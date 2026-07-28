@@ -31,15 +31,17 @@ func (a App) renderHeader(breadcrumb string) string {
 		right = clock + "  " + right
 	}
 
-	// Calculate gap
-	gap := a.width - len(left) - len(right) - 4
+	// Calculate gap using visual width (handles emoji + unicode)
+	leftW := lipgloss.Width(left)
+	rightW := lipgloss.Width(right)
+	gap := a.width - leftW - rightW - 4
 	if gap < 1 {
 		// Truncate breadcrumb if header too narrow
-		maxLeft := a.width - len(right) - 6
+		maxLeft := a.width - rightW - 6
 		if maxLeft < 4 {
 			maxLeft = 4
 		}
-		if len(left) > maxLeft {
+		if leftW > maxLeft {
 			left = left[:maxLeft] + "…"
 		}
 		gap = 1
@@ -93,8 +95,13 @@ func (a App) renderSidebar(width int, maxH int) string {
 			if roleWidth > 0 {
 				maxName = width - roleWidth - 6
 			}
-			if len(name) > maxName {
-				name = name[:maxName]
+			if lipgloss.Width(name) > maxName {
+				// Truncate by runes, not bytes
+				runes := []rune(name)
+				for len(runes) > 0 && lipgloss.Width(string(runes)) > maxName {
+					runes = runes[:len(runes)-1]
+				}
+				name = string(runes)
 			}
 
 			// Role (right-aligned)
@@ -104,10 +111,12 @@ func (a App) renderSidebar(width int, maxH int) string {
 				if len(r) > roleWidth {
 					r = r[:roleWidth]
 				}
-				gap := width - len(prefix) - len(badge) - 1 - len(name) - len(r) - 4
+				// Use visual widths for gap calculation (handles unicode badges/prefix)
+				usedW := lipgloss.Width(prefix) + lipgloss.Width(badge) + 1 + lipgloss.Width(name) + lipgloss.Width(r) + 4
 				if hint != "" {
-					gap -= 3
+					usedW += 3
 				}
+				gap := width - usedW
 				if gap < 1 {
 					gap = 1
 				}
@@ -182,7 +191,10 @@ func (a App) renderMainPanel(width int, maxH int) string {
 	}
 	title := lipgloss.NewStyle().Foreground(ColorInfo).Bold(true).Render("─ TERMINAL ")
 	cwd := lipgloss.NewStyle().Foreground(ColorDim).Render(cwdShort + " ")
-	s.WriteString(title + cwd + strings.Repeat("─", max(1, width-len(cwdShort)-14)) + "\n")
+	titleW := lipgloss.Width(title)
+	cwdW := lipgloss.Width(cwd)
+	fillW := max(1, width-titleW-cwdW)
+	s.WriteString(title + cwd + strings.Repeat("─", fillW) + "\n")
 
 	maxLines := maxH - 4
 	if maxLines < 4 {
@@ -193,8 +205,13 @@ func (a App) renderMainPanel(width int, maxH int) string {
 	for _, entry := range a.intel {
 		timeStyle := lipgloss.NewStyle().Foreground(ColorDim)
 		msg := entry.Message
-		if width > 12 && len(msg) > width-10 {
-			msg = msg[:width-10]
+		if width > 12 && lipgloss.Width(msg) > width-10 {
+			// Truncate by runes
+			runes := []rune(msg)
+			for len(runes) > 0 && lipgloss.Width(string(runes)) > width-10 {
+				runes = runes[:len(runes)-1]
+			}
+			msg = string(runes)
 		}
 		lines = append(lines, fmt.Sprintf(" %s  %s", timeStyle.Render(entry.Time), msg))
 	}
@@ -212,8 +229,12 @@ func (a App) renderMainPanel(width int, maxH int) string {
 	}
 	for i := start; i < len(lines); i++ {
 		line := lines[i]
-		if width > 6 && len(line) > width-4 {
-			line = line[:width-4]
+		if width > 6 && lipgloss.Width(line) > width-4 {
+			runes := []rune(line)
+			for len(runes) > 0 && lipgloss.Width(string(runes)) > width-4 {
+				runes = runes[:len(runes)-1]
+			}
+			line = string(runes)
 		}
 		s.WriteString(line + "\n")
 	}
@@ -244,7 +265,10 @@ func (a App) renderRightPanel(width int, maxH int) string {
 
 	// System Status
 	radar := lipgloss.NewStyle().Foreground(ColorActive).Render(a.anim.RenderRadar())
-	s.WriteString(labelStyle.Render("─ SYSTEM STATUS ") + radar + " " + strings.Repeat("─", max(1, width-21)) + "\n")
+	sysLabel := labelStyle.Render("─ SYSTEM STATUS ")
+	sysLabelW := lipgloss.Width(sysLabel)
+	radarW := lipgloss.Width(radar)
+	s.WriteString(sysLabel + radar + " " + strings.Repeat("─", max(1, width-sysLabelW-radarW-1)) + "\n")
 
 	gitStyle := lipgloss.NewStyle().Foreground(ColorActive)
 	if !a.gitClean {
@@ -261,16 +285,30 @@ func (a App) renderRightPanel(width int, maxH int) string {
 	s.WriteString("\n")
 
 	// Threat Level
-	s.WriteString(labelStyle.Render("─ THREAT LEVEL ") + strings.Repeat("─", max(1, width-18)) + "\n")
+	threatLabel := labelStyle.Render("─ THREAT LEVEL ")
+	s.WriteString(threatLabel + strings.Repeat("─", max(1, width-lipgloss.Width(threatLabel))) + "\n")
 	s.WriteString(" " + a.renderThreatGauge(width-4) + "\n\n")
 
 	// Mission History
-	s.WriteString(labelStyle.Render("─ MISSION HISTORY ") + strings.Repeat("─", max(1, width-21)) + "\n")
+	missionLabel := labelStyle.Render("─ MISSION HISTORY ")
+	s.WriteString(missionLabel + strings.Repeat("─", max(1, width-lipgloss.Width(missionLabel))) + "\n")
 	for i, m := range a.missions {
 		if i >= 5 {
 			break
 		}
-		s.WriteString(fmt.Sprintf(" %s #%d %s\n", m.Status, len(a.missions)-i, m.Name))
+		name := m.Name
+		maxMissionW := width - 8
+		if maxMissionW < 4 {
+			maxMissionW = 4
+		}
+		if lipgloss.Width(name) > maxMissionW {
+			runes := []rune(name)
+			for len(runes) > 0 && lipgloss.Width(string(runes)) > maxMissionW {
+				runes = runes[:len(runes)-1]
+			}
+			name = string(runes)
+		}
+		s.WriteString(fmt.Sprintf(" %s #%d %s\n", m.Status, len(a.missions)-i, name))
 	}
 	if len(a.missions) == 0 {
 		s.WriteString(dimStyle.Render(" No missions yet.") + "\n")
@@ -278,7 +316,8 @@ func (a App) renderRightPanel(width int, maxH int) string {
 
 	// Recent Files from watcher
 	s.WriteString("\n")
-	s.WriteString(labelStyle.Render("─ RECENT FILES ") + strings.Repeat("─", max(1, width-18)) + "\n")
+	recentLabel := labelStyle.Render("─ RECENT FILES ")
+	s.WriteString(recentLabel + strings.Repeat("─", max(1, width-lipgloss.Width(recentLabel))) + "\n")
 	if a.fileWatcher != nil && a.fileWatcher.Running() {
 		recent := a.fileWatcher.Recent()
 		if len(recent) == 0 {
@@ -288,8 +327,12 @@ func (a App) renderRightPanel(width int, maxH int) string {
 			f := recent[i]
 			ts := f.Time.Format("15:04")
 			name := f.Path
-			if len(name) > width-10 {
-				name = name[:width-10]
+			if lipgloss.Width(name) > width-10 {
+				runes := []rune(name)
+				for len(runes) > 0 && lipgloss.Width(string(runes)) > width-10 {
+					runes = runes[:len(runes)-1]
+				}
+				name = string(runes)
 			}
 			s.WriteString(fmt.Sprintf(" %s %s\n", dimStyle.Render(ts), name))
 		}
@@ -345,7 +388,9 @@ func (a App) renderThreatGauge(width int) string {
 
 func (a App) renderStatusBar(keys string) string {
 	uptime := fmt.Sprintf("▲ %s", a.uptime())
-	gap := a.width - len(keys) - len(uptime) - 4
+	keysW := lipgloss.Width(keys)
+	uptimeW := lipgloss.Width(uptime)
+	gap := a.width - keysW - uptimeW - 4
 	if gap < 1 {
 		return StyleStatusBar.Width(a.width).Render("  " + keys)
 	}

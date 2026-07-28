@@ -61,7 +61,7 @@ func (a App) renderDocs() string {
 	}
 
 	sideW := 24
-	mainW := a.width - sideW - 3
+	mainW := a.width - sideW - 1 // 1 space separator
 
 	// Sidebar: file list
 	var s strings.Builder

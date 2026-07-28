@@ -24,9 +24,9 @@ func (a *App) cycleTheme() {
 		ColorHeader = lipgloss.Color("#FF6600")
 	default:
 		a.theme = "moonbase"
-		ColorActive = lipgloss.Color("#00FF88")
-		ColorInfo = lipgloss.Color("#00BBFF")
+		ColorActive = lipgloss.Color("#5AF78E")
+		ColorInfo = lipgloss.Color("#7EC8E3")
 		ColorBrand = lipgloss.Color("#FFD700")
-		ColorHeader = lipgloss.Color("#FF6600")
+		ColorHeader = lipgloss.Color("#FFD700")
 	}
 }

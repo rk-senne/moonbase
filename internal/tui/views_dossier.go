@@ -18,7 +18,7 @@ func (a App) renderDossier() string {
 
 	// Right column: portrait + stats
 	portraitW := 20
-	mainWidth := a.width - sidebarWidth - portraitW - 5
+	mainWidth := a.width - sidebarWidth - portraitW - 2 // 2 space separators
 	if mainWidth < 20 {
 		mainWidth = 20
 	}

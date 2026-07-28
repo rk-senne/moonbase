@@ -7,7 +7,7 @@ import (
 func (a App) renderDashboard() string {
 	headerH := 1
 	statusH := 1
-	bodyH := a.height - headerH - statusH - 1
+	bodyH := a.height - headerH - statusH - 2 // extra line for spacing
 
 	header := a.renderHeader("Dashboard")
 
@@ -37,7 +37,14 @@ func (a App) renderDashboard() string {
 func (a App) render3Col(h int) string {
 	sideW := 24
 	rightW := 30
-	mainW := a.width - sideW - rightW - 6
+	// The sidebar has a right border (1 char) + right padding (1 char) = renders wider
+	// The main panel has rounded border (1 char each side) + padding (1 char each side) = +4
+	// The right panel has rounded border (1 char each side) + padding (1 char each side) = +4
+	// Two separating spaces between panels = 2
+	// Total overhead: sidebar border/pad accounted in Width(), same for main/right
+	// But lipgloss Width() constrains content, so actual render = Width param
+	// Separators between panels: 2 spaces (1 + 1)
+	mainW := a.width - sideW - rightW - 2
 	if mainW < 20 {
 		// Fall back to 2col if not enough space
 		return a.render2Col(h)
@@ -52,7 +59,8 @@ func (a App) render3Col(h int) string {
 
 func (a App) render2Col(h int) string {
 	sideW := 24
-	mainW := a.width - sideW - 3
+	// One space separator between sidebar and main
+	mainW := a.width - sideW - 1
 	if mainW < 20 {
 		mainW = 20
 	}

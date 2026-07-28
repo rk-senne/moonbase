@@ -12,7 +12,7 @@ import (
 func (a App) renderPipeline() string {
 	header := a.renderHeader("Pipeline")
 	sidebarWidth := 24
-	mainWidth := a.width - sidebarWidth - 3
+	mainWidth := a.width - sidebarWidth - 1 // 1 space separator
 
 	var phases strings.Builder
 	phases.WriteString(lipgloss.NewStyle().Foreground(ColorBrand).Bold(true).Render("◆ PIPELINE") + "\n")

@@ -168,7 +168,10 @@ func (a App) renderFileBrowser(width, maxH int) string {
 	}
 	title := lipgloss.NewStyle().Foreground(ColorBrand).Bold(true).Render("─ KND ")
 	path := lipgloss.NewStyle().Foreground(ColorDim).Render(cwdShort + " ")
-	s.WriteString(title + path + strings.Repeat("─", max(1, width-len(cwdShort)-9)) + "\n")
+	titleW := lipgloss.Width(title)
+	pathW := lipgloss.Width(path)
+	fillW := max(1, width-titleW-pathW)
+	s.WriteString(title + path + strings.Repeat("─", fillW) + "\n")
 
 	// Split: file list left, preview right
 	listW := width / 2
@@ -193,8 +196,18 @@ func (a App) renderFileBrowser(width, maxH int) string {
 			name += "/"
 		}
 
-		if len(name) > listW-6 {
-			name = name[:listW-6]
+		// Account for emoji icon width (2 cells) + prefix (" ▸ " = 4 cells) + space
+		iconW := lipgloss.Width(icon)
+		maxNameW := listW - iconW - 5
+		if maxNameW < 4 {
+			maxNameW = 4
+		}
+		if lipgloss.Width(name) > maxNameW {
+			runes := []rune(name)
+			for len(runes) > 0 && lipgloss.Width(string(runes)) > maxNameW {
+				runes = runes[:len(runes)-1]
+			}
+			name = string(runes)
 		}
 
 		if i == fb.cursor {
