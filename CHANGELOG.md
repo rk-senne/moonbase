@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-07-29
+
 ### Added
 - Agents are now embedded into the `moonbase` binary (`go:embed`). `moonbase setup`, `moonbase install`, and `moonbase init` work from any directory without a repository checkout — when no on-disk agent source is found (or it would be the same directory as the target), agents are installed from the copy baked into the binary. This also lets `setup` self-heal a damaged `~/.moonbase/agents/`.
 - TUI contextual footer — each view now shows a short, per-view key hint bar generated from the central key map, so available actions are discoverable without opening the full manual (`?`).
@@ -99,6 +101,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Security: SafeEnv isolation, hook command validation, input sanitization
 - Mission history with persistence
 
+[1.6.0]: https://github.com/f5508037/moonbase/compare/v1.5.0...v1.6.0
 [1.2.0]: https://github.com/f5508037/moonbase/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/f5508037/moonbase/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/f5508037/moonbase/releases/tag/v1.0.0
