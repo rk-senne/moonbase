@@ -16,20 +16,27 @@ import (
 	"time"
 )
 
+// currentSchemaVersion is the version written to all new FlywheelEntry records.
+// Evolution contract: new optional fields may be added without bumping the version.
+// Removing or renaming an existing field requires incrementing the version.
+// Readers must tolerate SchemaVersion == 0 (legacy entries written before versioning).
+const currentSchemaVersion = 1
+
 // FlywheelEntry records a single pipeline turn for later analysis.
 // The flywheel pattern (from Kiro/AWS): log agent interactions so patterns
 // of corrections, failures, and rework can be analyzed to improve config.
 type FlywheelEntry struct {
-	Timestamp   time.Time `json:"timestamp"`
-	TraceID     string    `json:"trace_id"`
-	Phase       int       `json:"phase"`
-	Agent       string    `json:"agent"`
-	Task        string    `json:"task"`
-	Outcome     string    `json:"outcome"`      // "complete", "rework", "failed", "skipped"
-	RiskLevel   string    `json:"risk_level,omitempty"`
-	DurationMs  int64     `json:"duration_ms"`
-	OutputSize  int       `json:"output_size"`
-	ReworkCount int       `json:"rework_count"`
+	SchemaVersion int       `json:"v"`
+	Timestamp     time.Time `json:"timestamp"`
+	TraceID       string    `json:"trace_id"`
+	Phase         int       `json:"phase"`
+	Agent         string    `json:"agent"`
+	Task          string    `json:"task"`
+	Outcome       string    `json:"outcome"`      // "complete", "rework", "failed", "skipped"
+	RiskLevel     string    `json:"risk_level,omitempty"`
+	DurationMs    int64     `json:"duration_ms"`
+	OutputSize    int       `json:"output_size"`
+	ReworkCount   int       `json:"rework_count"`
 }
 
 // FlywheelLog manages append-only JSONL logging for flywheel analysis.
@@ -45,6 +52,8 @@ func NewFlywheelLog() *FlywheelLog {
 }
 
 // Append writes a flywheel entry to the log file.
+// Single-writer assumed; no file locking is performed. Calls file.Sync()
+// to ensure durability before closing.
 func (f *FlywheelLog) Append(entry FlywheelEntry) error {
 	if err := os.MkdirAll(filepath.Dir(f.path), 0o700); err != nil {
 		return fmt.Errorf("creating flywheel directory: %w", err)
@@ -56,13 +65,22 @@ func (f *FlywheelLog) Append(entry FlywheelEntry) error {
 	}
 	defer file.Close()
 
+	entry.SchemaVersion = currentSchemaVersion
+
 	data, err := json.Marshal(entry)
 	if err != nil {
 		return fmt.Errorf("marshaling flywheel entry: %w", err)
 	}
 
-	_, err = file.Write(append(data, '\n'))
-	return err
+	if _, err := file.Write(append(data, '\n')); err != nil {
+		return fmt.Errorf("writing flywheel entry: %w", err)
+	}
+
+	if err := file.Sync(); err != nil {
+		return fmt.Errorf("syncing flywheel log: %w", err)
+	}
+
+	return nil
 }
 
 // Path returns the flywheel log file path.

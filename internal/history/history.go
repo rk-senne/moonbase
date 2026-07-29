@@ -9,15 +9,22 @@ import (
 	"time"
 )
 
+// currentMissionVersion is the version written to all new Mission records.
+// Evolution contract: new optional fields may be added without bumping the version.
+// Removing or renaming an existing field requires incrementing the version.
+// Readers must tolerate SchemaVersion == 0 (legacy missions written before versioning).
+const currentMissionVersion = 1
+
 // Mission represents a pipeline execution record.
 type Mission struct {
-	ID        int       `json:"id"`
-	Task      string    `json:"task"`
-	StartTime time.Time `json:"start_time"`
-	EndTime   time.Time `json:"end_time,omitempty"`
-	Duration  string    `json:"duration,omitempty"`
-	Phases    []Phase   `json:"phases"`
-	Outcome   string    `json:"outcome"` // "complete", "aborted", "in-progress"
+	SchemaVersion int       `json:"v"`
+	ID            int       `json:"id"`
+	Task          string    `json:"task"`
+	StartTime     time.Time `json:"start_time"`
+	EndTime       time.Time `json:"end_time,omitempty"`
+	Duration      string    `json:"duration,omitempty"`
+	Phases        []Phase   `json:"phases"`
+	Outcome       string    `json:"outcome"` // "complete", "aborted", "in-progress"
 }
 
 // Phase represents a single phase execution within a mission.
@@ -62,6 +69,7 @@ func Save(m Mission) (int, error) {
 		}
 	}
 	m.ID = maxID + 1
+	m.SchemaVersion = currentMissionVersion
 
 	missions = append(missions, m)
 	if err := writeHistory(missions); err != nil {

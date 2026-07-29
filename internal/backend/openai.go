@@ -1,16 +1,12 @@
 package backend
 
 import (
-	"bufio"
-	"bytes"
 	"crypto/tls"
-	"encoding/json"
+	"errors"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/rk-senne/moonbase/internal/agents"
@@ -75,8 +71,6 @@ func (o *OpenAI) Deploy(agent agents.Agent, context *discovery.ProjectContext, t
 	if baseURL == "" {
 		baseURL = "https://api.openai.com/v1"
 	}
-	// Remove trailing slash for clean URL construction
-	baseURL = strings.TrimRight(baseURL, "/")
 
 	model := os.Getenv("OPENAI_MODEL")
 	if model == "" {
@@ -85,91 +79,14 @@ func (o *OpenAI) Deploy(agent agents.Agent, context *discovery.ProjectContext, t
 
 	composed := discovery.ComposePrompt(agent.Prompt, context, task)
 
-	body := openaiRequest{
-		Model: model,
-		Messages: []openaiMessage{
-			{Role: "system", Content: composed},
-			{Role: "user", Content: task},
-		},
-		Stream: true,
-	}
-
-	payload, err := json.Marshal(body)
+	result, err := streamChatCompletion(openaiHTTPClient, baseURL, apiKey, model, composed, task)
 	if err != nil {
-		return "", fmt.Errorf("marshaling request: %w", err)
-	}
-
-	url := baseURL + "/chat/completions"
-	req, err := http.NewRequest("POST", url, bytes.NewReader(payload))
-	if err != nil {
-		return "", fmt.Errorf("creating request: %w", err)
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+apiKey)
-
-	resp, err := openaiHTTPClient.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("openai request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		// SECURITY: Limit error body read to prevent OOM from oversized responses.
-		limited := io.LimitReader(resp.Body, openaiMaxErrorBody)
-		var buf bytes.Buffer
-		buf.ReadFrom(limited)
-		return "", &DeployError{
-			StatusCode: resp.StatusCode,
-			Message:    fmt.Sprintf("OpenAI API error %d: %s", resp.StatusCode, buf.String()),
+		// Preserve *DeployError type for callers that check status codes.
+		var deployErr *DeployError
+		if errors.As(err, &deployErr) {
+			return result, deployErr
 		}
+		return result, fmt.Errorf("openai: %w", err)
 	}
-
-	// Parse SSE stream — extract content deltas until [DONE] or stream close.
-	var result strings.Builder
-	scanner := bufio.NewScanner(resp.Body)
-	for scanner.Scan() {
-		line := scanner.Text()
-
-		if !strings.HasPrefix(line, "data: ") {
-			continue
-		}
-
-		data := strings.TrimPrefix(line, "data: ")
-
-		// [DONE] signals end of stream (OpenAI standard)
-		if data == "[DONE]" {
-			break
-		}
-
-		var event struct {
-			Choices []struct {
-				Delta struct {
-					Content string `json:"content"`
-				} `json:"delta"`
-				FinishReason *string `json:"finish_reason"`
-			} `json:"choices"`
-		}
-
-		if err := json.Unmarshal([]byte(data), &event); err != nil {
-			continue // Discard malformed events
-		}
-
-		if len(event.Choices) > 0 {
-			if event.Choices[0].Delta.Content != "" {
-				result.WriteString(event.Choices[0].Delta.Content)
-			}
-			// Some endpoints use finish_reason: stop instead of [DONE]
-			if event.Choices[0].FinishReason != nil && *event.Choices[0].FinishReason == "stop" {
-				break
-			}
-		}
-	}
-
-	// Handle scanner errors (connection close without [DONE] — Ollama compat)
-	if err := scanner.Err(); err != nil && result.Len() == 0 {
-		return "", fmt.Errorf("openai stream read error: %w", err)
-	}
-
-	return result.String(), nil
+	return result, nil
 }

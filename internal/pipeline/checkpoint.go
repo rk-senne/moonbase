@@ -17,21 +17,29 @@ import (
 	"time"
 )
 
+// currentCheckpointVersion is the version written to all new Checkpoint records.
+// Evolution contract: new optional fields may be added without bumping the version.
+// Removing or renaming an existing field requires incrementing the version.
+// Readers must tolerate SchemaVersion == 0 (legacy checkpoints written before versioning).
+const currentCheckpointVersion = 1
+
 // Checkpoint captures pipeline state for persistence and recovery.
 // Stored as JSON in ~/.moonbase/checkpoints/{traceID}.json.
 type Checkpoint struct {
-	TraceID      string         `json:"trace_id"`
-	Task         string         `json:"task"`
-	Current      int            `json:"current"`
-	PhaseStatuses map[int]string `json:"phase_statuses"`
-	PhaseOutputs map[int]string `json:"phase_outputs"`
-	ReworkCount  int            `json:"rework_count"`
-	RiskLevel    string         `json:"risk_level"`
-	CreatedAt    time.Time      `json:"created_at"`
+	SchemaVersion  int            `json:"v"`
+	TraceID        string         `json:"trace_id"`
+	Task           string         `json:"task"`
+	Current        int            `json:"current"`
+	PhaseStatuses  map[int]string `json:"phase_statuses"`
+	PhaseOutputs   map[int]string `json:"phase_outputs"`
+	ReworkCount    int            `json:"rework_count"`
+	RiskLevel      string         `json:"risk_level"`
+	CreatedAt      time.Time      `json:"created_at"`
 }
 
 // SaveCheckpoint serializes the pipeline state to a JSON file.
 // Files are stored in dir/{traceID}.json with 0600 permissions.
+// Uses write-to-temp-then-rename for crash safety.
 func SaveCheckpoint(p *Pipeline, dir string) error {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return fmt.Errorf("creating checkpoint directory: %w", err)
@@ -43,14 +51,15 @@ func SaveCheckpoint(p *Pipeline, dir string) error {
 	}
 
 	cp := Checkpoint{
-		TraceID:       p.TraceID,
-		Task:          p.Task,
-		Current:       p.Current,
-		PhaseStatuses: statuses,
-		PhaseOutputs:  p.Context.PhaseOutputs,
-		ReworkCount:   p.Context.ReworkCount,
-		RiskLevel:     p.Context.RiskLevel,
-		CreatedAt:     time.Now().UTC(),
+		SchemaVersion:  currentCheckpointVersion,
+		TraceID:        p.TraceID,
+		Task:           p.Task,
+		Current:        p.Current,
+		PhaseStatuses:  statuses,
+		PhaseOutputs:   p.Context.PhaseOutputs,
+		ReworkCount:    p.Context.ReworkCount,
+		RiskLevel:      p.Context.RiskLevel,
+		CreatedAt:      time.Now().UTC(),
 	}
 
 	data, err := json.MarshalIndent(cp, "", "  ")
@@ -59,8 +68,15 @@ func SaveCheckpoint(p *Pipeline, dir string) error {
 	}
 
 	path := filepath.Join(dir, cp.TraceID+".json")
-	if err := os.WriteFile(path, data, 0o600); err != nil {
-		return fmt.Errorf("writing checkpoint file: %w", err)
+	tmpPath := path + ".tmp"
+
+	if err := os.WriteFile(tmpPath, data, 0o600); err != nil {
+		return fmt.Errorf("writing temp checkpoint file: %w", err)
+	}
+
+	if err := os.Rename(tmpPath, path); err != nil {
+		os.Remove(tmpPath)
+		return fmt.Errorf("renaming checkpoint file: %w", err)
 	}
 
 	return nil

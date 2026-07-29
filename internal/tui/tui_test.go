@@ -296,6 +296,7 @@ func TestSplitOnOperators(t *testing.T) {
 		{"echo hello", 1},
 		{"a && b && c", 3},
 		{"a | b | c", 3},
+		{"cmd1 || dangerous_cmd", 2},
 	}
 	for _, tt := range tests {
 		got := splitOnOperators(tt.input)

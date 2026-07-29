@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/rk-senne/moonbase/internal/agents"
 	"gopkg.in/yaml.v3"
 )
 
@@ -62,11 +63,7 @@ func DefaultConfig() Config {
 		MaxOutputSize:   100000, // 100KB max output per phase
 		EnableTrace:     true,   // Trace IDs enabled by default for observability
 		MaxRetries:      1,      // One retry per phase before failure
-		AgentOrder: []string{
-			"numbuh-0", "numbuh-1", "numbuh-2", "numbuh-3", "numbuh-4", "numbuh-5",
-			"numbuh-362", "numbuh-274", "numbuh-86", "numbuh-999", "numbuh-13",
-			"knd-council", "sector-z", "numbuh-9",
-		},
+		AgentOrder: agents.DefaultAgentOrder,
 	}
 }
 

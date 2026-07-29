@@ -11,6 +11,7 @@ package updater
 
 import (
 	"crypto/sha256"
+	"crypto/tls"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -40,6 +41,17 @@ const (
 	// Maximum binary size to download (100MB safety cap).
 	maxBinarySize = 100 << 20
 )
+
+// updaterHTTPClient is a shared HTTP client with TLS 1.2 minimum for all updater
+// network operations. Prevents TLS downgrade attacks while preserving per-call
+// timeouts via context or per-request clients derived from this transport.
+//
+// SECURITY: Enforces TLS 1.2+ to prevent downgrade attacks on release downloads.
+var updaterTransport = &http.Transport{
+	TLSClientConfig: &tls.Config{
+		MinVersion: tls.VersionTLS12,
+	},
+}
 
 // repoCoordinates returns the GitHub owner and repository name to check for
 // releases. It derives them from the module path baked into the binary at build
@@ -246,7 +258,7 @@ func fetchLatestRelease() (*Release, error) {
 	owner, name := repoCoordinates()
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", owner, name)
 
-	client := &http.Client{Timeout: apiTimeout}
+	client := &http.Client{Timeout: apiTimeout, Transport: updaterTransport}
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("creating request: %w", err)
@@ -286,7 +298,7 @@ func expectedAssetName() string {
 
 // downloadFile downloads a URL to the given file with size limits.
 func downloadFile(url string, dest *os.File) error {
-	client := &http.Client{Timeout: downloadTimeout}
+	client := &http.Client{Timeout: downloadTimeout, Transport: updaterTransport}
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return fmt.Errorf("creating download request: %w", err)
@@ -319,7 +331,7 @@ func downloadFile(url string, dest *os.File) error {
 // verifyChecksum downloads checksums.txt and verifies the downloaded file matches.
 func verifyChecksum(filePath, assetName, checksumURL string) error {
 	// Download checksums
-	client := &http.Client{Timeout: apiTimeout}
+	client := &http.Client{Timeout: apiTimeout, Transport: updaterTransport}
 	resp, err := client.Get(checksumURL)
 	if err != nil {
 		return fmt.Errorf("downloading checksums: %w", err)

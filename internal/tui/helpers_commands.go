@@ -139,6 +139,7 @@ func extractCommands(cmd string) []string {
 // splitOnOperators splits on &&, ||, ;, and |
 func splitOnOperators(cmd string) []string {
 	cmd = strings.ReplaceAll(cmd, "&&", "\x00")
+	cmd = strings.ReplaceAll(cmd, "||", "\x00")
 	cmd = strings.ReplaceAll(cmd, ";", "\x00")
 	var parts []string
 	for _, segment := range strings.Split(cmd, "\x00") {

@@ -21,6 +21,10 @@ const DefaultMaxTokens = 4096
 // Prevents memory exhaustion from malicious or malformed API responses.
 const maxErrorBodySize = 1 << 20
 
+// maxStreamResponseSize is the maximum accumulated streamed response size (10 MB).
+// Prevents unbounded memory growth from pathologically large responses.
+const maxStreamResponseSize = 10 << 20
+
 type StreamChunk struct {
 	Text string
 	Done bool
@@ -129,6 +133,7 @@ func streamFrom(url, apiKey, model string, conv *Conversation, client *http.Clie
 
 		// Parse SSE stream — only extract text content, discard anything else.
 		scanner := bufio.NewScanner(resp.Body)
+		var totalSize int
 		for scanner.Scan() {
 			line := scanner.Text()
 
@@ -156,6 +161,11 @@ func streamFrom(url, apiKey, model string, conv *Conversation, client *http.Clie
 			}
 
 			if event.Type == "content_block_delta" && event.Delta.Text != "" {
+				totalSize += len(event.Delta.Text)
+				if totalSize > maxStreamResponseSize {
+					ch <- StreamChunk{Err: fmt.Errorf("response exceeded %d bytes", maxStreamResponseSize)}
+					return
+				}
 				ch <- StreamChunk{Text: event.Delta.Text}
 			}
 

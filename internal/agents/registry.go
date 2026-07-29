@@ -129,15 +129,16 @@ func (r *Registry) Specialists() []Agent {
 	return specialists
 }
 
-// agentOrder defines display order for the sidebar
-var agentOrder = []string{
+// DefaultAgentOrder defines the canonical display order for agents in the TUI sidebar.
+// This is the single source of truth — config.DefaultConfig() references this slice.
+var DefaultAgentOrder = []string{
 	"numbuh-0", "numbuh-1", "numbuh-2", "numbuh-3", "numbuh-4", "numbuh-5",
 	"numbuh-362", "numbuh-274", "numbuh-86", "numbuh-999", "numbuh-13",
 	"knd-council", "sector-z", "numbuh-9",
 }
 
 func sortOrder(name string) int {
-	for i, n := range agentOrder {
+	for i, n := range DefaultAgentOrder {
 		if n == name {
 			return i
 		}
