@@ -60,6 +60,25 @@ cd moonbase && make build && cp bin/moonbase ~/.local/bin/
 > Agents are baked into the binary, so moonbase works in **any project** with no repo
 > checkout — `moonbase init` / `moonbase setup` just work from anywhere.
 
+### Private / internal use (current)
+
+The repository is currently private, so the install script and a plain `go install`
+need access. Until it's made public, install within the org by either:
+
+```bash
+# Build from source (you have repo access)
+git clone git@github.com:rk-senne/moonbase.git
+cd moonbase && make build && cp bin/moonbase ~/.local/bin/
+
+# …or go install with private-module + git auth configured
+GOPRIVATE=github.com/rk-senne/* go install github.com/rk-senne/moonbase/cmd/moonbase@latest
+```
+
+No engineering change is needed to go public later: the release owner is derived from
+the binary's module path, goreleaser auto-detects the repo from the git remote, and the
+install script targets public release assets — so flipping the repo to public makes the
+one-line installer and `go install` work with **no code edits**.
+
 ---
 
 ## Quick Start
