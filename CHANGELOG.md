@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- chore(updater): the self-updater now derives the GitHub owner/repo from the module path baked into the binary (`debug.ReadBuildInfo`) instead of a hardcoded owner, and `.goreleaser.yml` auto-detects the repository from the git `origin` remote. Forks are followed automatically with no config edits; a fallback default is used only when build info is unavailable.
+
 ## [1.6.0] - 2026-07-29
 
 ### Added

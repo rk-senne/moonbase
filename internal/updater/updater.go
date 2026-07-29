@@ -19,14 +19,17 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"strings"
 	"time"
 )
 
 const (
-	// GitHub repository for moonbase releases.
-	repoOwner = "rk-senne"
-	repoName  = "moonbase"
+	// Fallback GitHub coordinates, used only when the module path cannot be
+	// determined at runtime (e.g. a binary built without module info). Normally
+	// the owner/repo are derived from the module path via repoCoordinates().
+	defaultRepoOwner = "rk-senne"
+	defaultRepoName  = "moonbase"
 
 	// API timeout for checking releases.
 	apiTimeout = 15 * time.Second
@@ -37,6 +40,32 @@ const (
 	// Maximum binary size to download (100MB safety cap).
 	maxBinarySize = 100 << 20
 )
+
+// repoCoordinates returns the GitHub owner and repository name to check for
+// releases. It derives them from the module path baked into the binary at build
+// time (via debug.ReadBuildInfo), so the updater always targets the repository
+// the binary was actually built from — there is no hardcoded owner to drift out
+// of sync with where the code lives. Falls back to the defaults if build info is
+// unavailable or the module path is not a github.com path.
+func repoCoordinates() (owner, name string) {
+	if info, ok := debug.ReadBuildInfo(); ok {
+		if o, n, ok := parseGitHubModulePath(info.Main.Path); ok {
+			return o, n
+		}
+	}
+	return defaultRepoOwner, defaultRepoName
+}
+
+// parseGitHubModulePath extracts the owner and repo from a module path such as
+// "github.com/rk-senne/moonbase". Returns ok=false for non-github.com paths or
+// paths missing an owner/repo segment.
+func parseGitHubModulePath(modPath string) (owner, name string, ok bool) {
+	parts := strings.Split(modPath, "/")
+	if len(parts) >= 3 && parts[0] == "github.com" && parts[1] != "" && parts[2] != "" {
+		return parts[1], parts[2], true
+	}
+	return "", "", false
+}
 
 // Release represents a GitHub release.
 type Release struct {
@@ -214,7 +243,8 @@ func Update(currentVersion string) (string, error) {
 
 // fetchLatestRelease gets the latest non-draft, non-prerelease from GitHub.
 func fetchLatestRelease() (*Release, error) {
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", repoOwner, repoName)
+	owner, name := repoCoordinates()
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", owner, name)
 
 	client := &http.Client{Timeout: apiTimeout}
 	req, err := http.NewRequest("GET", url, nil)

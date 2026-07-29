@@ -11,6 +11,46 @@ import (
 	"testing"
 )
 
+func TestParseGitHubModulePath(t *testing.T) {
+	tests := []struct {
+		name      string
+		modPath   string
+		wantOwner string
+		wantName  string
+		wantOK    bool
+	}{
+		{"canonical", "github.com/rk-senne/moonbase", "rk-senne", "moonbase", true},
+		{"work fnumber", "github.com/f5508037/moonbase", "f5508037", "moonbase", true},
+		{"with subpackage", "github.com/owner/repo/internal/x", "owner", "repo", true},
+		{"non-github host", "example.com/owner/repo", "", "", false},
+		{"gitlab", "gitlab.com/owner/repo", "", "", false},
+		{"too short", "github.com/onlyowner", "", "", false},
+		{"empty", "", "", "", false},
+		{"just host", "github.com", "", "", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			owner, name, ok := parseGitHubModulePath(tt.modPath)
+			if ok != tt.wantOK || owner != tt.wantOwner || name != tt.wantName {
+				t.Errorf("parseGitHubModulePath(%q) = (%q, %q, %v), want (%q, %q, %v)",
+					tt.modPath, owner, name, ok, tt.wantOwner, tt.wantName, tt.wantOK)
+			}
+		})
+	}
+}
+
+func TestRepoCoordinates_ReturnsNonEmpty(t *testing.T) {
+	// Whether derived from build info or the fallback, both must be non-empty so
+	// the release API URL is always well-formed.
+	owner, name := repoCoordinates()
+	if owner == "" || name == "" {
+		t.Errorf("repoCoordinates returned empty values: owner=%q name=%q", owner, name)
+	}
+	if name != "moonbase" {
+		t.Errorf("expected repo name 'moonbase', got %q", name)
+	}
+}
+
 func TestListAssets(t *testing.T) {
 	tests := []struct {
 		name   string

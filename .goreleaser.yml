@@ -38,8 +38,7 @@ changelog:
 
 # Private repo — no homebrew, no announcements
 release:
-  github:
-    owner: rk-senne
-    name: moonbase
+  # Repository owner/name are auto-detected from the git 'origin' remote, so
+  # there is no hardcoded identity to keep in sync with where the repo is hosted.
   draft: false
   prerelease: auto
