@@ -14,10 +14,7 @@ func TestDiscover_RealProject(t *testing.T) {
 		t.Skip("project root not found")
 	}
 
-	ctx, err := Discover(projectDir)
-	if err != nil {
-		t.Fatalf("Discover failed: %v", err)
-	}
+	ctx := Discover(projectDir)
 
 	// Moonbase has .kiro/specs/moonbase-v3/
 	if !ctx.HasSpecs() {
@@ -85,10 +82,7 @@ func TestDiscover_RealProject(t *testing.T) {
 func TestDiscover_EmptyDir(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	ctx, err := Discover(tmpDir)
-	if err != nil {
-		t.Fatalf("Discover failed: %v", err)
-	}
+	ctx := Discover(tmpDir)
 
 	if ctx.HasSpecs() {
 		t.Error("expected no specs in empty dir")

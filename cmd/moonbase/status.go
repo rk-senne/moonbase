@@ -53,14 +53,12 @@ func runStatus() {
 
 	// Project context
 	cwd := mustGetwd()
-	ctx, _ := discovery.Discover(cwd)
-	if ctx != nil {
-		if ctx.HasSpecs() || ctx.HasSteering() || ctx.Stack.Language != "" {
-			fmt.Printf("   Project:    ✅ %s\n", ctx.Summary())
-		} else {
-			fmt.Println("   Project:    ⚠️  no .kiro/ found")
-			allGood = false
-		}
+	ctx := discovery.Discover(cwd)
+	if ctx.HasSpecs() || ctx.HasSteering() || ctx.Stack.Language != "" {
+		fmt.Printf("   Project:    ✅ %s\n", ctx.Summary())
+	} else {
+		fmt.Println("   Project:    ⚠️  no .kiro/ found")
+		allGood = false
 	}
 
 	// Kiro agents installed locally?

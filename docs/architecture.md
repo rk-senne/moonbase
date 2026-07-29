@@ -55,8 +55,7 @@ C4Container
         Container(pipeline, "Pipeline Orchestrator", "Go", "Phase execution state machine, risk gate, rework loops, flywheel logging")
         Container(backends, "Backend Adapters", "Go", "7 backends: kiro-cli, openai, anthropic, kimi, ollama, clipboard, cmux")
         Container(registry, "Agent Registry", "Go", "YAML frontmatter parser, multi-directory merge (built-in → user → project)")
-        Container(discovery, "Discovery Engine", "Go", "Scans .kiro/specs, steering, skills; detects stack; assembles ProjectContext")
-        Container(composer, "Prompt Composer", "Go", "Cache-aware prompt composition with trust boundaries and size limits")
+        Container(discovery, "Discovery Engine", "Go", "Scans .kiro/specs, steering, skills; detects stack; assembles ProjectContext; composes prompts via ComposePrompt()")
         Container(config, "Config Manager", "Go + YAML", "User preferences from ~/.moonbase/config.yml, no secrets stored")
     }
 
@@ -66,8 +65,8 @@ C4Container
     Rel(tui, pipeline, "Visualizes and controls pipeline")
     Rel(pipeline, backends, "Deploys agents to AI")
     Rel(pipeline, registry, "Loads agent definitions")
-    Rel(backends, composer, "Gets composed prompt")
-    Rel(composer, discovery, "Fetches project context")
+    Rel(backends, discovery, "Gets composed prompt via ComposePrompt()")
+    Rel(pipeline, discovery, "Fetches project context")
     Rel(pipeline, config, "Reads backend preference, trust settings")
 ```
 
@@ -155,3 +154,101 @@ Clean Architecture's dependency rule: source code dependencies point inward. Out
 | **Flywheel logging** | Self-improvement over time. Append-only JSONL captures every phase execution. `moonbase flywheel` surfaces patterns: which agents get reworked, which phases are slow, where risk gates fire. | Disk usage grows unbounded (mitigated: small entries, ~200 bytes each). Privacy consideration for task descriptions logged to disk. |
 | **Cache-aware prompt composition** | Prompt ordering optimized for LLM prefix caching (Claude, GPT). Static content first (steering, agent prompt), dynamic content last (task). Higher cache hit rate = lower cost + latency. | Rigid composition order. Adding new context sections requires considering cache impact. |
 | **Multi-directory agent merge** | Three-tier priority: project `.kiro/agents/` > user `~/.moonbase/agents/` > built-in `agents/`. Projects can override any agent. | Name collisions resolved silently by priority. Can be confusing when a project override shadows a built-in. |
+
+---
+
+## 7. Dynamic View — Mission Runtime Flow
+
+The sequence diagram below shows the runtime execution path of `moonbase mission`:
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant CLI as CLI (moonbase mission)
+    participant Pipeline as Pipeline.New
+    participant Discovery as Discovery Engine
+    participant Backend as Backend (Preferred)
+    participant Agent as Agent (.md)
+    participant RiskGate as Risk Gate
+    participant Flywheel as Flywheel Log
+    participant Checkpoint as Checkpoint
+
+    User->>CLI: moonbase mission "task"
+    CLI->>Pipeline: New(task)
+    CLI->>Discovery: Discover(cwd)
+    Discovery-->>CLI: ProjectContext
+
+    loop Each mandatory phase (1→5)
+        CLI->>Discovery: ComposePrompt(agent.Prompt, ctx, phaseInput)
+        Discovery-->>CLI: composed prompt
+        CLI->>Backend: DeployRaw(composed, task)
+        Backend->>Agent: Send prompt
+        Agent-->>Backend: Agent output
+        Backend-->>CLI: output string
+        CLI->>Pipeline: Context.RecordPhase(n, output)
+        CLI->>Flywheel: Append(entry)
+    end
+
+    Note over CLI,RiskGate: After QA (Phase 4)
+    CLI->>RiskGate: ApplyRiskGate(qaOutput)
+
+    alt LOW risk
+        RiskGate-->>CLI: proceed to Review
+    else MEDIUM or HIGH risk
+        RiskGate-->>CLI: rework (loop back to Phase 3 or 2)
+        Note over CLI: Re-executes target phase (max 2 rework loops)
+    else CRITICAL risk
+        RiskGate-->>CLI: STOP — escalate to human
+    end
+
+    par Conditional phases (6, 7, 8)
+        CLI->>Backend: Deploy conditional specialists
+        Backend-->>CLI: specialist output
+    end
+
+    CLI->>Checkpoint: SaveCheckpoint(pipeline, dir)
+    CLI->>Flywheel: Append(final entries)
+    CLI-->>User: Mission complete / summary
+```
+
+---
+
+## 8. Deployment View
+
+The deployment diagram shows how moonbase distributes across the filesystem and connects to external services:
+
+```mermaid
+flowchart TB
+    subgraph host["Developer Machine"]
+        subgraph bin["~/.local/bin (or PATH)"]
+            moonbase["moonbase binary<br/>(single Go executable)"]
+        end
+
+        subgraph userdata["~/.moonbase/"]
+            agents_builtin["agents/<br/>(14 built-in .md files)"]
+            config_file["config.yml<br/>(preferences, no secrets)"]
+            flywheel_file["flywheel.jsonl<br/>(append-only session log)"]
+            checkpoints_dir["checkpoints/<br/>(pipeline state JSON)"]
+            history_file["history.json<br/>(mission history)"]
+        end
+
+        subgraph project["project/.kiro/"]
+            specs["specs/<br/>(requirements, design, tasks)"]
+            steering["steering/<br/>(dev rules, conventions)"]
+            skills["skills/<br/>(domain knowledge)"]
+            prompts["prompts/<br/>(reusable workflows)"]
+            project_agents["agents/<br/>(project overrides)"]
+        end
+    end
+
+    subgraph backends["AI Backends (network)"]
+        kiro["kiro-cli<br/>(local subprocess)"]
+        openai["OpenAI API<br/>(HTTPS)"]
+        anthropic["Anthropic API<br/>(HTTPS)"]
+        ollama["Ollama<br/>(local HTTP)"]
+    end
+
+    moonbase -->|reads/writes| userdata
+    moonbase -->|discovers| project
+    moonbase -->|sends prompts| backends
+```

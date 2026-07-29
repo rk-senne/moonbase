@@ -61,8 +61,9 @@ type StackInfo struct {
 
 // Discover scans a project directory for specs, steering rules, and stack info.
 // It returns a ProjectContext populated with everything it finds.
-// If nothing is found, it returns an empty (but valid) context — not an error.
-func Discover(projectDir string) (*ProjectContext, error) {
+// If nothing is found, it returns an empty (but valid) context.
+// This function is infallible — sub-discoveries that fail are silently skipped.
+func Discover(projectDir string) *ProjectContext {
 	ctx := &ProjectContext{RootDir: projectDir}
 
 	// Discover specs
@@ -95,7 +96,7 @@ func Discover(projectDir string) (*ProjectContext, error) {
 	// Read README (truncated)
 	ctx.README = readREADME(projectDir)
 
-	return ctx, nil
+	return ctx
 }
 
 // HasSpecs returns true if any spec files were found.

@@ -107,8 +107,8 @@ func runMission(task string) {
 
 	// Discover project context
 	cwd := mustGetwd()
-	ctx, _ := discovery.Discover(cwd)
-	if ctx != nil && (ctx.HasSpecs() || ctx.HasSteering()) {
+	ctx := discovery.Discover(cwd)
+	if ctx.HasSpecs() || ctx.HasSteering() {
 		fmt.Printf("   Project: %s\n\n", ctx.Summary())
 	}
 
@@ -225,8 +225,8 @@ func runMissionFast(task string) {
 
 	// Discover project context
 	cwd := mustGetwd()
-	ctx, _ := discovery.Discover(cwd)
-	if ctx != nil && (ctx.HasSpecs() || ctx.HasSteering()) {
+	ctx := discovery.Discover(cwd)
+	if ctx.HasSpecs() || ctx.HasSteering() {
 		fmt.Printf("   Project: %s\n\n", ctx.Summary())
 	}
 

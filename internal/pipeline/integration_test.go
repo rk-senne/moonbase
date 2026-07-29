@@ -45,10 +45,7 @@ func TestEndToEnd_FullPipeline(t *testing.T) {
 	}
 
 	// 2. Discover project context
-	ctx, err := discovery.Discover(projectRoot)
-	if err != nil {
-		t.Fatalf("discovery failed: %v", err)
-	}
+	ctx := discovery.Discover(projectRoot)
 
 	if !ctx.HasSpecs() {
 		t.Error("expected moonbase to have specs")

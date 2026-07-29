@@ -184,7 +184,7 @@ func NewApp() App {
 	reg := agents.NewRegistry(dir)
 	
 	// Discover project context for pipeline execution
-	projectCtx, _ := discovery.Discover(cwd)
+	projectCtx := discovery.Discover(cwd)
 	
 	// Select preferred backend
 	activeBackend := backend.Preferred()

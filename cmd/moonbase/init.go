@@ -26,11 +26,11 @@ func runInit() {
 	}
 
 	// Detect project stack
-	ctx, _ := discovery.Discover(cwd)
+	ctx := discovery.Discover(cwd)
 	stack := "unknown"
 	buildTool := ""
 	testCmd := ""
-	if ctx != nil && ctx.Stack.Language != "" {
+	if ctx.Stack.Language != "" {
 		stack = ctx.Stack.Language
 		buildTool = ctx.Stack.BuildTool
 		testCmd = ctx.Stack.TestCommand

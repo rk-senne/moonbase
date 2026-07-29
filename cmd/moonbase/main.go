@@ -269,10 +269,10 @@ func runDeploy(numbuh string, taskArg string) {
 
 	// Discover project context
 	cwd := mustGetwd()
-	ctx, _ := discovery.Discover(cwd)
+	ctx := discovery.Discover(cwd)
 
 	fmt.Printf("🌙 Deploying %s — %s (%s)\n", agent.Name, agent.Designation, agent.Role)
-	if ctx != nil && (ctx.HasSpecs() || ctx.HasSteering()) {
+	if ctx.HasSpecs() || ctx.HasSteering() {
 		fmt.Printf("   Context: %s\n", ctx.Summary())
 	}
 	if task != "" {

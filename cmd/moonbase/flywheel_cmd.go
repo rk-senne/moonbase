@@ -69,8 +69,12 @@ func runFlywheel() {
 	totalRework := 0
 	totalEntries := len(entries)
 
+	// Group entries by trace for lead-time analysis
+	traceEntries := make(map[string][]pipeline.FlywheelEntry)
+
 	for _, e := range entries {
 		traceIDs[e.TraceID] = true
+		traceEntries[e.TraceID] = append(traceEntries[e.TraceID], e)
 		phaseName := fmt.Sprintf("Phase %d (%s)", e.Phase, e.Agent)
 		phaseDurations[phaseName] = append(phaseDurations[phaseName], e.DurationMs)
 
@@ -88,11 +92,18 @@ func runFlywheel() {
 	totalMissions := len(traceIDs)
 	reworkRate := float64(totalRework) / float64(totalEntries) * 100
 
+	// Compute mission lead times and longest phases
+	leadTimes, longestPhase := computeLeadTimeInsights(traceEntries)
+
 	fmt.Println("🌙 Moonbase Flywheel — Pipeline Learning Insights")
 	fmt.Println()
 	fmt.Printf("   Total missions:   %d\n", totalMissions)
 	fmt.Printf("   Total phases run: %d\n", totalEntries)
 	fmt.Printf("   Rework rate:      %.1f%%\n", reworkRate)
+	if leadTimes.count > 0 {
+		fmt.Printf("   Avg lead time:    %s\n", leadTimes.avg.Round(time.Millisecond))
+		fmt.Printf("   Longest phase:    %s (%s)\n", longestPhase.name, longestPhase.duration.Round(time.Millisecond))
+	}
 	fmt.Println()
 
 	// Average duration per phase
@@ -159,4 +170,75 @@ func runFlywheel() {
 	}
 
 	fmt.Printf("   📁 Log: %s\n", path)
+}
+
+// leadTimeStats holds aggregated mission lead-time metrics.
+type leadTimeStats struct {
+	avg   time.Duration
+	count int
+}
+
+// longestPhaseInfo holds the phase with the longest average duration.
+type longestPhaseInfo struct {
+	name     string
+	duration time.Duration
+}
+
+// computeLeadTimeInsights computes average mission lead time and the longest phase.
+// Lead time per mission = (last entry timestamp + its duration) - first entry timestamp.
+func computeLeadTimeInsights(traceEntries map[string][]pipeline.FlywheelEntry) (leadTimeStats, longestPhaseInfo) {
+	var totalLeadTime time.Duration
+	missionCount := 0
+
+	// Per-phase total duration for finding the longest
+	phaseTotals := make(map[string]int64)
+	phaseCounts := make(map[string]int)
+
+	for _, entries := range traceEntries {
+		if len(entries) == 0 {
+			continue
+		}
+
+		// Sort by timestamp to find first and last
+		first := entries[0]
+		last := entries[0]
+		for _, e := range entries[1:] {
+			if e.Timestamp.Before(first.Timestamp) {
+				first = e
+			}
+			if e.Timestamp.After(last.Timestamp) || (e.Timestamp.Equal(last.Timestamp) && e.DurationMs > last.DurationMs) {
+				last = e
+			}
+		}
+
+		leadTime := last.Timestamp.Sub(first.Timestamp) + time.Duration(last.DurationMs)*time.Millisecond
+		if leadTime > 0 {
+			totalLeadTime += leadTime
+			missionCount++
+		}
+
+		// Accumulate per-phase durations
+		for _, e := range entries {
+			phaseName := fmt.Sprintf("Phase %d (%s)", e.Phase, e.Agent)
+			phaseTotals[phaseName] += e.DurationMs
+			phaseCounts[phaseName]++
+		}
+	}
+
+	var stats leadTimeStats
+	if missionCount > 0 {
+		stats.avg = totalLeadTime / time.Duration(missionCount)
+		stats.count = missionCount
+	}
+
+	var longest longestPhaseInfo
+	for name, total := range phaseTotals {
+		avg := time.Duration(total/int64(phaseCounts[name])) * time.Millisecond
+		if avg > longest.duration {
+			longest.name = name
+			longest.duration = avg
+		}
+	}
+
+	return stats, longest
 }
