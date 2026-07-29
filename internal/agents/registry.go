@@ -19,6 +19,7 @@ const (
 type Registry struct {
 	dir    string
 	agents []Agent
+	byName map[string]*Agent
 }
 
 // NewRegistry creates a new Registry that will load agents from the given directory.
@@ -40,6 +41,7 @@ func (r *Registry) LoadSync() error {
 		}
 	}
 	r.agents = agents
+	r.rebuildIndex()
 	return nil
 }
 
@@ -52,6 +54,7 @@ func (r *Registry) LoadMultipleDirsSync(dirs ...string) error {
 		return err
 	}
 	r.agents = merged
+	r.rebuildIndex()
 	return nil
 }
 
@@ -60,6 +63,7 @@ func (r *Registry) ReloadMultipleDirs(dirs ...string) {
 	merged, err := loadAndMergeDirs(dirs...)
 	if err == nil {
 		r.agents = merged
+		r.rebuildIndex()
 	}
 }
 
@@ -73,6 +77,7 @@ func (r *Registry) Reload() {
 			}
 		}
 		r.agents = agents
+		r.rebuildIndex()
 	}
 }
 
@@ -94,8 +99,25 @@ func (r *Registry) All() []Agent {
 	return r.agents
 }
 
+// rebuildIndex resets the byName map and points each entry to the corresponding
+// element in r.agents. Must be called AFTER the agents slice is in its final state
+// (sorted and no further appends) so that pointers remain valid.
+func (r *Registry) rebuildIndex() {
+	r.byName = make(map[string]*Agent, len(r.agents))
+	for i := range r.agents {
+		r.byName[r.agents[i].Name] = &r.agents[i]
+	}
+}
+
 // GetByName returns an agent by name, or nil if not found.
 func (r *Registry) GetByName(name string) *Agent {
+	if r.byName != nil {
+		if a, ok := r.byName[name]; ok {
+			return a
+		}
+		return nil
+	}
+	// Fallback for an uninitialized index (should not happen in normal flow).
 	for i := range r.agents {
 		if r.agents[i].Name == name {
 			return &r.agents[i]

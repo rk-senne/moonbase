@@ -152,3 +152,97 @@ func TestReloadMultipleDirs(t *testing.T) {
 		t.Errorf("expected 2 agents, got %d", reg.Count())
 	}
 }
+
+func TestGetByName_O1Lookup(t *testing.T) {
+	tmpDir := t.TempDir()
+	dir := filepath.Join(tmpDir, "agents")
+
+	createTestAgent(t, dir, "numbuh-1", "Nigel Uno", "Analyst")
+	createTestAgent(t, dir, "numbuh-2", "Hoagie", "Architect")
+	createTestAgent(t, dir, "numbuh-3", "Kuki", "Implementer")
+
+	reg := NewRegistry(dir)
+	if err := reg.LoadSync(); err != nil {
+		t.Fatalf("LoadSync failed: %v", err)
+	}
+
+	// Verify lookup returns the correct agent after load
+	a := reg.GetByName("numbuh-2")
+	if a == nil {
+		t.Fatal("GetByName(numbuh-2) returned nil after LoadSync")
+	}
+	if a.Name != "numbuh-2" {
+		t.Errorf("expected Name %q, got %q", "numbuh-2", a.Name)
+	}
+	if a.Designation != "Hoagie" {
+		t.Errorf("expected Designation %q, got %q", "Hoagie", a.Designation)
+	}
+
+	// Missing name returns nil
+	if got := reg.GetByName("nonexistent"); got != nil {
+		t.Errorf("expected nil for missing name, got %+v", got)
+	}
+}
+
+func TestGetByName_AfterReload(t *testing.T) {
+	tmpDir := t.TempDir()
+	dir := filepath.Join(tmpDir, "agents")
+
+	createTestAgent(t, dir, "numbuh-1", "Nigel", "Analyst")
+
+	reg := NewRegistry(dir)
+	if err := reg.LoadSync(); err != nil {
+		t.Fatalf("LoadSync failed: %v", err)
+	}
+
+	// Initial lookup
+	a := reg.GetByName("numbuh-1")
+	if a == nil || a.Designation != "Nigel" {
+		t.Fatalf("initial lookup failed: %+v", a)
+	}
+
+	// Overwrite the agent file with a new designation
+	createTestAgent(t, dir, "numbuh-1", "Nigel Reloaded", "Analyst")
+
+	// Reload and verify GetByName reflects the new data
+	reg.Reload()
+
+	a = reg.GetByName("numbuh-1")
+	if a == nil {
+		t.Fatal("GetByName(numbuh-1) returned nil after Reload")
+	}
+	if a.Designation != "Nigel Reloaded" {
+		t.Errorf("expected Designation %q after Reload, got %q", "Nigel Reloaded", a.Designation)
+	}
+
+	// Missing name still returns nil after Reload
+	if got := reg.GetByName("nonexistent"); got != nil {
+		t.Errorf("expected nil for missing name after Reload, got %+v", got)
+	}
+}
+
+func TestGetByName_PointerMatchesSliceElement(t *testing.T) {
+	tmpDir := t.TempDir()
+	dir := filepath.Join(tmpDir, "agents")
+
+	createTestAgent(t, dir, "numbuh-1", "Nigel", "Analyst")
+	createTestAgent(t, dir, "numbuh-2", "Hoagie", "Architect")
+
+	reg := NewRegistry(dir)
+	if err := reg.LoadSync(); err != nil {
+		t.Fatalf("LoadSync failed: %v", err)
+	}
+
+	// The pointer from GetByName should point into the same backing array as All()
+	all := reg.All()
+	for i := range all {
+		byName := reg.GetByName(all[i].Name)
+		if byName == nil {
+			t.Fatalf("GetByName(%q) returned nil", all[i].Name)
+		}
+		if byName != &all[i] {
+			t.Errorf("GetByName(%q) pointer %p does not match &All()[%d] %p",
+				all[i].Name, byName, i, &all[i])
+		}
+	}
+}
