@@ -3,9 +3,12 @@ package main
 import (
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
+
+	moonbase "github.com/f5508037/moonbase"
 )
 
 // runInstall implements `moonbase install` — copies agent .md files into a target directory.
@@ -55,35 +58,20 @@ func runSetup() {
 // installAgentsTo copies agent .md files from the source directory to targetDir.
 // This is the shared implementation for both `install` and `setup` commands.
 func installAgentsTo(targetDir string, global bool) {
-	// Find the moonbase agents directory
-	agentsSource, err := findAgentsSource()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "❌ %v\n", err)
-		if global {
-			fmt.Fprintf(os.Stderr, "\n   Run this from the moonbase source directory, or ensure\n")
-			fmt.Fprintf(os.Stderr, "   agents are bundled with the binary.\n")
-		}
-		osExit(1)
+	// Resolve the agent source. Prefer an on-disk repository checkout so local
+	// edits are picked up during development. Fall back to the agents embedded in
+	// the binary when there is no repo source, or when the resolved source is the
+	// same directory as the target — the latter is the case for `moonbase setup`
+	// run outside the repo, where copying a directory onto itself is both unsafe
+	// and pointless.
+	agentsSource, srcErr := findAgentsSource()
+	var files []string
+	if srcErr == nil && !sameDir(agentsSource, targetDir) {
+		files, _ = filepath.Glob(filepath.Join(agentsSource, "*.md"))
 	}
-
-	// List available agents
-	files, err := filepath.Glob(filepath.Join(agentsSource, "*.md"))
-	if err != nil || len(files) == 0 {
-		fmt.Fprintf(os.Stderr, "❌ No agent .md files found in %s\n", agentsSource)
-		osExit(1)
-	}
-
-	// Guard against source == target. This happens when 'moonbase setup' is run
-	// outside the repo: findAgentsSource() falls back to ~/.moonbase/agents, which
-	// is also the setup target. Copying a directory onto itself would truncate
-	// every agent to 0 bytes. Nothing fresh to copy — tell the user where to run.
-	if srcAbs, e1 := filepath.Abs(agentsSource); e1 == nil {
-		if dstAbs, e2 := filepath.Abs(targetDir); e2 == nil && srcAbs == dstAbs {
-			fmt.Printf("   Agents are already installed at %s\n", targetDir)
-			fmt.Println("   (source and target are the same directory — nothing to copy)")
-			fmt.Println("   To refresh from source, run this from the moonbase repository.")
-			return
-		}
+	if len(files) == 0 {
+		installEmbeddedAgentsTo(targetDir, global)
+		return
 	}
 
 	// SECURITY: Create target directory with restrictive permissions (0755).
@@ -121,6 +109,77 @@ func installAgentsTo(targetDir string, global bool) {
 	if !global {
 		fmt.Println("   Agents are now available to kiro-cli in this project.")
 	}
+}
+
+// sameDir reports whether two paths resolve to the same directory.
+func sameDir(a, b string) bool {
+	aa, e1 := filepath.Abs(a)
+	bb, e2 := filepath.Abs(b)
+	return e1 == nil && e2 == nil && aa == bb
+}
+
+// installEmbeddedAgentsTo writes the agents embedded in the binary to targetDir.
+// This is the fallback used when no repository checkout is available on disk
+// (e.g. `moonbase setup` run from an arbitrary directory).
+func installEmbeddedAgentsTo(targetDir string, global bool) {
+	fmt.Printf("   Source: (embedded in binary)\n")
+	fmt.Printf("   Target: %s\n", targetDir)
+	fmt.Println()
+
+	installed, err := writeEmbeddedAgents(targetDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "❌ %v\n", err)
+		osExit(1)
+	}
+	if installed == 0 {
+		fmt.Fprintf(os.Stderr, "❌ no embedded agents found in this binary\n")
+		osExit(1)
+	}
+
+	fmt.Printf("🌙 %d agent(s) installed to %s (embedded)\n", installed, targetDir)
+	if !global {
+		fmt.Println("   Agents are now available to kiro-cli in this project.")
+	}
+}
+
+// writeEmbeddedAgents writes every embedded agent .md file into targetDir with
+// 0644 permissions and returns the count written. Each file is read fully into
+// memory before writing, so it is safe even if targetDir already holds a
+// same-named file (this structurally avoids the truncate-on-open self-copy bug).
+func writeEmbeddedAgents(targetDir string) (int, error) {
+	efs, err := moonbase.AgentsFS()
+	if err != nil {
+		return 0, fmt.Errorf("loading embedded agents: %w", err)
+	}
+	entries, err := fs.Glob(efs, "*.md")
+	if err != nil {
+		return 0, fmt.Errorf("listing embedded agents: %w", err)
+	}
+	if err := os.MkdirAll(targetDir, 0o755); err != nil {
+		return 0, fmt.Errorf("creating %s: %w", targetDir, err)
+	}
+
+	installed := 0
+	for _, name := range entries {
+		base := filepath.Base(name)
+		// SECURITY: reject any unexpected path components (embedded names are
+		// controlled, but keep the guard consistent with the filesystem path).
+		if strings.Contains(base, "..") || strings.ContainsAny(base, `/\`) {
+			continue
+		}
+		data, rerr := fs.ReadFile(efs, name)
+		if rerr != nil {
+			fmt.Fprintf(os.Stderr, "  ⚠️  %s: %v\n", base, rerr)
+			continue
+		}
+		if werr := os.WriteFile(filepath.Join(targetDir, base), data, 0o644); werr != nil {
+			fmt.Fprintf(os.Stderr, "  ⚠️  %s: %v\n", base, werr)
+			continue
+		}
+		fmt.Printf("  ✅ %s\n", strings.TrimSuffix(base, ".md"))
+		installed++
+	}
+	return installed, nil
 }
 
 // findAgentsSource locates the moonbase agents directory.

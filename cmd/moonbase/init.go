@@ -89,7 +89,8 @@ func runInit() {
 		fmt.Printf("   ⚠️  Failed to write prompts/README.md: %v\n", err)
 	}
 
-	// Install agents
+	// Install agents — prefer an on-disk repo source, fall back to the agents
+	// embedded in the binary so `moonbase init` works from any directory.
 	agentsSource, err := findAgentsSource()
 	if err == nil {
 		files, _ := filepath.Glob(filepath.Join(agentsSource, "*.md"))
@@ -97,6 +98,8 @@ func runInit() {
 			copyFile(f, filepath.Join(kiroDir, "agents", filepath.Base(f)))
 		}
 		fmt.Printf("   ✅ Installed %d agents to .kiro/agents/\n", len(files))
+	} else if n, eErr := writeEmbeddedAgents(filepath.Join(kiroDir, "agents")); eErr == nil && n > 0 {
+		fmt.Printf("   ✅ Installed %d agents to .kiro/agents/ (embedded)\n", n)
 	} else {
 		fmt.Println("   ⚠️  Could not find moonbase agents to install. Run 'moonbase install' later.")
 	}

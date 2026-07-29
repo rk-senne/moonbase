@@ -99,6 +99,76 @@ func TestRunInstall_ListingMode_GlobalNoAllFlag(t *testing.T) {
 	}
 }
 
+// === embedded agents install ===
+
+// TestWriteEmbeddedAgents_WritesAllNonEmpty verifies the binary can install its
+// embedded agents to a fresh directory — the capability that lets `moonbase
+// setup`/`init` work from anywhere without a repo checkout.
+func TestWriteEmbeddedAgents_WritesAllNonEmpty(t *testing.T) {
+	targetDir := filepath.Join(t.TempDir(), "agents")
+
+	n, err := writeEmbeddedAgents(targetDir)
+	if err != nil {
+		t.Fatalf("writeEmbeddedAgents error: %v", err)
+	}
+	if n != 14 {
+		t.Errorf("expected 14 embedded agents written, got %d", n)
+	}
+
+	files, _ := filepath.Glob(filepath.Join(targetDir, "*.md"))
+	if len(files) != 14 {
+		t.Fatalf("expected 14 .md files on disk, got %d", len(files))
+	}
+	for _, f := range files {
+		info, statErr := os.Stat(f)
+		if statErr != nil {
+			t.Errorf("stat %s: %v", f, statErr)
+			continue
+		}
+		if info.Size() == 0 {
+			t.Errorf("%s is 0 bytes (embedded install must not truncate)", filepath.Base(f))
+		}
+	}
+	// Spot-check that the upgraded content (Doctrine) is present.
+	data, _ := os.ReadFile(filepath.Join(targetDir, "numbuh-2.md"))
+	if !strings.Contains(string(data), "## Doctrine") {
+		t.Error("expected embedded numbuh-2 to contain the Doctrine section")
+	}
+}
+
+// TestWriteEmbeddedAgents_Idempotent ensures re-installing over an existing
+// directory keeps files intact (no truncation on a second pass).
+func TestWriteEmbeddedAgents_Idempotent(t *testing.T) {
+	targetDir := filepath.Join(t.TempDir(), "agents")
+	if _, err := writeEmbeddedAgents(targetDir); err != nil {
+		t.Fatalf("first pass: %v", err)
+	}
+	n, err := writeEmbeddedAgents(targetDir)
+	if err != nil {
+		t.Fatalf("second pass: %v", err)
+	}
+	if n != 14 {
+		t.Errorf("expected 14 on re-install, got %d", n)
+	}
+	data, _ := os.ReadFile(filepath.Join(targetDir, "numbuh-4.md"))
+	if len(data) == 0 {
+		t.Error("re-install truncated numbuh-4.md to 0 bytes")
+	}
+}
+
+func TestSameDir(t *testing.T) {
+	tmp := t.TempDir()
+	if !sameDir(tmp, tmp) {
+		t.Error("sameDir(tmp, tmp) should be true")
+	}
+	if !sameDir(tmp, filepath.Join(tmp, ".")) {
+		t.Error("sameDir should treat './' detour as the same directory")
+	}
+	if sameDir(tmp, filepath.Join(tmp, "sub")) {
+		t.Error("sameDir(tmp, tmp/sub) should be false")
+	}
+}
+
 // === copyFile additional coverage ===
 
 // TestCopyFile_SelfCopyDoesNotTruncate is a regression test for the bug where
