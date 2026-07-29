@@ -46,7 +46,7 @@ var snippetSaveCmd = &cobra.Command{
 			lines = append(lines, scanner.Text())
 		}
 		content := strings.Join(lines, "\n")
-		home, _ := os.UserHomeDir()
+		home := mustUserHomeDir()
 		path := filepath.Join(home, ".config", "moonbase", "snippets.json")
 		os.MkdirAll(filepath.Dir(path), 0700)
 
@@ -66,7 +66,7 @@ var snippetListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List saved snippets",
 	Run: func(cmd *cobra.Command, args []string) {
-		home, _ := os.UserHomeDir()
+		home := mustUserHomeDir()
 		path := filepath.Join(home, ".config", "moonbase", "snippets.json")
 		data, err := os.ReadFile(path)
 		if err != nil {

@@ -846,3 +846,82 @@ func TestEvaluateTrigger_MultipleReasons(t *testing.T) {
 		t.Errorf("expected core logic reason, got: %s", result.Reason)
 	}
 }
+
+// === F-10: Structured meta risk gate tests ===
+
+func TestParseRiskGate_MetaProvided_WinsOverRegex(t *testing.T) {
+	// Meta says HIGH, but the prose says "## Verdict\nLOW"
+	// Meta should win because it's the primary structured path.
+	output := `# QA Report
+
+## Verdict
+LOW
+
+Everything looks fine on the surface.
+
+{"__moonbase_meta": {"risk": "HIGH", "files_changed": ["main.go"]}}`
+
+	routing := ParseRiskGate(output)
+	if routing.Level != RiskHigh {
+		t.Errorf("expected HIGH from meta (overriding regex LOW), got: %s", routing.Level)
+	}
+	if routing.TargetPhase != 2 {
+		t.Errorf("expected target phase 2 for HIGH risk, got: %d", routing.TargetPhase)
+	}
+}
+
+func TestParseRiskGate_MetaCritical(t *testing.T) {
+	output := `Some QA output here.
+{"__moonbase_meta": {"risk": "CRITICAL", "decisions": ["credentials leaked"]}}`
+
+	routing := ParseRiskGate(output)
+	if routing.Level != RiskCritical {
+		t.Errorf("expected CRITICAL from meta, got: %s", routing.Level)
+	}
+	if routing.TargetPhase != 0 {
+		t.Errorf("expected target phase 0 (stop) for CRITICAL, got: %d", routing.TargetPhase)
+	}
+}
+
+func TestParseRiskGate_MetaMediumCaseInsensitive(t *testing.T) {
+	output := `{"__moonbase_meta": {"risk": "medium"}}`
+	routing := ParseRiskGate(output)
+	if routing.Level != RiskMedium {
+		t.Errorf("expected MEDIUM from meta (case-insensitive), got: %s", routing.Level)
+	}
+}
+
+func TestParseRiskGate_MetaEmptyRisk_FallsBackToRegex(t *testing.T) {
+	// Meta present but risk field empty — should fall back to regex.
+	output := `## Verdict
+LOW
+
+{"__moonbase_meta": {"risk": "", "files_changed": ["foo.go"]}}`
+
+	routing := ParseRiskGate(output)
+	if routing.Level != RiskLow {
+		t.Errorf("expected LOW from regex fallback (meta risk empty), got: %s", routing.Level)
+	}
+}
+
+func TestParseRiskGate_NoMeta_FallsBackToRegex(t *testing.T) {
+	// No meta block at all — pure regex path.
+	output := "## Verdict\nMEDIUM\n\nMissing edge case coverage."
+	routing := ParseRiskGate(output)
+	if routing.Level != RiskMedium {
+		t.Errorf("expected MEDIUM from regex fallback, got: %s", routing.Level)
+	}
+}
+
+func TestParseRiskGate_MetaInvalidRisk_FallsBackToRegex(t *testing.T) {
+	// Meta has a risk value that doesn't match any known level.
+	output := `## Verdict
+HIGH
+
+{"__moonbase_meta": {"risk": "BANANA"}}`
+
+	routing := ParseRiskGate(output)
+	if routing.Level != RiskHigh {
+		t.Errorf("expected HIGH from regex fallback (meta risk unrecognized), got: %s", routing.Level)
+	}
+}

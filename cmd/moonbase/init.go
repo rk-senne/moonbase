@@ -12,7 +12,7 @@ import (
 
 // runInit scaffolds a .kiro/ directory in the current project.
 func runInit() {
-	cwd, _ := os.Getwd()
+	cwd := mustGetwd()
 
 	fmt.Println("🌙 Moonbase Init — Setting up project for agent-driven development")
 	fmt.Println()

@@ -18,6 +18,14 @@ type Backend interface {
 	Deploy(agent agents.Agent, context *discovery.ProjectContext, task string) (string, error)
 }
 
+// RawDeployer is an optional interface backends can implement to accept a
+// pre-composed prompt without re-running ComposePrompt. This avoids double-
+// composition when the caller (e.g., the mission pipeline) has already built
+// the full prompt including project context, steering, and per-phase input.
+type RawDeployer interface {
+	DeployRaw(composed string, task string) (string, error)
+}
+
 // DetectAll checks which backends are available on this system.
 func DetectAll() []Backend {
 	return DetectAllWithConfig(true) // default: trust tools enabled

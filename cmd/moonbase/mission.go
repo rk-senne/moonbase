@@ -43,7 +43,7 @@ func executeAndRecordPhase(
 	}
 
 	composed := discovery.ComposePrompt(agent.Prompt, ctx, phaseInput)
-	output, err := deployToBackend(agent, composed, phaseInput)
+	output, err := deployToBackend(agent, composed, phaseInput, p.PhaseTimeout)
 
 	if err != nil {
 		phase.Status = pipeline.StatusFailed
@@ -106,7 +106,7 @@ func runMission(task string) {
 	reg := loadAgentRegistry()
 
 	// Discover project context
-	cwd, _ := os.Getwd()
+	cwd := mustGetwd()
 	ctx, _ := discovery.Discover(cwd)
 	if ctx != nil && (ctx.HasSpecs() || ctx.HasSteering()) {
 		fmt.Printf("   Project: %s\n\n", ctx.Summary())
@@ -197,7 +197,7 @@ func runMission(task string) {
 	}
 
 	// Save checkpoint after pipeline execution
-	home, _ := os.UserHomeDir()
+	home := mustUserHomeDir()
 	checkpointDir := filepath.Join(home, ".moonbase", "checkpoints")
 	pipeline.SaveCheckpoint(p, checkpointDir)
 
@@ -224,7 +224,7 @@ func runMissionFast(task string) {
 	reg := loadAgentRegistry()
 
 	// Discover project context
-	cwd, _ := os.Getwd()
+	cwd := mustGetwd()
 	ctx, _ := discovery.Discover(cwd)
 	if ctx != nil && (ctx.HasSpecs() || ctx.HasSteering()) {
 		fmt.Printf("   Project: %s\n\n", ctx.Summary())
@@ -285,7 +285,7 @@ func runMissionFast(task string) {
 	}
 
 	// Save checkpoint after pipeline execution
-	home, _ := os.UserHomeDir()
+	home := mustUserHomeDir()
 	checkpointDir := filepath.Join(home, ".moonbase", "checkpoints")
 	pipeline.SaveCheckpoint(p, checkpointDir)
 
@@ -337,7 +337,7 @@ func runConditionalPhasesParallel(p *pipeline.Pipeline, reg *agents.Registry, ct
 		go func(phase *pipeline.Phase, agent *agents.Agent) {
 			phaseInput := p.Context.ForPhase(phase.Number)
 			composed := discovery.ComposePrompt(agent.Prompt, ctx, phaseInput)
-			output, err := deployToBackend(agent, composed, phaseInput)
+			output, err := deployToBackend(agent, composed, phaseInput, p.PhaseTimeout)
 			results <- result{phase.Number, output, err}
 		}(w.phase, w.agent)
 	}
@@ -398,34 +398,57 @@ func injectFileContext(pCtx *pipeline.PipelineContext) string {
 }
 
 // deployToBackend deploys a pre-composed prompt via the preferred backend with retry.
-// Uses the backend package's retry wrapper (exponential backoff with jitter) and
-// the Kiro.DeployRaw method to avoid double-composing the prompt.
+// Uses the backend package's retry wrapper (exponential backoff with jitter).
+//
+// If the backend implements backend.RawDeployer, it sends the pre-composed prompt
+// directly (avoiding double-composition). Otherwise, it passes the composed prompt
+// as the task parameter with an empty agent, which is acceptable for backends that
+// treat system+task as a single conversation turn.
+//
+// The phaseTimeout parameter bounds the total retry budget: the overall context
+// deadline is set to phaseTimeout, and per-attempt timeouts are derived as
+// phaseTimeout / DefaultMaxAttempts (capped at a sensible minimum of 30s).
 //
 // Falls back to clipboard + stdin if no AI backend is available.
 // SECURITY: All subprocess execution uses SafeEnv() via the backend package.
-func deployToBackend(agent *agents.Agent, composed string, task string) (string, error) {
-	kiroBackend := &backend.Kiro{TrustTools: true}
+func deployToBackend(agent *agents.Agent, composed string, task string, phaseTimeout time.Duration) (string, error) {
+	be := backend.Preferred()
 
-	if kiroBackend.Available() {
-		// Use a timeout context for the entire retry sequence (120s per attempt × 3 attempts).
-		ctx, cancel := context.WithTimeout(context.Background(), 360*time.Second)
+	if be.Name() != "clipboard" {
+		// Derive per-attempt timeout from the phase timeout so the total retry
+		// budget never exceeds the phase timeout.
+		perAttempt := phaseTimeout / time.Duration(backend.DefaultMaxAttempts)
+		if perAttempt < 30*time.Second {
+			perAttempt = 30 * time.Second
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), phaseTimeout)
 		defer cancel()
 
 		output, err := backend.WithRetryCtx(ctx, func() (string, error) {
-			// Per-attempt timeout: 120s
-			attemptCtx, attemptCancel := context.WithTimeout(ctx, 120*time.Second)
+			attemptCtx, attemptCancel := context.WithTimeout(ctx, perAttempt)
 			defer attemptCancel()
 
-			result, deployErr := kiroBackend.DeployRaw(composed, task)
+			var result string
+			var deployErr error
+
+			// Use RawDeployer if available to avoid double-composing the prompt.
+			if raw, ok := be.(backend.RawDeployer); ok {
+				result, deployErr = raw.DeployRaw(composed, task)
+			} else {
+				// Fallback: pass composed prompt as task with the agent.
+				// This causes a double-composition, but it's the best we can do
+				// for backends that don't implement RawDeployer.
+				result, deployErr = be.Deploy(*agent, nil, composed)
+			}
+
 			if deployErr != nil {
-				// Check if the attempt timed out
 				if attemptCtx.Err() == context.DeadlineExceeded {
-					return "", fmt.Errorf("backend timed out after 120s: %w", deployErr)
+					return "", fmt.Errorf("backend timed out after %s: %w", perAttempt, deployErr)
 				}
 				return "", deployErr
 			}
 
-			// Respect attempt-level context
 			if attemptCtx.Err() != nil {
 				return "", fmt.Errorf("deploy cancelled: %w", attemptCtx.Err())
 			}
@@ -433,12 +456,12 @@ func deployToBackend(agent *agents.Agent, composed string, task string) (string,
 		}, backend.DefaultMaxAttempts)
 
 		if err != nil {
-			return "", fmt.Errorf("kiro-cli failed after %d attempts: %w", backend.DefaultMaxAttempts, err)
+			return "", fmt.Errorf("%s failed after %d attempts: %w", be.Name(), backend.DefaultMaxAttempts, err)
 		}
 		return output, nil
 	}
 
-	// No kiro-cli available — fall back to clipboard/stdin
+	// Clipboard backend — fall back to clipboard/stdin
 	return fallbackDeploy(composed, task)
 }
 

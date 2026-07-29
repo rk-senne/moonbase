@@ -268,7 +268,7 @@ func runDeploy(numbuh string, taskArg string) {
 	}
 
 	// Discover project context
-	cwd, _ := os.Getwd()
+	cwd := mustGetwd()
 	ctx, _ := discovery.Discover(cwd)
 
 	fmt.Printf("🌙 Deploying %s — %s (%s)\n", agent.Name, agent.Designation, agent.Role)

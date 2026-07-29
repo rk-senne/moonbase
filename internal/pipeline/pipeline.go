@@ -266,6 +266,9 @@ func (p *Pipeline) IsComplete() bool {
 }
 
 // StatusSummary returns a brief status of all phases.
+//
+// Deprecated: Use tui.PipelineStatusSummary instead. This method remains for
+// backward compatibility but delegates to an internal implementation.
 func (p *Pipeline) StatusSummary() string {
 	var lines []string
 	for _, phase := range p.Phases {
@@ -281,9 +284,6 @@ func (p *Pipeline) StatusSummary() string {
 }
 
 // statusIcon maps a PhaseStatus to a display emoji.
-// NOTE: This is a PRESENTATION concern (maps domain state to UI representation).
-// If the pipeline package needs to become framework-independent, move this function
-// and StatusSummary to the TUI layer (internal/tui) or a dedicated "view" package.
 func statusIcon(s PhaseStatus) string {
 	switch s {
 	case StatusPending:

@@ -201,7 +201,7 @@ func findAgentsSource() (string, error) {
 	}
 
 	// 2. Check relative to CWD (for development)
-	cwd, _ := os.Getwd()
+	cwd := mustGetwd()
 	candidates := []string{
 		filepath.Join(cwd, "agents"),
 		filepath.Join(cwd, "..", "agents"),
@@ -214,17 +214,15 @@ func findAgentsSource() (string, error) {
 	}
 
 	// 3. Check common install paths
-	home, _ := os.UserHomeDir()
-	if home != "" {
-		commonPaths := []string{
-			filepath.Join(home, ".moonbase", "agents"),
-			filepath.Join(home, ".config", "moonbase", "agents"),
-			"/usr/local/share/moonbase/agents",
-		}
-		for _, c := range commonPaths {
-			if isAgentsDir(c) {
-				return c, nil
-			}
+	home := mustUserHomeDir()
+	commonPaths := []string{
+		filepath.Join(home, ".moonbase", "agents"),
+		filepath.Join(home, ".config", "moonbase", "agents"),
+		"/usr/local/share/moonbase/agents",
+	}
+	for _, c := range commonPaths {
+		if isAgentsDir(c) {
+			return c, nil
 		}
 	}
 

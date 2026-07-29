@@ -52,7 +52,7 @@ func runStatus() {
 	}
 
 	// Project context
-	cwd, _ := os.Getwd()
+	cwd := mustGetwd()
 	ctx, _ := discovery.Discover(cwd)
 	if ctx != nil {
 		if ctx.HasSpecs() || ctx.HasSteering() || ctx.Stack.Language != "" {

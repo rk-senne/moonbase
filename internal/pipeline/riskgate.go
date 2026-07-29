@@ -23,10 +23,25 @@ type RiskRouting struct {
 }
 
 // ParseRiskGate parses QA output (Numbuh 4) to extract the risk verdict.
-// It looks for "## Verdict" section or "RISK" indicators in the output.
+// It first attempts to extract structured metadata (__moonbase_meta JSON block)
+// which provides a reliable risk field. Falls back to regex-based extraction
+// from "## Verdict" sections or "RISK" indicators in the output.
 func ParseRiskGate(qaOutput string) RiskRouting {
-	level := extractRiskLevel(qaOutput)
+	// Primary path: structured meta provides a reliable, unambiguous risk level.
+	if meta := ParseMeta(qaOutput); meta != nil && meta.Risk != "" {
+		level := matchRiskLevel(meta.Risk)
+		if level != RiskUnknown {
+			return riskRouting(level)
+		}
+	}
 
+	// Fallback: regex-based extraction from prose output.
+	level := extractRiskLevel(qaOutput)
+	return riskRouting(level)
+}
+
+// riskRouting maps a RiskLevel to its corresponding routing decision.
+func riskRouting(level RiskLevel) RiskRouting {
 	switch level {
 	case RiskLow:
 		return RiskRouting{
