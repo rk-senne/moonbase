@@ -345,4 +345,10 @@ git tag v1.4.0 && git push --tags
 
 ---
 
+## License
+
+MIT — see [LICENSE](LICENSE). Copyright (c) 2026 Senne.
+
+---
+
 *"Kids Next Door... battle stations."*

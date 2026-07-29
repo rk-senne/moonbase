@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- MIT `LICENSE` — moonbase is now MIT-licensed (Copyright (c) 2026 Senne), so anyone can use, modify, and distribute it once the repository is public. Referenced from the README.
 - `install.sh` — one-line installer (`curl -fsSL https://raw.githubusercontent.com/rk-senne/moonbase/main/install.sh | sh`) that detects your OS/arch, downloads the latest release, verifies its checksum, installs the binary to `~/.local/bin`, and runs `moonbase setup`. README now documents installation via the script, `go install`, release download, or source. (Requires the repository/releases to be publicly accessible.)
 
 ### Changed
