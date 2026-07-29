@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"reflect"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -32,8 +33,8 @@ func TestNewApp_Initializes(t *testing.T) {
 	if app.bootStep != 0 {
 		t.Errorf("expected bootStep=0, got %d", app.bootStep)
 	}
-	if app.cursor != 0 {
-		t.Errorf("expected cursor=0, got %d", app.cursor)
+	if app.dashboard.Cursor != 0 {
+		t.Errorf("expected cursor=0, got %d", app.dashboard.Cursor)
 	}
 	if app.theme != "moonbase" {
 		t.Errorf("expected theme=moonbase, got %s", app.theme)
@@ -97,7 +98,7 @@ func TestApp_KeyNavigation_MissionView(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'m'}})
 	result := model.(App)
@@ -111,7 +112,7 @@ func TestApp_KeyNavigation_HelpToggle(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
 	result := model.(App)
@@ -131,22 +132,22 @@ func TestApp_KeyNavigation_CursorUpDown(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 	app.registry = newTestRegistry()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
 	result := model.(App)
-	if result.cursor != 1 {
-		t.Errorf("expected cursor=1 after 'j', got %d", result.cursor)
+	if result.dashboard.Cursor != 1 {
+		t.Errorf("expected cursor=1 after 'j', got %d", result.dashboard.Cursor)
 	}
-	if result.selected != 1 {
-		t.Errorf("expected selected=1 after 'j', got %d", result.selected)
+	if result.dashboard.Selected != 1 {
+		t.Errorf("expected selected=1 after 'j', got %d", result.dashboard.Selected)
 	}
 
 	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
 	result = model.(App)
-	if result.cursor != 0 {
-		t.Errorf("expected cursor=0 after 'k', got %d", result.cursor)
+	if result.dashboard.Cursor != 0 {
+		t.Errorf("expected cursor=0 after 'k', got %d", result.dashboard.Cursor)
 	}
 }
 
@@ -155,7 +156,7 @@ func TestApp_KeyNavigation_DossierView(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
@@ -169,7 +170,7 @@ func TestApp_KeyNavigation_HistoryView(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'H'}})
 	result := model.(App)
@@ -219,11 +220,11 @@ func TestApp_MissionInput_Submit(t *testing.T) {
 	if result.view != ViewPipeline {
 		t.Errorf("expected ViewPipeline after mission submit, got %d", result.view)
 	}
-	if result.pipelineState == nil {
+	if result.pipeline.State == nil {
 		t.Fatal("expected pipelineState to be set after mission submit")
 	}
-	if result.pipelineState.Task != "add pagination" {
-		t.Errorf("expected pipeline task='add pagination', got '%s'", result.pipelineState.Task)
+	if result.pipeline.State.Task != "add pagination" {
+		t.Errorf("expected pipeline task='add pagination', got '%s'", result.pipeline.State.Task)
 	}
 }
 
@@ -232,7 +233,7 @@ func TestApp_QuitKey(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 
 	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
 	if cmd == nil {
@@ -249,7 +250,7 @@ func TestApp_CtrlC_Quit(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 
 	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
 	if cmd == nil {
@@ -283,7 +284,7 @@ func TestApp_TabCyclesFocus(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyTab})
 	result := model.(App)
@@ -309,7 +310,7 @@ func TestApp_ThemeCycle(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'T'}})
 	result := model.(App)
@@ -341,12 +342,12 @@ func TestApp_PipelineEscAbort(t *testing.T) {
 	app.view = ViewPipeline
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
-	app.pipelineRunning = true
+	app.terminal.Active = false
+	app.pipeline.Running = true
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
 	result := model.(App)
-	if !result.abortPending {
+	if !result.pipeline.AbortPending {
 		t.Error("expected abortPending=true after first esc during running pipeline")
 	}
 
@@ -355,8 +356,8 @@ func TestApp_PipelineEscAbort(t *testing.T) {
 	app2.view = ViewPipeline
 	app2.ready = true
 	app2.browsing = false
-	app2.termActive = false
-	app2.pipelineRunning = false
+	app2.terminal.Active = false
+	app2.pipeline.Running = false
 
 	model, _ = app2.Update(tea.KeyMsg{Type: tea.KeyEscape})
 	result = model.(App)
@@ -380,12 +381,38 @@ func TestApp_CursorBoundsCheck(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
-	app.cursor = 0
+	app.terminal.Active = false
+	app.dashboard.Cursor = 0
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
 	result := model.(App)
-	if result.cursor != 0 {
-		t.Errorf("expected cursor stays at 0, got %d", result.cursor)
+	if result.dashboard.Cursor != 0 {
+		t.Errorf("expected cursor stays at 0, got %d", result.dashboard.Cursor)
+	}
+}
+
+// TestApp_FieldCountBounded asserts the top-level App struct field budget.
+// The design target is ≤15 fields (orchestration/shared only). The current count
+// is higher because several field groups have not yet been extracted into sub-models:
+//
+// Remaining groups that could be extracted in future phases:
+//   - Search state (searchInput, searching, filtered) → SearchModel
+//   - Git state (gitBranch, gitClean, gitDiffLines) → GitModel or into DashboardModel
+//   - Comms-related (comms, commsInput, snippetPicker, snippetList, snippetCursor, contextFile, contextInput) → into CommsState
+//   - Mission input (missionInput, missions) → MissionModel
+//   - Boot state (bootStep, ready) → BootModel
+//   - Visual state (clock, startTime, focus, blink, anim) → part of rendering context
+//   - Infra (fileWatcher, toolCache, toolCacheTime, ctx) → infra/platform grouping
+//
+// Each extraction is its own task; this test documents the current count to catch
+// unintentional field additions.
+func TestApp_FieldCountBounded(t *testing.T) {
+	count := reflect.TypeOf(App{}).NumField()
+	// Current field count after Phase 5 extractions (TerminalModel, DashboardModel, PipelineModel).
+	// Target was ≤15, actual is 48 because only 3 of ~8 potential sub-models have been
+	// extracted. The remaining fields are documented above for future extraction work.
+	const maxFields = 48
+	if count > maxFields {
+		t.Errorf("App has %d fields, expected ≤ %d — did you add fields without extracting? See comment above.", count, maxFields)
 	}
 }

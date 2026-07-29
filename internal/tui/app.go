@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"context"
 	"os"
 	"strings"
 	"time"
@@ -12,10 +11,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/f5508037/moonbase/internal/agents"
 	"github.com/f5508037/moonbase/internal/backend"
-	"github.com/f5508037/moonbase/internal/chat"
 	"github.com/f5508037/moonbase/internal/discovery"
 	"github.com/f5508037/moonbase/internal/history"
-	"github.com/f5508037/moonbase/internal/pipeline"
 	"github.com/f5508037/moonbase/internal/platform"
 	"github.com/f5508037/moonbase/internal/snippets"
 	"github.com/f5508037/moonbase/internal/watcher"
@@ -68,11 +65,12 @@ type PipelineMsg struct {
 var testMode = false
 
 type App struct {
+	keys           KeyMap
 	view           View
 	registry       *agents.Registry
 	backends       []backend.Backend
-	selected       int
-	cursor         int
+	dashboard      DashboardModel
+	pipeline       PipelineModel
 	width          int
 	height         int
 	ready          bool
@@ -88,9 +86,8 @@ type App struct {
 	searching      bool
 	filtered       []int
 	theme          string
-	pipelineState  *pipeline.Pipeline
-	pipelineOutput []string
-	pipelineChat   []PipelineMsg
+	themeData      Theme
+	styles         Styles
 	clock          string
 	startTime      time.Time
 	focus          FocusPanel
@@ -103,28 +100,18 @@ type App struct {
 	ctx            platform.Context
 	projectCtx     *discovery.ProjectContext
 	activeBackend  backend.Backend
-	abortPending   bool
-	abortPendingAt time.Time
 	snippetPicker  bool
 	snippetList    []snippets.Snippet
 	snippetCursor  int
 	contextFile    bool // ctrl+f mode: typing file path
 	contextInput   textinput.Model
-	missionStart   time.Time
 	docs           *DocsState
 	projectNav     *ProjectsState
-	termInput      textinput.Model
-	termOutput     []string
-	termActive     bool
-	cwd            string
+	terminal       TerminalModel
 	fileBrowser     *FileBrowser
 	browsing        bool // true = file browser mode, false = terminal mode
-	pipelineRunning bool // prevents double-dispatch of pipeline phases
 	toolCache       map[string]bool // cached exec.LookPath results (refreshed on timer)
 	toolCacheTime   time.Time       // last time toolCache was refreshed
-	streamCh        <-chan chat.StreamChunk // active stream channel for continued polling
-	pipelineCtx     context.Context    // context for active pipeline execution
-	cancelPipeline  context.CancelFunc // cancels the active pipeline context
 }
 
 type MissionEntry struct {
@@ -134,9 +121,12 @@ type MissionEntry struct {
 
 
 func NewApp() App {
+	initialTheme := moonbaseTheme
+	initialStyles := NewStyles(initialTheme)
+
 	s := spinner.New()
 	s.Spinner = spinner.Dot
-	s.Style = lipgloss.NewStyle().Foreground(ColorActive)
+	s.Style = lipgloss.NewStyle().Foreground(initialTheme.Active)
 
 	ti := textinput.New()
 	ti.Placeholder = "Describe the mission objective..."
@@ -157,11 +147,6 @@ func NewApp() App {
 	fi.Placeholder = "File path to attach..."
 	fi.CharLimit = 256
 	fi.Width = 60
-
-	ti2 := textinput.New()
-	ti2.Placeholder = "$ "
-	ti2.CharLimit = 500
-	ti2.Width = 80
 
 	cwd, _ := os.Getwd()
 
@@ -204,7 +189,11 @@ func NewApp() App {
 	// Select preferred backend
 	activeBackend := backend.Preferred()
 
+	term := NewTerminalModel()
+	term.Cwd = cwd
+
 	return App{
+		keys:          DefaultKeyMap(),
 		view:          ViewBoot,
 		registry:      reg,
 		spinner:       s,
@@ -216,14 +205,15 @@ func NewApp() App {
 		commsInput:   ci,
 		contextInput: fi,
 		theme:        "moonbase",
+		themeData:    initialTheme,
+		styles:       initialStyles,
 		clock:        time.Now().Format("15:04:05"),
 		startTime:    time.Now(),
 		focus:        FocusSidebar,
 		missions:     missionEntries,
 		fileWatcher:  fw,
 		ctx:          platform.Detect(),
-		termInput:    ti2,
-		cwd:          cwd,
+		terminal:     term,
 		fileBrowser:  newFileBrowser(),
 		browsing:     true, // start in file browser mode
 		toolCache:    refreshToolCache(),
@@ -332,6 +322,17 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case termOutputMsg:
 		return a.handleTermOutput(msg)
 
+	case termCdMsg:
+		a.terminal = a.terminal.HandleCd(msg, a.themeData)
+		if msg.err == nil && msg.newCwd != "" {
+			a.addIntel("cd → %s", msg.newCwd)
+		}
+		return a, nil
+
+	case termClearMsg:
+		a.terminal = a.terminal.HandleClear()
+		return a, nil
+
 	case tea.KeyMsg:
 		// Boot view: any key skips
 		if a.view == ViewBoot {
@@ -344,7 +345,7 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return a.handleSearchKeys(msg)
 		}
 		// Embedded terminal
-		if a.termActive && a.view == ViewDashboard {
+		if a.terminal.Active && a.view == ViewDashboard {
 			return a.handleTerminalKeys(msg)
 		}
 		// File browser

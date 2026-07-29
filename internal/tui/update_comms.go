@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/f5508037/moonbase/internal/snippets"
@@ -14,11 +15,11 @@ import (
 func (a App) handleCommsKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Context file input mode
 	if a.contextFile {
-		switch msg.String() {
-		case "esc":
+		switch {
+		case key.Matches(msg, a.keys.ContextCancel):
 			a.contextFile = false
 			a.contextInput.Blur()
-		case "enter":
+		case key.Matches(msg, a.keys.ContextConfirm):
 			path := a.contextInput.Value()
 			if data, err := os.ReadFile(path); err == nil {
 				inject := fmt.Sprintf("[attached: %s]\n```\n%s\n```", path, string(data))
@@ -38,18 +39,18 @@ func (a App) handleCommsKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 	// Snippet picker mode
 	if a.snippetPicker {
-		switch msg.String() {
-		case "esc":
+		switch {
+		case key.Matches(msg, a.keys.SnippetCancel):
 			a.snippetPicker = false
-		case "up", "k":
+		case key.Matches(msg, a.keys.SnippetUp):
 			if a.snippetCursor > 0 {
 				a.snippetCursor--
 			}
-		case "down", "j":
+		case key.Matches(msg, a.keys.SnippetDown):
 			if a.snippetCursor < len(a.snippetList)-1 {
 				a.snippetCursor++
 			}
-		case "enter":
+		case key.Matches(msg, a.keys.SnippetConfirm):
 			if len(a.snippetList) > 0 {
 				a.commsInput.SetValue(a.snippetList[a.snippetCursor].Content)
 				a.snippetPicker = false
@@ -57,11 +58,11 @@ func (a App) handleCommsKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return a, nil
 	}
-	switch msg.String() {
-	case "esc":
+	switch {
+	case key.Matches(msg, a.keys.Back):
 		a.view = ViewDossier
 		a.commsInput.Blur()
-	case "enter":
+	case key.Matches(msg, a.keys.SendMessage):
 		if !a.comms.streaming {
 			val := a.commsInput.Value()
 			// @agent — switch active agent
@@ -98,15 +99,15 @@ func (a App) handleCommsKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				return a, cmd
 			}
 		}
-	case "ctrl+f":
+	case key.Matches(msg, a.keys.AttachFile):
 		a.contextFile = true
 		a.contextInput.Focus()
 		return a, textinput.Blink
-	case "ctrl+s":
+	case key.Matches(msg, a.keys.SnippetPicker):
 		a.snippetList = snippets.ForAgent(a.comms.agent)
 		a.snippetCursor = 0
 		a.snippetPicker = true
-	case "ctrl+c":
+	case key.Matches(msg, a.keys.CommsQuit):
 		return a, tea.Quit
 	default:
 		if !a.comms.streaming {
@@ -125,15 +126,15 @@ func (a App) handleStreamChunk(msg streamChunkMsg) (tea.Model, tea.Cmd) {
 	}
 	if msg.err != nil {
 		a.comms.buffer += fmt.Sprintf("\n[ERROR: %s]", msg.err)
-		a.comms.FinishStream()
+		a.comms.FinishStream(a.themeData)
 		return a, nil
 	}
 	if msg.done {
-		a.comms.FinishStream()
+		a.comms.FinishStream(a.themeData)
 		a.ringBell()
 		return a, nil
 	}
-	a.comms.AppendStreamToken(msg.text)
+	a.comms.AppendStreamToken(msg.text, a.themeData)
 	// Continue polling the stream
-	return a, pollStream(a.streamCh)
+	return a, pollStream(a.pipeline.StreamCh)
 }

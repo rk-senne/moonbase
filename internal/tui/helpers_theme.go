@@ -1,32 +1,11 @@
 package tui
 
-import "github.com/charmbracelet/lipgloss"
-
+// cycleTheme advances to the next theme in the registry and recomputes styles.
+// This is a pure value transformation on the model: it sets fields on the receiver
+// and does NOT mutate any package-level state.
 func (a *App) cycleTheme() {
-	switch a.theme {
-	case "moonbase":
-		a.theme = "treehouse"
-		ColorActive = lipgloss.Color("#33CC33")
-		ColorInfo = lipgloss.Color("#8B4513")
-		ColorBrand = lipgloss.Color("#228B22")
-		ColorHeader = lipgloss.Color("#006400")
-	case "treehouse":
-		a.theme = "classified"
-		ColorActive = lipgloss.Color("#FF0000")
-		ColorInfo = lipgloss.Color("#CC0000")
-		ColorBrand = lipgloss.Color("#FF3333")
-		ColorHeader = lipgloss.Color("#990000")
-	case "classified":
-		a.theme = "nerv"
-		ColorActive = lipgloss.Color("#FF6600")
-		ColorInfo = lipgloss.Color("#FF3399")
-		ColorBrand = lipgloss.Color("#9900CC")
-		ColorHeader = lipgloss.Color("#FF6600")
-	default:
-		a.theme = "moonbase"
-		ColorActive = lipgloss.Color("#5AF78E")
-		ColorInfo = lipgloss.Color("#7EC8E3")
-		ColorBrand = lipgloss.Color("#FFD700")
-		ColorHeader = lipgloss.Color("#FFD700")
-	}
+	next := NextTheme(a.themeData)
+	a.themeData = next
+	a.theme = next.Name
+	a.styles = NewStyles(next)
 }

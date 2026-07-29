@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/f5508037/moonbase/internal/discovery"
+	"github.com/f5508037/moonbase/internal/templates"
 )
 
 // runInit scaffolds a .kiro/ directory in the current project.
@@ -58,10 +59,24 @@ func runInit() {
 		fmt.Printf("   ⚠️  Failed to write tasks.md template: %v\n", err)
 	}
 
-	// Write steering rules (auto-detected from stack)
-	steeringContent := generateSteering(stack, buildTool, testCmd)
-	if err := writeTemplate(filepath.Join(kiroDir, "steering", "dev-rules.md"), steeringContent); err != nil {
-		fmt.Printf("   ⚠️  Failed to write dev-rules.md: %v\n", err)
+	// Write steering rules (tailored to detected stack)
+	steeringFiles := templates.GenerateSteeringFiles(stack, buildTool, testCmd)
+	for filename, content := range steeringFiles {
+		if err := writeTemplate(filepath.Join(kiroDir, "steering", filename), content); err != nil {
+			fmt.Printf("   ⚠️  Failed to write steering/%s: %v\n", filename, err)
+		}
+	}
+
+	// Opt-in: data-access & performance standard (only for projects that need it,
+	// via --data-access). It is gitignored regardless, so it stays local.
+	dataAccessGenerated := false
+	if initWithDataAccess {
+		content := templates.GenerateDataAccessPerformance(stack)
+		if err := writeTemplate(filepath.Join(kiroDir, "steering", "data-access-performance.md"), content); err != nil {
+			fmt.Printf("   ⚠️  Failed to write steering/data-access-performance.md: %v\n", err)
+		} else {
+			dataAccessGenerated = true
+		}
 	}
 
 	// Write skills README
@@ -86,13 +101,30 @@ func runInit() {
 		fmt.Println("   ⚠️  Could not find moonbase agents to install. Run 'moonbase install' later.")
 	}
 
+	// Ensure moonbase-managed artifacts are gitignored — installed agents and
+	// generated steering baselines are re-creatable and should not be committed
+	// into the host project's repository.
+	switch status, gErr := ensureMoonbaseGitignored(cwd); {
+	case gErr != nil:
+		fmt.Printf("   ⚠️  Could not update .gitignore: %v\n", gErr)
+	case status == gitignoreAdded:
+		fmt.Println("   ✅ Updated .gitignore (moonbase artifacts)")
+	case status == gitignoreCreated:
+		fmt.Println("   ✅ Created .gitignore (moonbase artifacts)")
+	case status == gitignoreAlreadyPresent:
+		fmt.Println("   ✅ .gitignore already covers moonbase artifacts")
+	}
+
 	fmt.Println("   ✅ Created .kiro/specs/_templates/")
-	fmt.Printf("   ✅ Created .kiro/steering/dev-rules.md (detected: %s)\n", stack)
+	fmt.Printf("   ✅ Created .kiro/steering/ (6 files, detected: %s)\n", stack)
+	if dataAccessGenerated {
+		fmt.Println("   ✅ Created .kiro/steering/data-access-performance.md (opt-in)")
+	}
 	fmt.Println("   ✅ Created .kiro/skills/ (domain knowledge)")
 	fmt.Println("   ✅ Created .kiro/prompts/ (reusable workflows)")
 	fmt.Println()
 	fmt.Println("   Next steps:")
-	fmt.Println("   1. Edit .kiro/steering/dev-rules.md with your project conventions")
+	fmt.Println("   1. Review .kiro/steering/ and tailor to your project conventions")
 	fmt.Println("   2. Create a spec: cp .kiro/specs/_templates .kiro/specs/my-feature")
 	fmt.Println("   3. Deploy an agent: moonbase deploy 1 \"analyze this project\"")
 	fmt.Println()
@@ -103,29 +135,102 @@ func writeTemplate(path, content string) error {
 	return os.WriteFile(path, []byte(content), 0o644)
 }
 
-func generateSteering(stack, buildTool, testCmd string) string {
-	var b strings.Builder
-	b.WriteString("# Dev Rules\n\n")
-	b.WriteString("## Stack\n")
-	if stack != "unknown" {
-		b.WriteString(fmt.Sprintf("- Language: %s\n", stack))
-		if buildTool != "" {
-			b.WriteString(fmt.Sprintf("- Build tool: %s\n", buildTool))
-		}
-		if testCmd != "" {
-			b.WriteString(fmt.Sprintf("- Test command: `%s`\n", testCmd))
-		}
-	} else {
-		b.WriteString("- Language: (detected: unknown — update this)\n")
-		b.WriteString("- Build tool: \n")
-		b.WriteString("- Test command: \n")
+// gitignoreStatus reports the outcome of ensureMoonbaseGitignored.
+type gitignoreStatus int
+
+const (
+	gitignoreAlreadyPresent gitignoreStatus = iota // all patterns already ignored, no change made
+	gitignoreAdded                                 // one or more patterns appended to an existing .gitignore
+	gitignoreCreated                               // a new .gitignore was created with the patterns
+)
+
+// moonbaseIgnorePatterns are the .gitignore entries moonbase manages in host
+// projects. These artifacts are generated/installed by moonbase and are
+// re-creatable (agents via 'moonbase install', steering baselines via
+// 'moonbase init'), so they should not be committed into the host repository.
+var moonbaseIgnorePatterns = []string{
+	".kiro/agents/",
+	".kiro/steering/data-access-performance.md",
+}
+
+// ensureMoonbaseGitignored makes sure the host project's .gitignore excludes
+// every pattern in moonbaseIgnorePatterns. It is idempotent: patterns already
+// present (in any of their common forms) are skipped. If .gitignore does not
+// exist it is created; otherwise only the missing patterns are appended under a
+// labelled section.
+func ensureMoonbaseGitignored(projectDir string) (gitignoreStatus, error) {
+	gitignorePath := filepath.Join(projectDir, ".gitignore")
+
+	data, err := os.ReadFile(gitignorePath)
+	if err != nil && !os.IsNotExist(err) {
+		return gitignoreAlreadyPresent, fmt.Errorf("reading .gitignore: %w", err)
 	}
-	b.WriteString("\n## Conventions\n")
-	b.WriteString("- Follow existing code patterns before introducing new ones\n")
-	b.WriteString("- Tests ship with the code, in the same unit of work\n")
-	b.WriteString("- Prefer small, focused changes over large rewrites\n")
-	b.WriteString("- Every change needs a rollback path\n")
-	return b.String()
+	created := os.IsNotExist(err)
+
+	existing := string(data)
+	var missing []string
+	for _, pattern := range moonbaseIgnorePatterns {
+		if !patternAlreadyIgnored(existing, pattern) {
+			missing = append(missing, pattern)
+		}
+	}
+
+	// Nothing to do — every pattern is already ignored.
+	if len(missing) == 0 && !created {
+		return gitignoreAlreadyPresent, nil
+	}
+
+	var b strings.Builder
+	b.WriteString(existing)
+	if len(existing) > 0 {
+		// Ensure a clean newline boundary, then a blank line before our section.
+		if !strings.HasSuffix(existing, "\n") {
+			b.WriteString("\n")
+		}
+		b.WriteString("\n")
+	}
+	b.WriteString("# Moonbase — generated/installed artifacts (re-creatable via moonbase)\n")
+	for _, pattern := range missing {
+		b.WriteString(pattern + "\n")
+	}
+
+	if wErr := os.WriteFile(gitignorePath, []byte(b.String()), 0o644); wErr != nil {
+		verb := "appending to"
+		if created {
+			verb = "creating"
+		}
+		return gitignoreAlreadyPresent, fmt.Errorf("%s .gitignore: %w", verb, wErr)
+	}
+
+	if created {
+		return gitignoreCreated, nil
+	}
+	return gitignoreAdded, nil
+}
+
+// patternAlreadyIgnored reports whether the .gitignore content already excludes
+// the given pattern. It tolerates common equivalent spellings (with/without
+// leading slash or trailing slash, or a trailing wildcard) and ignores comments.
+func patternAlreadyIgnored(content, pattern string) bool {
+	base := strings.TrimSuffix(strings.TrimPrefix(pattern, "/"), "/")
+	equivalents := map[string]bool{
+		base:              true,
+		base + "/":        true,
+		"/" + base:        true,
+		"/" + base + "/":  true,
+		base + "/*":       true,
+		"/" + base + "/*": true,
+	}
+	for _, line := range strings.Split(content, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		if equivalents[trimmed] {
+			return true
+		}
+	}
+	return false
 }
 
 const requirementsTemplate = `# Requirements: {Feature Name}

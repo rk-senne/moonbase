@@ -84,7 +84,7 @@ func TestFileBrowserKeys_Esc(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = true
-	app.termActive = false
+	app.terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
 	result := model.(App)
@@ -98,7 +98,7 @@ func TestFileBrowserKeys_Navigate(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = true
-	app.termActive = false
+	app.terminal.Active = false
 
 	// Navigate down
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
@@ -111,12 +111,12 @@ func TestTerminalKeys_Esc(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = false
-	app.termActive = true
-	app.termInput.Focus()
+	app.terminal.Active = true
+	app.terminal.Input.Focus()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
 	result := model.(App)
-	if result.termActive {
+	if result.terminal.Active {
 		t.Error("expected termActive=false after esc in terminal")
 	}
 }
@@ -126,12 +126,12 @@ func TestTerminalKeys_Backtick(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = false
-	app.termActive = true
-	app.termInput.Focus()
+	app.terminal.Active = true
+	app.terminal.Input.Focus()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'`'}})
 	result := model.(App)
-	if result.termActive {
+	if result.terminal.Active {
 		t.Error("expected termActive=false after backtick")
 	}
 	if !result.browsing {
@@ -144,14 +144,14 @@ func TestFileBrowserKeys_Backtick(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = true
-	app.termActive = false
+	app.terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'`'}})
 	result := model.(App)
 	if result.browsing {
 		t.Error("expected browsing=false after backtick from browser")
 	}
-	if !result.termActive {
+	if !result.terminal.Active {
 		t.Error("expected termActive=true after backtick from browser")
 	}
 }

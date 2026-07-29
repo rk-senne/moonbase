@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- TUI contextual footer — each view now shows a short, per-view key hint bar generated from the central key map, so available actions are discoverable without opening the full manual (`?`).
+- `moonbase init --data-access` — opt-in flag that generates a stack-aware `data-access-performance.md` steering standard for projects with a data layer that warrants it: bound every query, push filtering/sorting/aggregation to the data layer, no N+1, no lazy loading across boundaries (ORM guidance adapts to Java/JPA, Django/SQLAlchemy, Prisma/TypeORM, Go, Rust), with a complexity budget that still allows bounded in-memory work and O(N log N) where justified. Not part of the default steering set.
+- `moonbase init` now manages a `.gitignore` block for moonbase artifacts — excludes `.kiro/agents/` (installed, re-installable via `moonbase install`) and `.kiro/steering/data-access-performance.md` (opt-in, kept local to the projects that need it). Creates `.gitignore` if absent; appends only missing patterns idempotently (tolerates common pattern variants so it never duplicates).
+
+### Changed
+- refactor(tui): centralised all key bindings into a single `KeyMap` (`bubbles/key`) — key handling and both the full help manual and the new contextual footer are now generated from one source of truth, eliminating help/keybinding drift. Spec: `.kiro/specs/tui-refactor/`.
+- refactor(tui): theme system is now immutable values (`Theme`/`Styles` + registry) carried by the model instead of mutated package-level globals — race-safe, `NO_COLOR`-aware, and extensible by registering a theme rather than editing a switch. Same four themes, same colours.
+- refactor(tui): began decomposing the `App` god struct (57→47 fields) into focused value-type sub-models (`TerminalModel`, `DashboardModel`, `PipelineModel`); further extraction of remaining field groups deferred to a future phase.
+
+### Fixed
+- fix(history): history file path is now resolved lazily from `HOME` on each call instead of being cached at package `init()`, so tests can isolate history I/O. Behaviour is identical in production.
+- fix(test): history tests no longer read or write the real `~/.config/moonbase/history.json` — they isolate to a temp `HOME` via `t.Setenv`. Previously they polluted the user's real history file (which had accumulated ~488 test-only entries) and could not be isolated because the path was fixed at init.
+- fix(test): `captureStdout` test helper drained its `os.Pipe` only after the captured function returned, deadlocking on output larger than the OS pipe buffer (~64KB); it now drains concurrently. Surfaced by the history-command test as the accumulated history file crossed the threshold.
+
 ## [1.5.0] - 2026-07-15
 
 ### Added

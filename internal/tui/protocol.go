@@ -9,9 +9,9 @@ import (
 func (a App) renderProtocol() string {
 	header := a.renderHeader("Protocol")
 
-	brand := lipgloss.NewStyle().Foreground(ColorBrand).Bold(true)
-	info := lipgloss.NewStyle().Foreground(ColorInfo)
-	dim := lipgloss.NewStyle().Foreground(ColorDim)
+	brand := lipgloss.NewStyle().Foreground(a.themeData.Brand).Bold(true)
+	info := lipgloss.NewStyle().Foreground(a.themeData.Info)
+	dim := lipgloss.NewStyle().Foreground(a.themeData.Dim)
 
 	var b strings.Builder
 
@@ -93,7 +93,7 @@ func (a App) renderProtocol() string {
 	b.WriteString("  classified  Red/crimson\n")
 	b.WriteString("  nerv        Orange/purple/magenta\n")
 
-	body := StylePanel.Width(a.width - 2).Render(b.String())
-	statusBar := a.renderStatusBar("[esc] BACK  [F1] THIS VIEW")
+	body := a.styles.Panel.Width(a.width - 2).Render(b.String())
+	statusBar := a.renderContextualStatusBar()
 	return lipgloss.JoinVertical(lipgloss.Left, header, body, statusBar)
 }

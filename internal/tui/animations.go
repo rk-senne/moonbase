@@ -43,12 +43,13 @@ func (a *AnimState) RenderTyping() string {
 	return typingFrames[a.frame%len(typingFrames)]
 }
 
-// IntelFlashStyle returns a highlighted style if flash is active, otherwise normal
-func (a *AnimState) IntelFlashStyle() lipgloss.Style {
+// IntelFlashStyle returns a highlighted style if flash is active, otherwise normal.
+// Accepts a Theme to derive colours from rather than using package globals.
+func (a *AnimState) IntelFlashStyle(t Theme) lipgloss.Style {
 	if a.intelFlash > 0 {
-		return lipgloss.NewStyle().Foreground(ColorBrand).Bold(true)
+		return lipgloss.NewStyle().Foreground(t.Brand).Bold(true)
 	}
-	return lipgloss.NewStyle().Foreground(ColorDim)
+	return lipgloss.NewStyle().Foreground(t.Dim)
 }
 
 // PulseBadge returns a pulsing badge character

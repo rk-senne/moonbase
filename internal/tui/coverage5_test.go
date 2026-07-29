@@ -3,6 +3,7 @@ package tui
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -84,9 +85,9 @@ func TestRenderPipeline_AllPhaseStatuses(t *testing.T) {
 	ps.Context = pipeline.NewPipelineContext("comprehensive test")
 	ps.Context.RiskLevel = "MEDIUM"
 	ps.Context.ReworkCount = 1
-	app.pipelineState = ps
+	app.pipeline.State = ps
 
-	app.pipelineChat = []PipelineMsg{
+	app.pipeline.Chat = []PipelineMsg{
 		{"", "━━━ MISSION: comprehensive test ━━━"},
 		{"Numbuh 1", "Analysis complete. Requirements identified."},
 		{"", "────────────────────────────────"},
@@ -114,7 +115,7 @@ func TestRenderPipeline_RiskCritical(t *testing.T) {
 	ps := pipeline.New("critical test")
 	ps.Context = pipeline.NewPipelineContext("critical test")
 	ps.Context.RiskLevel = "CRITICAL"
-	app.pipelineState = ps
+	app.pipeline.State = ps
 
 	result := app.renderPipeline()
 	if result == "" {
@@ -132,7 +133,7 @@ func TestRenderPipeline_RiskLow(t *testing.T) {
 	ps := pipeline.New("low risk test")
 	ps.Context = pipeline.NewPipelineContext("low risk test")
 	ps.Context.RiskLevel = "LOW"
-	app.pipelineState = ps
+	app.pipeline.State = ps
 
 	result := app.renderPipeline()
 	if result == "" {
@@ -151,7 +152,7 @@ func TestRenderPipeline_RiskHigh(t *testing.T) {
 	ps.Context = pipeline.NewPipelineContext("high risk test")
 	ps.Context.RiskLevel = "HIGH"
 	ps.Context.ReworkCount = 2
-	app.pipelineState = ps
+	app.pipeline.State = ps
 
 	result := app.renderPipeline()
 	if result == "" {
@@ -165,11 +166,11 @@ func TestRenderPipeline_ManyMessages(t *testing.T) {
 	app.width = 100
 	app.height = 20 // small height to trigger scroll
 	app.view = ViewPipeline
-	app.pipelineState = pipeline.New("scroll test")
+	app.pipeline.State = pipeline.New("scroll test")
 
 	// Add many messages to trigger the maxLines scroll
 	for i := 0; i < 50; i++ {
-		app.pipelineChat = append(app.pipelineChat, PipelineMsg{"Numbuh 1", "Line of output"})
+		app.pipeline.Chat = append(app.pipeline.Chat, PipelineMsg{"Numbuh 1", "Line of output"})
 	}
 
 	result := app.renderPipeline()
@@ -219,8 +220,8 @@ func TestRenderHeader_PipelineRunning(t *testing.T) {
 	app.ready = true
 	app.width = 100
 	app.height = 40
-	app.pipelineRunning = true
-	app.pipelineState = pipeline.New("running task")
+	app.pipeline.Running = true
+	app.pipeline.State = pipeline.New("running task")
 
 	result := app.renderHeader("Pipeline")
 	if result == "" {
@@ -251,8 +252,8 @@ func TestRenderSidebar_DossierView(t *testing.T) {
 	app.height = 40
 	app.registry = newTestRegistry()
 	app.view = ViewDossier
-	app.cursor = 2
-	app.selected = 2
+	app.dashboard.Cursor = 2
+	app.dashboard.Selected = 2
 
 	result := app.renderSidebar(24, 30)
 	if result == "" {
@@ -301,13 +302,13 @@ func TestRenderMainPanel_TermActive(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.browsing = false
-	app.termActive = true
+	app.terminal.Active = true
 	app.focus = FocusMain
 	app.intel = []IntelEntry{
 		{Time: "14:00", Message: "System online"},
 		{Time: "14:01", Message: "Agent deployed"},
 	}
-	app.termOutput = []string{"$ ls", "file1.go", "file2.go"}
+	app.terminal.Output = []string{"$ ls", "file1.go", "file2.go"}
 
 	result := app.renderMainPanel(70, 30)
 	if result == "" {
@@ -321,9 +322,9 @@ func TestRenderMainPanel_EmptyIntel(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 	app.intel = nil
-	app.termOutput = nil
+	app.terminal.Output = nil
 
 	result := app.renderMainPanel(70, 30)
 	if result == "" {
@@ -337,7 +338,7 @@ func TestRenderMainPanel_ManyLines(t *testing.T) {
 	app.width = 100
 	app.height = 20
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 
 	// Many intel entries to trigger scrolling
 	for i := 0; i < 50; i++ {
@@ -437,6 +438,17 @@ func TestRenderRightPanel_NoMissions(t *testing.T) {
 // === renderHistory comprehensive ===
 
 func TestRenderHistory_WithContent(t *testing.T) {
+	// Isolate to a temp HOME and populate real history so the with-data render
+	// branches are exercised (status mapping, long-task truncation) rather than
+	// depending on ambient history state.
+	t.Setenv("HOME", t.TempDir())
+	if _, err := history.Save(history.Mission{Task: "short complete task", Outcome: "complete", Duration: "2m"}); err != nil {
+		t.Fatalf("save failed: %v", err)
+	}
+	if _, err := history.Save(history.Mission{Task: "this is a very long task name that exceeds twenty-eight characters", Outcome: "aborted", Duration: "9s"}); err != nil {
+		t.Fatalf("save failed: %v", err)
+	}
+
 	app := NewApp()
 	app.ready = true
 	app.width = 100
@@ -446,6 +458,16 @@ func TestRenderHistory_WithContent(t *testing.T) {
 	result := app.renderHistory()
 	if result == "" {
 		t.Error("expected non-empty renderHistory")
+	}
+	// With-data branch assertions.
+	if !strings.Contains(result, "❌") {
+		t.Error("expected aborted status glyph (❌) in rendered history")
+	}
+	if !strings.Contains(result, "..") {
+		t.Error("expected long task name to be truncated with '..'")
+	}
+	if strings.Contains(result, "No missions logged yet") {
+		t.Error("did not expect the empty-history message when missions exist")
 	}
 }
 
@@ -471,7 +493,7 @@ func TestRender3Col_WideWidth(t *testing.T) {
 	app.height = 40
 	app.registry = newTestRegistry()
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 
 	result := app.render3Col(30)
 	if result == "" {
@@ -520,8 +542,8 @@ func TestRenderDossier_AgentWithHooks(t *testing.T) {
 	for i := 0; i < app.registry.Count(); i++ {
 		agent := app.registry.Get(i)
 		if agent.Hooks != nil && len(agent.Hooks.OnActivate) > 0 {
-			app.selected = i
-			app.cursor = i
+			app.dashboard.Selected = i
+			app.dashboard.Cursor = i
 			break
 		}
 	}
@@ -544,8 +566,8 @@ func TestRenderDossier_AgentWithShortcut(t *testing.T) {
 	for i := 0; i < app.registry.Count(); i++ {
 		agent := app.registry.Get(i)
 		if agent.Shortcut != "" {
-			app.selected = i
-			app.cursor = i
+			app.dashboard.Selected = i
+			app.dashboard.Cursor = i
 			break
 		}
 	}
@@ -563,7 +585,7 @@ func TestRenderDossier_NarrowWidth(t *testing.T) {
 	app.height = 30
 	app.view = ViewDossier
 	app.registry = newTestRegistry()
-	app.selected = 0
+	app.dashboard.Selected = 0
 
 	result := app.renderDossier()
 	if result == "" {
@@ -762,7 +784,7 @@ func TestRunSpawnHook_WithHookAgent(t *testing.T) {
 	for i := 0; i < app.registry.Count(); i++ {
 		agent := app.registry.Get(i)
 		if agent.Hooks != nil && len(agent.Hooks.OnActivate) > 0 {
-			app.selected = i
+			app.dashboard.Selected = i
 			foundHook = true
 			break
 		}
@@ -845,7 +867,7 @@ func TestDeployAgent_FallbackPath(t *testing.T) {
 	if app.registry.Count() == 0 {
 		t.Skip("no agents loaded")
 	}
-	app.selected = 0
+	app.dashboard.Selected = 0
 
 	cmd := app.deployAgent()
 	if cmd == nil {
@@ -872,7 +894,7 @@ func TestOpenComms_NewConversation(t *testing.T) {
 	}
 	app.width = 100
 	app.height = 40
-	app.selected = 0
+	app.dashboard.Selected = 0
 
 	app.openComms()
 	if app.view != ViewComms {
@@ -898,7 +920,7 @@ func TestOpenComms_ExistingConversation(t *testing.T) {
 	}
 	app.width = 100
 	app.height = 40
-	app.selected = 0
+	app.dashboard.Selected = 0
 
 	// Save a conversation first
 	agent := app.registry.Get(0)
@@ -945,12 +967,12 @@ func TestHandlePhaseResult_RiskMedium(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
 	app.ready = true
-	app.pipelineState = pipeline.New("medium risk test")
+	app.pipeline.State = pipeline.New("medium risk test")
 	for i := 0; i < 3; i++ {
-		app.pipelineState.Advance()
+		app.pipeline.State.Advance()
 	}
-	app.pipelineState.Phases[3].Status = pipeline.StatusRunning
-	app.pipelineRunning = true
+	app.pipeline.State.Phases[3].Status = pipeline.StatusRunning
+	app.pipeline.Running = true
 	app.activeBackend = nil
 
 	msg := PhaseResultMsg{
@@ -962,8 +984,8 @@ func TestHandlePhaseResult_RiskMedium(t *testing.T) {
 
 	cmd := app.handlePhaseResult(msg)
 	_ = cmd
-	if app.pipelineState.Context.RiskLevel != "MEDIUM" {
-		t.Errorf("expected risk level MEDIUM, got %s", app.pipelineState.Context.RiskLevel)
+	if app.pipeline.State.Context.RiskLevel != "MEDIUM" {
+		t.Errorf("expected risk level MEDIUM, got %s", app.pipeline.State.Context.RiskLevel)
 	}
 }
 
@@ -974,16 +996,16 @@ func TestHandlePipelineAdvance_WithState(t *testing.T) {
 	app.view = ViewPipeline
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
-	app.pipelineState = pipeline.New("advance test")
-	app.pipelineState.Phases[0].Status = pipeline.StatusComplete
-	app.pipelineRunning = false
+	app.terminal.Active = false
+	app.pipeline.State = pipeline.New("advance test")
+	app.pipeline.State.Phases[0].Status = pipeline.StatusComplete
+	app.pipeline.Running = false
 	app.activeBackend = nil
 	app.registry = newTestRegistry()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
 	result := model.(App)
-	if result.pipelineState.Current == 0 {
+	if result.pipeline.State.Current == 0 {
 		t.Error("expected pipeline to advance past phase 0")
 	}
 }
@@ -1091,7 +1113,7 @@ func TestDashboardKeys_W_FileWatcher(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 	app.fileWatcher = nil // nil watcher, should not panic
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'w'}})
@@ -1104,7 +1126,7 @@ func TestDashboardKeys_P_NotPersonal(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 	app.ctx = platform.Context(1) // Work context
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'P'}})
@@ -1126,7 +1148,7 @@ func TestDashboardKeys_P_Personal(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 	app.ctx = platform.Context(0) // Personal context
 
 	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'P'}})
@@ -1140,13 +1162,13 @@ func TestDashboardKeys_NumberKeys(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 	app.registry = newTestRegistry()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'3'}})
 	result := model.(App)
-	if result.cursor != 3 {
-		t.Errorf("expected cursor=3 after '3', got %d", result.cursor)
+	if result.dashboard.Cursor != 3 {
+		t.Errorf("expected cursor=3 after '3', got %d", result.dashboard.Cursor)
 	}
 	if result.view != ViewDossier {
 		t.Errorf("expected ViewDossier after number key, got %d", result.view)
@@ -1158,7 +1180,7 @@ func TestDashboardKeys_G_GitStatusCmd(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 
 	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}})
 	if cmd == nil {
@@ -1171,7 +1193,7 @@ func TestDashboardKeys_D_GitDiffCmd(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 
 	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
 	if cmd == nil {
@@ -1184,7 +1206,7 @@ func TestDashboardKeys_F1_Protocol(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 
 	// The handler checks msg.String() == "F1" — send as Runes
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("F1")})
@@ -1261,12 +1283,12 @@ func TestAnimState_IntelFlashStyle_Transitions(t *testing.T) {
 	a := &AnimState{}
 
 	// No flash
-	style := a.IntelFlashStyle()
+	style := a.IntelFlashStyle(moonbaseTheme)
 	_ = style // just verify no panic
 
 	// With flash
 	a.TriggerIntelFlash()
-	style = a.IntelFlashStyle()
+	style = a.IntelFlashStyle(moonbaseTheme)
 	_ = style
 }
 
@@ -1309,7 +1331,7 @@ func TestRenderDashboard_WideLayout(t *testing.T) {
 	app.view = ViewDashboard
 	app.registry = newTestRegistry()
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 
 	result := app.renderDashboard()
 	if result == "" {
@@ -1387,7 +1409,7 @@ func TestRenderDashboard_TermActive(t *testing.T) {
 	app.view = ViewDashboard
 	app.registry = newTestRegistry()
 	app.browsing = false
-	app.termActive = true
+	app.terminal.Active = true
 
 	result := app.renderDashboard()
 	if result == "" {
@@ -1605,8 +1627,8 @@ func TestHandleSearchKeys_EnterWithResults(t *testing.T) {
 	if result.searching {
 		t.Error("expected searching=false after enter")
 	}
-	if result.cursor != 2 {
-		t.Errorf("expected cursor=2 (first filtered), got %d", result.cursor)
+	if result.dashboard.Cursor != 2 {
+		t.Errorf("expected cursor=2 (first filtered), got %d", result.dashboard.Cursor)
 	}
 	if result.view != ViewDossier {
 		t.Errorf("expected ViewDossier after search enter, got %d", result.view)
@@ -1816,8 +1838,8 @@ func TestExecTermCmd_CdTildePath(t *testing.T) {
 	if cmd != nil {
 		t.Error("expected nil cmd for cd")
 	}
-	if app.cwd != home {
-		t.Logf("cwd after cd ~/: %s (expected %s)", app.cwd, home)
+	if app.terminal.Cwd != home {
+		t.Logf("cwd after cd ~/: %s (expected %s)", app.terminal.Cwd, home)
 	}
 }
 
@@ -1909,12 +1931,12 @@ func TestTerminalKeys_BacktickToFB(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = false
-	app.termActive = true
-	app.termInput.Focus()
+	app.terminal.Active = true
+	app.terminal.Input.Focus()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'`'}})
 	result := model.(App)
-	if result.termActive {
+	if result.terminal.Active {
 		t.Error("expected termActive=false after backtick")
 	}
 	if !result.browsing {
@@ -1929,13 +1951,13 @@ func TestTerminalKeys_DefaultChar(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = false
-	app.termActive = true
-	app.termInput.Focus()
+	app.terminal.Active = true
+	app.terminal.Input.Focus()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
 	result := model.(App)
-	if result.termInput.Value() != "x" {
-		t.Errorf("expected 'x' in termInput, got %q", result.termInput.Value())
+	if result.terminal.Input.Value() != "x" {
+		t.Errorf("expected 'x' in termInput, got %q", result.terminal.Input.Value())
 	}
 }
 
@@ -1946,7 +1968,7 @@ func TestFileBrowserKeys_BacktickToTerm(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = true
-	app.termActive = false
+	app.terminal.Active = false
 	app.fileBrowser = newFileBrowser()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'`'}})
@@ -1954,7 +1976,7 @@ func TestFileBrowserKeys_BacktickToTerm(t *testing.T) {
 	if result.browsing {
 		t.Error("expected browsing=false after backtick")
 	}
-	if !result.termActive {
+	if !result.terminal.Active {
 		t.Error("expected termActive=true after backtick")
 	}
 }
@@ -2146,9 +2168,9 @@ func TestCommsKeys_StreamingBlocked(t *testing.T) {
 func TestHandlePhaseResult_SuccessAdvance(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
-	app.pipelineState = pipeline.New("test")
-	app.pipelineState.Phases[0].Status = pipeline.StatusRunning
-	app.pipelineRunning = true
+	app.pipeline.State = pipeline.New("test")
+	app.pipeline.State.Phases[0].Status = pipeline.StatusRunning
+	app.pipeline.Running = true
 	app.activeBackend = nil
 
 	msg := PhaseResultMsg{
@@ -2161,7 +2183,7 @@ func TestHandlePhaseResult_SuccessAdvance(t *testing.T) {
 	cmd := app.handlePhaseResult(msg)
 	// Should advance the pipeline
 	_ = cmd
-	if app.pipelineRunning {
+	if app.pipeline.Running {
 		t.Error("expected pipelineRunning=false after phase result")
 	}
 }
@@ -2171,12 +2193,12 @@ func TestHandlePhaseResult_SuccessAdvance(t *testing.T) {
 func TestHandlePhaseResult_RiskCritical(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
-	app.pipelineState = pipeline.New("critical test")
+	app.pipeline.State = pipeline.New("critical test")
 	for i := 0; i < 3; i++ {
-		app.pipelineState.Advance()
+		app.pipeline.State.Advance()
 	}
-	app.pipelineState.Phases[3].Status = pipeline.StatusRunning
-	app.pipelineRunning = true
+	app.pipeline.State.Phases[3].Status = pipeline.StatusRunning
+	app.pipeline.Running = true
 	app.activeBackend = nil
 
 	msg := PhaseResultMsg{
@@ -2479,8 +2501,8 @@ func TestRenderPipeline_SmallHeight(t *testing.T) {
 	app.width = 100
 	app.height = 14 // maxLines = height-12 = 2 < 5, so maxLines becomes 5
 	app.view = ViewPipeline
-	app.pipelineState = pipeline.New("small height test")
-	app.pipelineChat = []PipelineMsg{
+	app.pipeline.State = pipeline.New("small height test")
+	app.pipeline.Chat = []PipelineMsg{
 		{"", "🎯 Risk Gate: LOW — proceed"},
 		{"", "└── ✅ Phase complete"},
 		{"", "└── ❌ Phase failed"},
@@ -2505,8 +2527,8 @@ func TestRenderPipeline_RiskGateMessages(t *testing.T) {
 	app.width = 100
 	app.height = 50
 	app.view = ViewPipeline
-	app.pipelineState = pipeline.New("risk messages test")
-	app.pipelineChat = []PipelineMsg{
+	app.pipeline.State = pipeline.New("risk messages test")
+	app.pipeline.Chat = []PipelineMsg{
 		{"", "━━━ MISSION: risk messages test ━━━"},
 		{"", "────────────────────────────────"},
 		{"", "🎯 Risk Gate: LOW — proceed"},
@@ -2556,7 +2578,7 @@ func TestRenderDossier_LongHookCommand(t *testing.T) {
 	app.height = 40
 	app.view = ViewDossier
 	app.registry = newTestRegistry()
-	app.selected = 0
+	app.dashboard.Selected = 0
 
 	// We test render regardless of hook presence
 	result := app.renderDossier()
@@ -2675,9 +2697,9 @@ func TestRenderProjects_EmptyList(t *testing.T) {
 
 func TestHandlePhaseResult_SuccessWithLongOutput(t *testing.T) {
 	app := NewApp()
-	app.pipelineState = pipeline.New("long output test")
-	app.pipelineState.Phases[0].Status = pipeline.StatusRunning
-	app.pipelineRunning = true
+	app.pipeline.State = pipeline.New("long output test")
+	app.pipeline.State.Phases[0].Status = pipeline.StatusRunning
+	app.pipeline.Running = true
 	app.activeBackend = nil
 
 	// Create output longer than maxSummaryChars
@@ -2696,12 +2718,12 @@ func TestHandlePhaseResult_SuccessWithLongOutput(t *testing.T) {
 	app.handlePhaseResult(msg)
 	// Check that pipelineChat has truncated output
 	found := false
-	for _, m := range app.pipelineChat {
+	for _, m := range app.pipeline.Chat {
 		if len(m.Content) > 0 && len(m.Content) <= maxSummaryChars+5 {
 			found = true
 		}
 	}
-	if !found && len(app.pipelineChat) == 0 {
+	if !found && len(app.pipeline.Chat) == 0 {
 		t.Error("expected pipeline chat to have entries")
 	}
 }
@@ -2853,7 +2875,7 @@ func TestRenderDashboard_AllStatusModes(t *testing.T) {
 	// Test searching mode status bar
 	app.searching = true
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 	result := app.renderDashboard()
 	if result == "" {
 		t.Error("expected non-empty dashboard in search mode")
@@ -2870,7 +2892,7 @@ func TestRenderDashboard_AllStatusModes(t *testing.T) {
 
 	// Test termActive mode
 	app.browsing = false
-	app.termActive = true
+	app.terminal.Active = true
 	result = app.renderDashboard()
 	if result == "" {
 		t.Error("expected non-empty dashboard in termActive mode")
@@ -2979,13 +3001,13 @@ func TestFileBrowserKeys_EditFile(t *testing.T) {
 func TestHandlePhaseResult_MediumRework(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
-	app.pipelineState = pipeline.New("rework test")
+	app.pipeline.State = pipeline.New("rework test")
 	// Advance to QA phase (phase 4, index 3)
 	for i := 0; i < 3; i++ {
-		app.pipelineState.Advance()
+		app.pipeline.State.Advance()
 	}
-	app.pipelineState.Phases[3].Status = pipeline.StatusRunning
-	app.pipelineRunning = true
+	app.pipeline.State.Phases[3].Status = pipeline.StatusRunning
+	app.pipeline.Running = true
 	app.activeBackend = nil // no backend to execute rework
 
 	msg := PhaseResultMsg{
@@ -2998,8 +3020,8 @@ func TestHandlePhaseResult_MediumRework(t *testing.T) {
 	cmd := app.handlePhaseResult(msg)
 	// Should try to start rework phase but fail (no backend)
 	_ = cmd
-	if app.pipelineState.Context.RiskLevel != "MEDIUM" {
-		t.Errorf("expected MEDIUM risk, got %s", app.pipelineState.Context.RiskLevel)
+	if app.pipeline.State.Context.RiskLevel != "MEDIUM" {
+		t.Errorf("expected MEDIUM risk, got %s", app.pipeline.State.Context.RiskLevel)
 	}
 }
 
@@ -3050,14 +3072,14 @@ func TestRenderStatusBar_Narrow(t *testing.T) {
 
 func TestCommsState_StreamTokens(t *testing.T) {
 	cs := newCommsState("test", "prompt", 80, 40)
-	cs.AddUserMessage("hello")
+	cs.AddUserMessage("hello", moonbaseTheme)
 	cs.streaming = true
-	cs.AppendStreamToken("chunk1")
-	cs.AppendStreamToken(" chunk2")
+	cs.AppendStreamToken("chunk1", moonbaseTheme)
+	cs.AppendStreamToken(" chunk2", moonbaseTheme)
 	if cs.buffer != "chunk1 chunk2" {
 		t.Errorf("expected buffer='chunk1 chunk2', got %q", cs.buffer)
 	}
-	cs.FinishStream()
+	cs.FinishStream(moonbaseTheme)
 	if cs.streaming {
 		t.Error("expected streaming=false after FinishStream")
 	}
@@ -3178,44 +3200,54 @@ func TestDocsView_EnterLoadsDoc(t *testing.T) {
 // === NewApp with history data (app.go:179-186) ===
 
 func TestNewApp_WithHistoryData(t *testing.T) {
-	// Save some missions with different outcomes to exercise all branches
-	m1 := history.Mission{
-		Task:    "test task complete",
-		Outcome: "complete",
+	// Isolate history I/O to a temp HOME so this test never touches the real
+	// ~/.config/moonbase/history.json.
+	t.Setenv("HOME", t.TempDir())
+
+	// Save 6 missions (> the sidebar's 5-entry cap) with mixed outcomes so we
+	// exercise: the "cap at 5" limit, and all three status mappings
+	// (complete -> ✅, aborted -> ❌, in-progress -> 🔄).
+	saved := []history.Mission{
+		{Task: "oldest complete", Outcome: "complete"},     // dropped by the 5-cap
+		{Task: "task complete", Outcome: "complete"},
+		{Task: "task aborted", Outcome: "aborted"},
+		{Task: "task in progress", Outcome: "in-progress"},
+		{Task: "task complete 2", Outcome: "complete"},
+		{Task: "task aborted 2", Outcome: "aborted"},
 	}
-	m2 := history.Mission{
-		Task:    "test task aborted",
-		Outcome: "aborted",
+	for _, m := range saved {
+		if _, err := history.Save(m); err != nil {
+			t.Fatalf("failed to save test mission: %v", err)
+		}
 	}
-	m3 := history.Mission{
-		Task:    "test task in progress",
-		Outcome: "in-progress",
-	}
-	history.Save(m1)
-	history.Save(m2)
-	history.Save(m3)
 
 	app := NewApp()
-	// Should have loaded the missions
-	if len(app.missions) == 0 {
-		t.Error("expected missions to be loaded from history")
+
+	// The sidebar caps at 5 most-recent missions.
+	if len(app.missions) != 5 {
+		t.Errorf("expected sidebar capped at 5 missions, got %d", len(app.missions))
 	}
-	// Check that different statuses were assigned
-	hasAborted := false
-	hasInProgress := false
+
+	// All three status glyphs must be present among the loaded missions.
+	var hasComplete, hasAborted, hasInProgress bool
 	for _, m := range app.missions {
-		if m.Status == "❌" {
+		switch m.Status {
+		case "✅":
+			hasComplete = true
+		case "❌":
 			hasAborted = true
-		}
-		if m.Status == "🔄" {
+		case "🔄":
 			hasInProgress = true
 		}
 	}
+	if !hasComplete {
+		t.Error("expected a complete (✅) mission in the sidebar")
+	}
 	if !hasAborted {
-		t.Log("no aborted mission found in sidebar (may depend on load order)")
+		t.Error("expected an aborted (❌) mission in the sidebar")
 	}
 	if !hasInProgress {
-		t.Log("no in-progress mission found in sidebar (may depend on load order)")
+		t.Error("expected an in-progress (🔄) mission in the sidebar")
 	}
 }
 
@@ -3226,11 +3258,11 @@ func TestDashboardKeys_QuitWithPipeline(t *testing.T) {
 	app.view = ViewPipeline
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
-	app.pipelineState = pipeline.New("test")
-	app.pipelineRunning = true
+	app.terminal.Active = false
+	app.pipeline.State = pipeline.New("test")
+	app.pipeline.Running = true
 	cancelled := false
-	app.cancelPipeline = func() { cancelled = true }
+	app.pipeline.Cancel = func() { cancelled = true }
 
 	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
 	if cmd == nil {
@@ -3248,23 +3280,23 @@ func TestDashboardKeys_DoubleEscAbort(t *testing.T) {
 	app.view = ViewPipeline
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
-	app.pipelineState = pipeline.New("abort test")
-	app.pipelineRunning = true
-	app.abortPending = true
-	app.abortPendingAt = time.Now() // within 3s window
+	app.terminal.Active = false
+	app.pipeline.State = pipeline.New("abort test")
+	app.pipeline.Running = true
+	app.pipeline.AbortPending = true
+	app.pipeline.AbortAt = time.Now() // within 3s window
 	cancelled := false
-	app.cancelPipeline = func() { cancelled = true }
+	app.pipeline.Cancel = func() { cancelled = true }
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
 	result := model.(App)
-	if result.pipelineRunning {
+	if result.pipeline.Running {
 		t.Error("expected pipelineRunning=false after double esc")
 	}
 	if !cancelled {
 		t.Error("expected cancelPipeline called on double esc")
 	}
-	if result.abortPending {
+	if result.pipeline.AbortPending {
 		t.Error("expected abortPending=false after abort")
 	}
 }
@@ -3276,9 +3308,9 @@ func TestDashboardKeys_C_CopyInDossier(t *testing.T) {
 	app.view = ViewDossier
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 	app.registry = newTestRegistry()
-	app.selected = 0
+	app.dashboard.Selected = 0
 
 	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'c'}})
 	if cmd == nil {
@@ -3416,9 +3448,9 @@ func TestDashboardKeys_C_OpensComms(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 	app.registry = newTestRegistry()
-	app.selected = 0
+	app.dashboard.Selected = 0
 	app.width = 100
 	app.height = 40
 
@@ -3457,7 +3489,7 @@ func TestHandleStreamChunk_TextContent(t *testing.T) {
 	app.ready = true
 	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.comms.streaming = true
-	app.streamCh = ch
+	app.pipeline.StreamCh = ch
 
 	model, cmd := app.Update(streamChunkMsg{text: "hello world"})
 	result := model.(App)
@@ -3481,7 +3513,7 @@ func TestFileBrowserKeys_UpDown(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = true
-	app.termActive = false
+	app.terminal.Active = false
 	app.fileBrowser = &FileBrowser{dir: tmpDir}
 	app.fileBrowser.refresh()
 	app.fileBrowser.cursor = 0

@@ -22,13 +22,12 @@ func (a App) renderDashboard() string {
 
 	var statusBar string
 	if a.searching {
-		statusBar = a.renderStatusBar("/ " + a.searchInput.View() + "  [enter] SELECT  [esc] CANCEL")
-	} else if a.browsing {
-		statusBar = a.renderStatusBar("[↑↓] NAV  [enter] OPEN  [backspace] BACK  [e] EDIT  [`] TERMINAL  [esc] EXIT")
-	} else if a.termActive {
-		statusBar = a.renderStatusBar("[enter] RUN  [`] FILE BROWSER  [esc] EXIT")
+		bindings := a.keys.keysFor(a.view, a.searching, a.terminal.Active, a.browsing)
+		h := newHelpModel(a.width-4, a.themeData)
+		keyHints := h.ShortHelpView(bindings)
+		statusBar = a.renderStatusBar("/ " + a.searchInput.View() + "  " + keyHints)
 	} else {
-		statusBar = a.renderStatusBar("[?] HELP  [↑↓] NAV  [enter] DOSSIER  [m] MISSION  [p] PROJECTS  [W] DOCS  [`] KND  [q] QUIT")
+		statusBar = a.renderContextualStatusBar()
 	}
 
 	return lipgloss.JoinVertical(lipgloss.Left, header, body, statusBar)

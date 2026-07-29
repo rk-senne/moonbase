@@ -26,7 +26,7 @@ func (a App) runGitCmd(command string) tea.Cmd {
 }
 
 func (a App) runSpawnHook() tea.Cmd {
-	agent := a.registry.Get(a.selected)
+	agent := a.registry.Get(a.dashboard.Selected)
 	if agent.Hooks == nil || len(agent.Hooks.OnActivate) == 0 {
 		return func() tea.Msg {
 			return spawnHookMsg{agent: agent.Name, output: "(no spawn hook configured)"}
@@ -50,28 +50,161 @@ func (a App) runSpawnHook() tea.Cmd {
 	}
 }
 
-// isSafeHookCommand validates that a hook command only uses safe read-only operations.
+// safeHookCommands is the allowlist of commands permitted in agent hooks.
+// Hook commands run automatically on agent activation — only read-only,
+// information-gathering commands are permitted.
+var safeHookCommands = map[string]bool{
+	// Shell builtins and basic output
+	"echo": true, "printf": true, "true": true, "test": true,
+	// File inspection (read-only)
+	"cat": true, "head": true, "tail": true, "less": true,
+	"ls": true, "find": true, "stat": true, "file": true, "wc": true,
+	"basename": true, "dirname": true, "realpath": true, "readlink": true,
+	// Text processing (read-only)
+	"grep": true, "awk": true, "sed": true, "sort": true,
+	"uniq": true, "cut": true, "tr": true, "tee": true, "xargs": true,
+	// VCS (read-only operations enforced by hook context)
+	"git": true,
+	// System info
+	"date": true, "pwd": true, "whoami": true, "uname": true,
+	"hostname": true, "id": true, "which": true, "env": true, "printenv": true,
+	// Build tool queries (version checks, dependency listing)
+	"go": true, "node": true, "npm": true, "cargo": true,
+	"java": true, "mvn": true, "gradle": true, "python3": true,
+	"make": true, "docker": true,
+	// Directory visualization
+	"tree": true,
+}
+
+// isSafeHookCommand validates that a hook command only uses allowlisted executables.
+// It extracts all command names from compound commands (&&, ||, ;, |, $(...)) and
+// verifies each against safeHookCommands. Shell redirections are permitted.
 func isSafeHookCommand(cmd string) bool {
-	dangerous := []string{
-		"curl ", "wget ", "rm ", "rm -", "mv ", "cp ",
-		"chmod ", "chown ", "dd ", "mkfs",
-		"python", "node ", "ruby ", "perl ",
-		"eval ", "> ", ">> ", "| sh", "| bash",
-		"$(curl", "$(wget", "${", "`curl", "`wget",
-		"nc ", "ncat ", "socat ",
-		"base64", "openssl",
-		"/dev/tcp", "/dev/udp",
+	cmd = strings.TrimSpace(cmd)
+	if cmd == "" {
+		return true
 	}
-	for _, d := range dangerous {
-		if strings.Contains(cmd, d) {
+
+	// Block dangerous shell patterns that could bypass command extraction
+	unsafePatterns := []string{"`", "${"}
+	for _, p := range unsafePatterns {
+		if strings.Contains(cmd, p) {
 			return false
 		}
 	}
-	return true
+
+	// Extract commands from $(...) substitutions and the top level
+	commands := extractCommands(cmd)
+	for _, c := range commands {
+		base := extractBaseCommand(c)
+		if base == "" {
+			continue
+		}
+		if !safeHookCommands[base] {
+			return false
+		}
+	}
+	return len(commands) > 0
+}
+
+// extractCommands splits a shell command string into individual commands,
+// handling &&, ||, ;, |, and $(...) substitutions.
+func extractCommands(cmd string) []string {
+	var commands []string
+
+	// First, extract commands from $(...) substitutions
+	for i := 0; i < len(cmd); i++ {
+		if i < len(cmd)-1 && cmd[i] == '$' && cmd[i+1] == '(' {
+			depth := 1
+			start := i + 2
+			for j := start; j < len(cmd) && depth > 0; j++ {
+				if cmd[j] == '(' {
+					depth++
+				} else if cmd[j] == ')' {
+					depth--
+					if depth == 0 {
+						inner := cmd[start:j]
+						commands = append(commands, splitOnOperators(inner)...)
+					}
+				}
+			}
+		}
+	}
+
+	// Then split the top-level command
+	commands = append(commands, splitOnOperators(cmd)...)
+	return commands
+}
+
+// splitOnOperators splits on &&, ||, ;, and |
+func splitOnOperators(cmd string) []string {
+	cmd = strings.ReplaceAll(cmd, "&&", "\x00")
+	cmd = strings.ReplaceAll(cmd, ";", "\x00")
+	var parts []string
+	for _, segment := range strings.Split(cmd, "\x00") {
+		for _, p := range strings.Split(segment, "|") {
+			p = strings.TrimSpace(p)
+			if p != "" {
+				parts = append(parts, p)
+			}
+		}
+	}
+	return parts
+}
+
+// extractBaseCommand gets the executable name from a command string.
+// Strips: redirections, env var assignments, leading whitespace.
+func extractBaseCommand(cmd string) string {
+	cmd = strings.TrimSpace(cmd)
+	if cmd == "" {
+		return ""
+	}
+
+	// Remove $(...) sequences so they don't confuse field splitting
+	cleaned := cmd
+	for {
+		idx := strings.Index(cleaned, "$(")
+		if idx == -1 {
+			break
+		}
+		depth := 1
+		end := idx + 2
+		for end < len(cleaned) && depth > 0 {
+			if cleaned[end] == '(' {
+				depth++
+			} else if cleaned[end] == ')' {
+				depth--
+			}
+			end++
+		}
+		cleaned = cleaned[:idx] + cleaned[end:]
+	}
+
+	// Skip env var assignments (e.g., FOO=bar cmd)
+	fields := strings.Fields(cleaned)
+	for i, f := range fields {
+		if !strings.Contains(f, "=") || strings.HasPrefix(f, "-") {
+			fields = fields[i:]
+			goto found
+		}
+		if i == len(fields)-1 {
+			return "" // All env vars, no command
+		}
+	}
+	if len(fields) == 0 {
+		return ""
+	}
+found:
+	if len(fields) == 0 {
+		return ""
+	}
+
+	// Get base name (handle full paths like /usr/bin/git)
+	return filepath.Base(fields[0])
 }
 
 func (a App) copyPrompt() tea.Cmd {
-	agent := a.registry.Get(a.selected)
+	agent := a.registry.Get(a.dashboard.Selected)
 	return func() tea.Msg {
 		cmd := exec.Command("pbcopy")
 		cmd.Stdin = strings.NewReader(agent.Prompt)
@@ -81,7 +214,7 @@ func (a App) copyPrompt() tea.Cmd {
 }
 
 func (a App) deployAgent() tea.Cmd {
-	agent := a.registry.Get(a.selected)
+	agent := a.registry.Get(a.dashboard.Selected)
 	return func() tea.Msg {
 		// Try kiro-cli first
 		if _, err := exec.LookPath("kiro-cli"); err == nil {

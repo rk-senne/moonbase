@@ -182,7 +182,7 @@ func TestExecutePhase_AgentNotFound(t *testing.T) {
 	be := &mockBackend{name: "test", available: true, output: "done"}
 	pctx := pipeline.NewPipelineContext("test task")
 
-	cmd := executePhase(context.Background(), phase, reg, be, nil, pctx)
+	cmd := executePhase(context.Background(), phase, reg, be, nil, pctx, 120*time.Second)
 	if cmd == nil {
 		t.Fatal("expected non-nil cmd")
 	}
@@ -211,7 +211,7 @@ func TestExecutePhase_Success(t *testing.T) {
 	be := &mockBackend{name: "test-backend", available: true, output: "Requirements gathered successfully."}
 	pctx := pipeline.NewPipelineContext("add pagination")
 
-	cmd := executePhase(context.Background(), phase, reg, be, nil, pctx)
+	cmd := executePhase(context.Background(), phase, reg, be, nil, pctx, 120*time.Second)
 	msg := cmd()
 	result := msg.(PhaseResultMsg)
 
@@ -241,7 +241,7 @@ func TestExecutePhase_BackendError(t *testing.T) {
 	be := &mockBackend{name: "clipboard", available: true, err: fmt.Errorf("clipboard failed")}
 	pctx := pipeline.NewPipelineContext("test")
 
-	cmd := executePhase(context.Background(), phase, reg, be, nil, pctx)
+	cmd := executePhase(context.Background(), phase, reg, be, nil, pctx, 120*time.Second)
 	msg := cmd()
 	result := msg.(PhaseResultMsg)
 
@@ -265,7 +265,7 @@ func TestExecutePhase_ContextCancelled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // cancel immediately
 
-	cmd := executePhase(ctx, phase, reg, be, nil, pctx)
+	cmd := executePhase(ctx, phase, reg, be, nil, pctx, 120*time.Second)
 	msg := cmd()
 	result := msg.(PhaseResultMsg)
 
@@ -278,22 +278,22 @@ func TestExecutePhase_ContextCancelled(t *testing.T) {
 
 func TestStartNextPhase_NilPipelineState(t *testing.T) {
 	app := NewApp()
-	app.pipelineState = nil
-	app.pipelineRunning = true
+	app.pipeline.State = nil
+	app.pipeline.Running = true
 
 	cmd := app.startNextPhase()
 	if cmd != nil {
 		t.Error("expected nil cmd for nil pipelineState")
 	}
-	if app.pipelineRunning {
+	if app.pipeline.Running {
 		t.Error("expected pipelineRunning=false")
 	}
 }
 
 func TestStartNextPhase_InactivePipeline(t *testing.T) {
 	app := NewApp()
-	app.pipelineState = pipeline.New("test")
-	app.pipelineState.Active = false
+	app.pipeline.State = pipeline.New("test")
+	app.pipeline.State.Active = false
 
 	cmd := app.startNextPhase()
 	if cmd != nil {
@@ -303,21 +303,21 @@ func TestStartNextPhase_InactivePipeline(t *testing.T) {
 
 func TestStartNextPhase_ClipboardBackend(t *testing.T) {
 	app := NewApp()
-	app.pipelineState = pipeline.New("test")
+	app.pipeline.State = pipeline.New("test")
 	app.activeBackend = &mockBackend{name: "clipboard", available: true}
 
 	cmd := app.startNextPhase()
 	if cmd != nil {
 		t.Error("expected nil cmd for clipboard backend (simulated mode)")
 	}
-	if app.pipelineRunning {
+	if app.pipeline.Running {
 		t.Error("expected pipelineRunning=false for clipboard backend")
 	}
 }
 
 func TestStartNextPhase_NilBackend(t *testing.T) {
 	app := NewApp()
-	app.pipelineState = pipeline.New("test")
+	app.pipeline.State = pipeline.New("test")
 	app.activeBackend = nil
 
 	cmd := app.startNextPhase()
@@ -328,10 +328,10 @@ func TestStartNextPhase_NilBackend(t *testing.T) {
 
 func TestStartNextPhase_PipelineComplete(t *testing.T) {
 	app := NewApp()
-	app.pipelineState = pipeline.New("test")
+	app.pipeline.State = pipeline.New("test")
 	app.activeBackend = &mockBackend{name: "real", available: true}
 	// Move past all phases
-	app.pipelineState.Current = len(app.pipelineState.Phases)
+	app.pipeline.State.Current = len(app.pipeline.State.Phases)
 
 	cmd := app.startNextPhase()
 	if cmd != nil {
@@ -341,10 +341,10 @@ func TestStartNextPhase_PipelineComplete(t *testing.T) {
 
 func TestStartNextPhase_ConditionalSkipped(t *testing.T) {
 	app := NewApp()
-	app.pipelineState = pipeline.New("test")
+	app.pipeline.State = pipeline.New("test")
 	app.activeBackend = &mockBackend{name: "real", available: true}
 	// Move to a conditional phase (index 5 = Oversight)
-	app.pipelineState.Current = 5
+	app.pipeline.State.Current = 5
 
 	cmd := app.startNextPhase()
 	// Conditional phases are skipped when no trigger conditions met
@@ -355,7 +355,7 @@ func TestStartNextPhase_ConditionalSkipped(t *testing.T) {
 
 func TestStartNextPhase_RealBackendExecutes(t *testing.T) {
 	app := NewApp()
-	app.pipelineState = pipeline.New("test")
+	app.pipeline.State = pipeline.New("test")
 	app.activeBackend = &mockBackend{name: "test-backend", available: true, output: "done"}
 	app.registry = newTestRegistry()
 
@@ -363,7 +363,7 @@ func TestStartNextPhase_RealBackendExecutes(t *testing.T) {
 	if cmd == nil {
 		t.Error("expected non-nil cmd for real backend with pending phase")
 	}
-	if !app.pipelineRunning {
+	if !app.pipeline.Running {
 		t.Error("expected pipelineRunning=true when phase starts")
 	}
 }
@@ -374,12 +374,12 @@ func TestHandlePhaseResult_RiskGate_High(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
 	app.ready = true
-	app.pipelineState = pipeline.New("test task")
+	app.pipeline.State = pipeline.New("test task")
 	for i := 0; i < 3; i++ {
-		app.pipelineState.Advance()
+		app.pipeline.State.Advance()
 	}
-	app.pipelineState.Phases[3].Status = pipeline.StatusRunning
-	app.pipelineRunning = true
+	app.pipeline.State.Phases[3].Status = pipeline.StatusRunning
+	app.pipeline.Running = true
 
 	msg := PhaseResultMsg{
 		Phase:   4,
@@ -391,8 +391,8 @@ func TestHandlePhaseResult_RiskGate_High(t *testing.T) {
 	model, _ := app.Update(msg)
 	result := model.(App)
 
-	if result.pipelineState.Context.RiskLevel != "HIGH" {
-		t.Errorf("expected risk level HIGH, got %s", result.pipelineState.Context.RiskLevel)
+	if result.pipeline.State.Context.RiskLevel != "HIGH" {
+		t.Errorf("expected risk level HIGH, got %s", result.pipeline.State.Context.RiskLevel)
 	}
 }
 
@@ -400,13 +400,13 @@ func TestHandlePhaseResult_PipelineComplete(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
 	app.ready = true
-	app.pipelineState = pipeline.New("test task")
+	app.pipeline.State = pipeline.New("test task")
 	// Advance to the last mandatory phase (Review = phase 5, index 4)
 	for i := 0; i < 4; i++ {
-		app.pipelineState.Advance()
+		app.pipeline.State.Advance()
 	}
-	app.pipelineState.Phases[4].Status = pipeline.StatusRunning
-	app.pipelineRunning = true
+	app.pipeline.State.Phases[4].Status = pipeline.StatusRunning
+	app.pipeline.Running = true
 	app.activeBackend = nil // no backend means it won't try to execute next
 
 	msg := PhaseResultMsg{
@@ -420,16 +420,16 @@ func TestHandlePhaseResult_PipelineComplete(t *testing.T) {
 	// After phase 5, pipeline advances and conditional phases may be skipped
 	// resulting in pipeline completion
 	_ = cmd
-	if app.pipelineRunning {
+	if app.pipeline.Running {
 		t.Error("expected pipelineRunning=false after completion")
 	}
 }
 
 func TestHandlePhaseResult_ErrorSetsFailedStatus(t *testing.T) {
 	app := NewApp()
-	app.pipelineState = pipeline.New("test")
-	app.pipelineState.Phases[0].Status = pipeline.StatusRunning
-	app.pipelineRunning = true
+	app.pipeline.State = pipeline.New("test")
+	app.pipeline.State.Phases[0].Status = pipeline.StatusRunning
+	app.pipeline.Running = true
 
 	msg := PhaseResultMsg{
 		Phase:   1,
@@ -441,8 +441,8 @@ func TestHandlePhaseResult_ErrorSetsFailedStatus(t *testing.T) {
 	if cmd != nil {
 		t.Error("expected nil cmd on error")
 	}
-	if app.pipelineState.Phases[0].Status != pipeline.StatusFailed {
-		t.Errorf("expected StatusFailed, got %d", app.pipelineState.Phases[0].Status)
+	if app.pipeline.State.Phases[0].Status != pipeline.StatusFailed {
+		t.Errorf("expected StatusFailed, got %d", app.pipeline.State.Phases[0].Status)
 	}
 }
 
@@ -651,13 +651,13 @@ func TestExecTermCmd_CdInvalid(t *testing.T) {
 
 func TestExecTermCmd_Clear(t *testing.T) {
 	app := NewApp()
-	app.termOutput = []string{"line1", "line2"}
+	app.terminal.Output = []string{"line1", "line2"}
 	cmd := app.execTermCmd("clear")
 	if cmd != nil {
 		t.Error("expected nil cmd for clear")
 	}
-	if len(app.termOutput) != 0 {
-		t.Errorf("expected cleared terminal output, got %d lines", len(app.termOutput))
+	if len(app.terminal.Output) != 0 {
+		t.Errorf("expected cleared terminal output, got %d lines", len(app.terminal.Output))
 	}
 }
 
@@ -686,7 +686,7 @@ func TestExecTermCmd_Echo(t *testing.T) {
 func TestRunSpawnHook_NoHook(t *testing.T) {
 	app := NewApp()
 	app.registry = newTestRegistry()
-	app.selected = 0
+	app.dashboard.Selected = 0
 
 	cmd := app.runSpawnHook()
 	if cmd == nil {
@@ -706,7 +706,7 @@ func TestRunSpawnHook_NoHook(t *testing.T) {
 func TestCopyPrompt_ReturnsCmd(t *testing.T) {
 	app := NewApp()
 	app.registry = newTestRegistry()
-	app.selected = 0
+	app.dashboard.Selected = 0
 
 	cmd := app.copyPrompt()
 	if cmd == nil {
@@ -728,7 +728,7 @@ func TestCopyPrompt_ReturnsCmd(t *testing.T) {
 func TestDeployAgent_ReturnsCmd(t *testing.T) {
 	app := NewApp()
 	app.registry = newTestRegistry()
-	app.selected = 0
+	app.dashboard.Selected = 0
 
 	cmd := app.deployAgent()
 	if cmd == nil {
@@ -841,7 +841,7 @@ func TestSendCommsMessage_WithMessage(t *testing.T) {
 		t.Error("expected user message to be added to conversation")
 	}
 	// Should have a stream channel
-	if app.streamCh == nil {
+	if app.pipeline.StreamCh == nil {
 		t.Error("expected streamCh to be set")
 	}
 	if cmd == nil {
@@ -965,8 +965,8 @@ func TestRenderPipeline_WithState(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.view = ViewPipeline
-	app.pipelineState = pipeline.New("test mission")
-	app.pipelineChat = []PipelineMsg{
+	app.pipeline.State = pipeline.New("test mission")
+	app.pipeline.Chat = []PipelineMsg{
 		{"", "━━━ MISSION: test mission ━━━"},
 		{"Numbuh 1", "Starting analysis..."},
 	}
@@ -983,7 +983,7 @@ func TestRenderPipeline_NilState(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.view = ViewPipeline
-	app.pipelineState = nil
+	app.pipeline.State = nil
 
 	result := app.renderPipeline()
 	if result == "" {
@@ -997,10 +997,10 @@ func TestRenderPipeline_AbortPending(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.view = ViewPipeline
-	app.pipelineState = pipeline.New("test")
-	app.pipelineRunning = true
-	app.abortPending = true
-	app.abortPendingAt = time.Now()
+	app.pipeline.State = pipeline.New("test")
+	app.pipeline.Running = true
+	app.pipeline.AbortPending = true
+	app.pipeline.AbortAt = time.Now()
 
 	result := app.renderPipeline()
 	if result == "" {
@@ -1164,7 +1164,7 @@ func TestUpdate_TermOutputMsg(t *testing.T) {
 	msg := termOutputMsg{cmd: "ls", output: "file1.go\nfile2.go"}
 	model, _ := app.Update(msg)
 	result := model.(App)
-	if len(result.termOutput) == 0 {
+	if len(result.terminal.Output) == 0 {
 		t.Error("expected terminal output to be recorded")
 	}
 }
@@ -1172,19 +1172,19 @@ func TestUpdate_TermOutputMsg(t *testing.T) {
 func TestUpdate_PipelineAbortedMsg(t *testing.T) {
 	app := NewApp()
 	app.ready = true
-	app.pipelineState = pipeline.New("test")
-	app.pipelineRunning = true
+	app.pipeline.State = pipeline.New("test")
+	app.pipeline.Running = true
 	ctx, cancel := context.WithCancel(context.Background())
-	app.pipelineCtx = ctx
-	app.cancelPipeline = cancel
+	app.pipeline.Ctx = ctx
+	app.pipeline.Cancel = cancel
 
 	msg := PipelineAbortedMsg{}
 	model, _ := app.Update(msg)
 	result := model.(App)
-	if result.pipelineRunning {
+	if result.pipeline.Running {
 		t.Error("expected pipelineRunning=false after abort")
 	}
-	if result.pipelineState.Active {
+	if result.pipeline.State.Active {
 		t.Error("expected pipeline to be stopped after abort")
 	}
 }
@@ -1348,7 +1348,7 @@ func TestRenderMainPanel_DossierView(t *testing.T) {
 	app.height = 40
 	app.view = ViewDossier
 	app.registry = newTestRegistry()
-	app.selected = 0
+	app.dashboard.Selected = 0
 
 	result := app.renderMainPanel(60, 30)
 	if result == "" {
@@ -1361,7 +1361,7 @@ func TestRenderRightPanel_Pipeline(t *testing.T) {
 	app.ready = true
 	app.width = 120
 	app.height = 40
-	app.pipelineState = pipeline.New("test")
+	app.pipeline.State = pipeline.New("test")
 	app.registry = newTestRegistry()
 
 	result := app.renderRightPanel(30, 30)
@@ -1398,9 +1398,9 @@ func TestDossierKeys_T_SpawnHook(t *testing.T) {
 	app.view = ViewDossier
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 	app.registry = newTestRegistry()
-	app.selected = 0
+	app.dashboard.Selected = 0
 
 	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}})
 	if cmd == nil {
@@ -1415,7 +1415,7 @@ func TestDashboardKeys_LaunchTools(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 
 	keys := []rune{'L', 'B', 'V', 'M', 'F'}
 	for _, k := range keys {
@@ -1433,7 +1433,7 @@ func TestDashboardKeys_ViewSwitching(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 	app.width = 100
 	app.height = 40
 

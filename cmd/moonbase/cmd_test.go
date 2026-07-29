@@ -14,12 +14,19 @@ func captureStdout(fn func()) string {
 	old := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
+	// Drain the pipe concurrently so fn() never blocks on a full pipe buffer.
+	// (Without a concurrent reader, output larger than the OS pipe buffer —
+	// ~64KB on macOS — would deadlock the writer.)
+	done := make(chan string, 1)
+	go func() {
+		var buf bytes.Buffer
+		io.Copy(&buf, r)
+		done <- buf.String()
+	}()
 	fn()
 	w.Close()
-	var buf bytes.Buffer
-	io.Copy(&buf, r)
 	os.Stdout = old
-	return buf.String()
+	return <-done
 }
 
 // === isValidAgentID table-driven tests ===
@@ -182,7 +189,6 @@ func TestRunInit_CreatesKiroStructure(t *testing.T) {
 		filepath.Join(kiroDir, "specs", "_templates", "requirements.md"),
 		filepath.Join(kiroDir, "specs", "_templates", "design.md"),
 		filepath.Join(kiroDir, "specs", "_templates", "tasks.md"),
-		filepath.Join(kiroDir, "steering", "dev-rules.md"),
 	}
 	for _, f := range expectedFiles {
 		if _, err := os.Stat(f); os.IsNotExist(err) {
@@ -190,9 +196,210 @@ func TestRunInit_CreatesKiroStructure(t *testing.T) {
 		}
 	}
 
+	// Verify the 6 default steering files were created
+	expectedSteeringFiles := []string{
+		"dev-rules.md",
+		"production-standards.md",
+		"test-alignment.md",
+		"reasoning-protocol.md",
+		"quality-gates.md",
+		"changelog.md",
+	}
+	for _, f := range expectedSteeringFiles {
+		path := filepath.Join(kiroDir, "steering", f)
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			t.Errorf("expected steering file not created: %s", f)
+		}
+	}
+
+	// data-access-performance.md is opt-in — must NOT exist without --data-access.
+	if _, err := os.Stat(filepath.Join(kiroDir, "steering", "data-access-performance.md")); !os.IsNotExist(err) {
+		t.Error("data-access-performance.md should not be created without --data-access")
+	}
+
 	// Output should indicate success
 	if !strings.Contains(output, "agent-ready") || !strings.Contains(output, "Moonbase Init") {
 		t.Errorf("output missing expected completion messages\nGot:\n%s", output)
+	}
+}
+
+func TestRunInit_CreatesGitignoreWithAgents(t *testing.T) {
+	tmpDir := t.TempDir()
+	oldDir, _ := os.Getwd()
+	defer os.Chdir(oldDir)
+	os.Chdir(tmpDir)
+
+	captureStdout(func() {
+		runInit()
+	})
+
+	data, err := os.ReadFile(filepath.Join(tmpDir, ".gitignore"))
+	if err != nil {
+		t.Fatalf(".gitignore was not created: %v", err)
+	}
+	content := string(data)
+	if !strings.Contains(content, ".kiro/agents/") {
+		t.Errorf(".gitignore missing .kiro/agents/ entry, got:\n%s", content)
+	}
+	if !strings.Contains(content, ".kiro/steering/data-access-performance.md") {
+		t.Errorf(".gitignore missing data-access-performance.md entry, got:\n%s", content)
+	}
+}
+
+func TestRunInit_AppendsToExistingGitignore(t *testing.T) {
+	tmpDir := t.TempDir()
+	oldDir, _ := os.Getwd()
+	defer os.Chdir(oldDir)
+	os.Chdir(tmpDir)
+
+	// Pre-create a .gitignore with unrelated content (no trailing newline).
+	existing := "node_modules/\n*.log"
+	if err := os.WriteFile(filepath.Join(tmpDir, ".gitignore"), []byte(existing), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	captureStdout(func() {
+		runInit()
+	})
+
+	data, err := os.ReadFile(filepath.Join(tmpDir, ".gitignore"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(data)
+	// Existing content must be preserved.
+	if !strings.Contains(content, "node_modules/") || !strings.Contains(content, "*.log") {
+		t.Errorf("existing .gitignore content was lost:\n%s", content)
+	}
+	// New patterns must be appended.
+	if !strings.Contains(content, ".kiro/agents/") {
+		t.Errorf(".kiro/agents/ was not appended:\n%s", content)
+	}
+	if !strings.Contains(content, ".kiro/steering/data-access-performance.md") {
+		t.Errorf("data-access-performance.md was not appended:\n%s", content)
+	}
+	// The prior last entry must not have been joined onto the new one.
+	if strings.Contains(content, "*.log.kiro") {
+		t.Errorf("entries were joined without a newline boundary:\n%s", content)
+	}
+}
+
+func TestEnsureMoonbaseGitignored_Idempotent(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// First call creates the file.
+	status, err := ensureMoonbaseGitignored(tmpDir)
+	if err != nil {
+		t.Fatalf("first call errored: %v", err)
+	}
+	if status != gitignoreCreated {
+		t.Errorf("first call: got status %d, want gitignoreCreated", status)
+	}
+
+	// Second call must detect the existing entries and make no change.
+	status, err = ensureMoonbaseGitignored(tmpDir)
+	if err != nil {
+		t.Fatalf("second call errored: %v", err)
+	}
+	if status != gitignoreAlreadyPresent {
+		t.Errorf("second call: got status %d, want gitignoreAlreadyPresent", status)
+	}
+
+	// Each pattern must appear exactly once.
+	data, _ := os.ReadFile(filepath.Join(tmpDir, ".gitignore"))
+	content := string(data)
+	if n := strings.Count(content, ".kiro/agents/"); n != 1 {
+		t.Errorf(".kiro/agents/ appears %d times, want exactly 1:\n%s", n, content)
+	}
+	if n := strings.Count(content, ".kiro/steering/data-access-performance.md"); n != 1 {
+		t.Errorf("data-access-performance.md appears %d times, want exactly 1:\n%s", n, content)
+	}
+}
+
+func TestEnsureMoonbaseGitignored_AppendsOnlyMissingPatterns(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Pre-ignore only the agents pattern.
+	if err := os.WriteFile(filepath.Join(tmpDir, ".gitignore"), []byte(".kiro/agents/\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	status, err := ensureMoonbaseGitignored(tmpDir)
+	if err != nil {
+		t.Fatalf("errored: %v", err)
+	}
+	if status != gitignoreAdded {
+		t.Errorf("got status %d, want gitignoreAdded", status)
+	}
+
+	data, _ := os.ReadFile(filepath.Join(tmpDir, ".gitignore"))
+	content := string(data)
+	// agents pattern must still appear exactly once (not duplicated).
+	if n := strings.Count(content, ".kiro/agents/"); n != 1 {
+		t.Errorf(".kiro/agents/ appears %d times, want exactly 1:\n%s", n, content)
+	}
+	// The missing pattern must now be present.
+	if !strings.Contains(content, ".kiro/steering/data-access-performance.md") {
+		t.Errorf("missing pattern was not appended:\n%s", content)
+	}
+}
+
+func TestRunInit_DataAccessOptIn(t *testing.T) {
+	tmpDir := t.TempDir()
+	oldDir, _ := os.Getwd()
+	defer os.Chdir(oldDir)
+	os.Chdir(tmpDir)
+
+	// Enable the opt-in flag for this test, restore afterwards.
+	prev := initWithDataAccess
+	initWithDataAccess = true
+	defer func() { initWithDataAccess = prev }()
+
+	captureStdout(func() {
+		runInit()
+	})
+
+	path := filepath.Join(tmpDir, ".kiro", "steering", "data-access-performance.md")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("data-access-performance.md not created with --data-access: %v", err)
+	}
+	if !strings.Contains(string(data), "Data Access & Performance") {
+		t.Errorf("data-access-performance.md missing expected heading:\n%s", string(data))
+	}
+
+	// It must be gitignored whether generated or not.
+	gi, _ := os.ReadFile(filepath.Join(tmpDir, ".gitignore"))
+	if !strings.Contains(string(gi), ".kiro/steering/data-access-performance.md") {
+		t.Errorf(".gitignore missing data-access-performance.md entry:\n%s", string(gi))
+	}
+}
+
+func TestPatternAlreadyIgnored_Variants(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		pattern string
+		want    bool
+	}{
+		{"dir trailing slash", ".kiro/agents/", ".kiro/agents/", true},
+		{"dir no trailing slash", ".kiro/agents", ".kiro/agents/", true},
+		{"dir leading slash", "/.kiro/agents/", ".kiro/agents/", true},
+		{"dir wildcard", ".kiro/agents/*", ".kiro/agents/", true},
+		{"file exact", ".kiro/steering/data-access-performance.md", ".kiro/steering/data-access-performance.md", true},
+		{"file leading slash", "/.kiro/steering/data-access-performance.md", ".kiro/steering/data-access-performance.md", true},
+		{"among other entries", "node_modules/\n.kiro/agents/\n*.log", ".kiro/agents/", true},
+		{"commented out is not ignored", "# .kiro/agents/", ".kiro/agents/", false},
+		{"unrelated content", "node_modules/\n*.log", ".kiro/agents/", false},
+		{"empty", "", ".kiro/agents/", false},
+		{"partial match is not a false positive", ".kiro/agents-backup/", ".kiro/agents/", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := patternAlreadyIgnored(tt.content, tt.pattern); got != tt.want {
+				t.Errorf("patternAlreadyIgnored(%q, %q) = %v, want %v", tt.content, tt.pattern, got, tt.want)
+			}
+		})
 	}
 }
 
@@ -323,41 +530,6 @@ func TestExtractNumbuh(t *testing.T) {
 				t.Errorf("extractNumbuh(%q) = %q, want %q", tt.name, got, tt.expected)
 			}
 		})
-	}
-}
-
-// === generateSteering tests ===
-
-func TestGenerateSteering_WithStack(t *testing.T) {
-	result := generateSteering("go", "go build", "go test ./...")
-
-	if !strings.Contains(result, "go") {
-		t.Error("expected go language in output")
-	}
-	if !strings.Contains(result, "go build") {
-		t.Error("expected build tool in output")
-	}
-	if !strings.Contains(result, "go test ./...") {
-		t.Error("expected test command in output")
-	}
-}
-
-func TestGenerateSteering_UnknownStack(t *testing.T) {
-	result := generateSteering("unknown", "", "")
-
-	if !strings.Contains(result, "detected: unknown") {
-		t.Error("expected unknown detected notice")
-	}
-}
-
-func TestGenerateSteering_HasConventions(t *testing.T) {
-	result := generateSteering("python", "pip", "pytest")
-
-	if !strings.Contains(result, "## Conventions") {
-		t.Error("expected Conventions section")
-	}
-	if !strings.Contains(result, "## Stack") {
-		t.Error("expected Stack section")
 	}
 }
 

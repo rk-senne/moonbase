@@ -52,11 +52,11 @@ func TestAnimState_RenderTyping(t *testing.T) {
 
 func TestAnimState_IntelFlashStyle(t *testing.T) {
 	a := &AnimState{intelFlash: 0}
-	style := a.IntelFlashStyle()
+	style := a.IntelFlashStyle(moonbaseTheme)
 	_ = style // just ensure no panic
 
 	a.intelFlash = 3
-	style2 := a.IntelFlashStyle()
+	style2 := a.IntelFlashStyle(moonbaseTheme)
 	_ = style2
 }
 
@@ -105,7 +105,7 @@ func TestAnimState_TriggerTypewriter(t *testing.T) {
 
 func TestCommsState_AddUserMessage(t *testing.T) {
 	cs := newCommsState("numbuh-1", "system", 80, 40)
-	cs.AddUserMessage("hello agent")
+	cs.AddUserMessage("hello agent", moonbaseTheme)
 	if len(cs.conv.Messages) != 1 {
 		t.Errorf("expected 1 message, got %d", len(cs.conv.Messages))
 	}
@@ -114,8 +114,8 @@ func TestCommsState_AddUserMessage(t *testing.T) {
 func TestCommsState_AppendStreamToken(t *testing.T) {
 	cs := newCommsState("numbuh-1", "system", 80, 40)
 	cs.streaming = true
-	cs.AppendStreamToken("hello ")
-	cs.AppendStreamToken("world")
+	cs.AppendStreamToken("hello ", moonbaseTheme)
+	cs.AppendStreamToken("world", moonbaseTheme)
 	if cs.buffer != "hello world" {
 		t.Errorf("expected buffer 'hello world', got '%s'", cs.buffer)
 	}
@@ -125,7 +125,7 @@ func TestCommsState_FinishStream(t *testing.T) {
 	cs := newCommsState("numbuh-1", "system", 80, 40)
 	cs.streaming = true
 	cs.buffer = "response content"
-	cs.FinishStream()
+	cs.FinishStream(moonbaseTheme)
 	if cs.streaming {
 		t.Error("expected streaming=false after finish")
 	}

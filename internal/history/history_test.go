@@ -9,13 +9,13 @@ import (
 	"time"
 )
 
-// setHistoryPath overrides the package-level historyPath var to point at a temp dir.
+// setHistoryPath isolates history I/O to a temp HOME so tests never touch the
+// real ~/.config/moonbase/history.json. Returns the path history() will resolve to.
 func setHistoryPath(t *testing.T) string {
 	t.Helper()
-	tmpDir := t.TempDir()
-	path := filepath.Join(tmpDir, "history.json")
-	historyPath = path
-	return path
+	tmpHome := t.TempDir()
+	t.Setenv("HOME", tmpHome)
+	return filepath.Join(tmpHome, ".config", "moonbase", "history.json")
 }
 
 func TestLoad_ReturnsEmptySliceWhenNoFileExists(t *testing.T) {
@@ -72,8 +72,8 @@ func TestSave_CreatesFileAndAssignsID(t *testing.T) {
 }
 
 func TestSave_CreatesDirectoryWithCorrectPermissions(t *testing.T) {
-	tmpDir := t.TempDir()
-	historyPath = filepath.Join(tmpDir, "subdir", "history.json")
+	tmpHome := t.TempDir()
+	t.Setenv("HOME", tmpHome)
 
 	m := Mission{
 		Task:      "test",
@@ -86,8 +86,8 @@ func TestSave_CreatesDirectoryWithCorrectPermissions(t *testing.T) {
 		t.Fatalf("Save() failed: %v", err)
 	}
 
-	// Check directory permissions
-	info, err := os.Stat(filepath.Join(tmpDir, "subdir"))
+	// Check directory permissions on the resolved history directory.
+	info, err := os.Stat(filepath.Join(tmpHome, ".config", "moonbase"))
 	if err != nil {
 		t.Fatalf("directory not created: %v", err)
 	}
@@ -331,11 +331,11 @@ func TestList_NegativeLimit(t *testing.T) {
 }
 
 func TestWriteHistory_MkdirAllError(t *testing.T) {
-	// Point historyPath to a location under a file (can't create dirs)
+	// Point HOME at a regular file so the resolved .config/moonbase dir can't be created.
 	tmpDir := t.TempDir()
 	blocker := filepath.Join(tmpDir, "blocker")
 	os.WriteFile(blocker, []byte("I am a file"), 0600)
-	historyPath = filepath.Join(blocker, "subdir", "history.json")
+	t.Setenv("HOME", blocker)
 
 	missions := []Mission{{ID: 1, Task: "test", Outcome: "complete"}}
 	err := writeHistory(missions)
@@ -348,11 +348,11 @@ func TestWriteHistory_MkdirAllError(t *testing.T) {
 }
 
 func TestWriteHistory_WriteFileError(t *testing.T) {
-	// Create a directory where the temp file would go, but make it read-only
-	tmpDir := t.TempDir()
-	dir := filepath.Join(tmpDir, "readonly")
+	// Resolved history dir exists but is read-only, so the temp file can't be written.
+	tmpHome := t.TempDir()
+	t.Setenv("HOME", tmpHome)
+	dir := filepath.Join(tmpHome, ".config", "moonbase")
 	os.MkdirAll(dir, 0700)
-	historyPath = filepath.Join(dir, "history.json")
 
 	// Make directory read-only to prevent file creation
 	os.Chmod(dir, 0500)
@@ -369,11 +369,11 @@ func TestWriteHistory_WriteFileError(t *testing.T) {
 }
 
 func TestSave_WriteHistoryFailure(t *testing.T) {
-	// Point historyPath to unwritable location to trigger writeHistory error in Save
+	// Point HOME at a regular file so writeHistory fails inside Save.
 	tmpDir := t.TempDir()
 	blocker := filepath.Join(tmpDir, "blocker")
 	os.WriteFile(blocker, []byte("I am a file"), 0600)
-	historyPath = filepath.Join(blocker, "subdir", "history.json")
+	t.Setenv("HOME", blocker)
 
 	m := Mission{Task: "will fail", StartTime: time.Now(), Outcome: "in-progress"}
 	_, err := Save(m)

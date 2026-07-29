@@ -4,6 +4,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/f5508037/moonbase/internal/watcher"
@@ -14,114 +15,114 @@ import (
 // been checked). This covers ViewDashboard, ViewDossier, ViewPipeline,
 // ViewHelp, ViewHistory, and other non-specific key handling.
 func (a App) handleDashboardKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
-	case "q", "ctrl+c":
-		if a.cancelPipeline != nil {
-			a.cancelPipeline()
+	switch {
+	case key.Matches(msg, a.keys.Quit):
+		if a.pipeline.Cancel != nil {
+			a.pipeline.Cancel()
 		}
 		return a, tea.Quit
-	case "?":
+	case key.Matches(msg, a.keys.Help):
 		if a.view == ViewHelp {
 			a.view = ViewDashboard
 		} else {
 			a.view = ViewHelp
 		}
-	case "F1":
+	case key.Matches(msg, a.keys.Protocol):
 		a.view = ViewProtocol
-	case "esc":
+	case key.Matches(msg, a.keys.Back):
 		if a.view == ViewPipeline {
-			if a.pipelineRunning {
-				if a.abortPending && time.Since(a.abortPendingAt) < 3*time.Second {
+			if a.pipeline.Running {
+				if a.pipeline.AbortPending && time.Since(a.pipeline.AbortAt) < 3*time.Second {
 					// Second esc within 3s — actually abort
-					if a.cancelPipeline != nil {
-						a.cancelPipeline()
+					if a.pipeline.Cancel != nil {
+						a.pipeline.Cancel()
 					}
-					a.pipelineState.Stop("Aborted by human")
-					a.pipelineChat = append(a.pipelineChat,
+					a.pipeline.State.Stop("Aborted by human")
+					a.pipeline.Chat = append(a.pipeline.Chat,
 						PipelineMsg{"", "🛑 Mission aborted by human."},
 					)
-					a.addIntel("Mission aborted: %s", a.pipelineState.Task)
-					a.pipelineRunning = false
-					a.abortPending = false
+					a.addIntel("Mission aborted: %s", a.pipeline.State.Task)
+					a.pipeline.Running = false
+					a.pipeline.AbortPending = false
 				} else {
 					// First esc — show warning
-					a.abortPending = true
-					a.abortPendingAt = time.Now()
+					a.pipeline.AbortPending = true
+					a.pipeline.AbortAt = time.Now()
 				}
 			} else {
 				a.view = ViewDashboard
-				a.abortPending = false
+				a.pipeline.AbortPending = false
 			}
 		} else {
 			a.view = ViewDashboard
-			a.abortPending = false
+			a.pipeline.AbortPending = false
 		}
-	case "n":
+	case key.Matches(msg, a.keys.NextPhase):
 		return a.handlePipelineAdvance()
-	case "r":
+	case key.Matches(msg, a.keys.RetryPhase):
 		return a.handlePipelineRetry()
-	case "s":
+	case key.Matches(msg, a.keys.SkipPhase):
 		return a.handlePipelineSkip()
-	case "up", "k":
+	case key.Matches(msg, a.keys.Up):
 		if a.view == ViewDashboard || a.view == ViewDossier {
-			if a.cursor > 0 {
-				a.cursor--
+			if a.dashboard.Cursor > 0 {
+				a.dashboard.Cursor--
 			}
-			a.selected = a.cursor
+			a.dashboard.Selected = a.dashboard.Cursor
 			a.anim.TriggerSelectPulse()
 		}
-	case "down", "j":
+	case key.Matches(msg, a.keys.Down):
 		if a.view == ViewDashboard || a.view == ViewDossier {
-			if a.cursor < a.registry.Count()-1 {
-				a.cursor++
+			if a.dashboard.Cursor < a.registry.Count()-1 {
+				a.dashboard.Cursor++
 			}
-			a.selected = a.cursor
+			a.dashboard.Selected = a.dashboard.Cursor
 			a.anim.TriggerSelectPulse()
 		}
-	case "enter":
+	case key.Matches(msg, a.keys.Enter):
 		if a.view == ViewDashboard {
 			a.view = ViewDossier
 			a.anim.TriggerReveal()
 		} else if a.view == ViewDossier {
 			return a, a.deployAgent()
 		}
-	case "c":
+	case key.Matches(msg, a.keys.CopyPrompt):
 		if a.view == ViewDossier {
 			return a, a.copyPrompt()
 		}
-	case "C":
+	case key.Matches(msg, a.keys.OpenComms):
 		if a.view == ViewDossier || a.view == ViewDashboard {
 			a.openComms()
 			return a, textinput.Blink
 		}
-	case "m":
+	case key.Matches(msg, a.keys.NewMission):
 		a.view = ViewMission
 		a.missionInput.Focus()
 		return a, textinput.Blink
-	case "T":
+	case key.Matches(msg, a.keys.CycleTheme):
 		a.cycleTheme()
 		a.addIntel("Theme: %s", a.theme)
-	case "/":
+	case key.Matches(msg, a.keys.Search):
 		a.searching = true
 		a.searchInput.Focus()
 		return a, textinput.Blink
-	case "d":
+	case key.Matches(msg, a.keys.GitDiff):
 		return a, a.runGitCmd("git diff --stat")
-	case "g":
+	case key.Matches(msg, a.keys.GitStatus):
 		return a, a.runGitCmd("git status --short")
-	case "tab":
+	case key.Matches(msg, a.keys.Tab):
 		a.focus = (a.focus + 1) % 3
-	case "L":
+	case key.Matches(msg, a.keys.LaunchLazygit):
 		return a, a.launchTool("lazygit")
-	case "B":
+	case key.Matches(msg, a.keys.LaunchBtop):
 		return a, a.launchTool("btop")
-	case "V":
+	case key.Matches(msg, a.keys.LaunchNvim):
 		return a, a.launchNvim()
-	case "M":
+	case key.Matches(msg, a.keys.LaunchCmux):
 		return a, a.launchCmux()
-	case "F":
+	case key.Matches(msg, a.keys.LaunchFish):
 		return a, a.launchTool("fish")
-	case "w":
+	case key.Matches(msg, a.keys.ToggleWatcher):
 		if a.fileWatcher != nil {
 			if a.fileWatcher.Running() {
 				a.fileWatcher.Stop()
@@ -136,29 +137,29 @@ func (a App) handleDashboardKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
-	case "P":
+	case key.Matches(msg, a.keys.CreatePR):
 		if a.ctx.IsPersonal() {
 			return a, a.createPR()
 		}
 		a.addIntel("PR: not available in this context.")
-	case "H":
+	case key.Matches(msg, a.keys.History):
 		a.view = ViewHistory
-	case "W":
+	case key.Matches(msg, a.keys.Docs):
 		a.docs = newDocsState(a.width, a.height)
 		a.view = ViewDocs
-	case "p":
+	case key.Matches(msg, a.keys.Projects):
 		if a.view == ViewDashboard {
 			a.projectNav = newProjectsState()
 			a.view = ViewProjects
 		}
-	case "t":
+	case key.Matches(msg, a.keys.SpawnHook):
 		if a.view == ViewDossier {
 			return a, a.runSpawnHook()
 		}
-	case "0", "1", "2", "3", "4", "5", "6", "7", "8", "9":
+	case key.Matches(msg, a.keys.JumpToAgent):
 		idx := int(msg.String()[0] - '0')
-		a.cursor = idx
-		a.selected = a.cursor
+		a.dashboard.Cursor = idx
+		a.dashboard.Selected = a.dashboard.Cursor
 		a.view = ViewDossier
 	}
 

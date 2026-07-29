@@ -166,6 +166,23 @@ Constraints:
 - Environment verification
 - Verdict: DEPLOY / DEPLOY WITH CAUTION / BLOCK
 
+## Doctrine
+
+The council operates as a pipeline. Pipelines have physics. These are ours:
+
+- **The Three Ways** — (1) Fast left-to-right flow: reduce batch size, eliminate waste between phases. No phase waits for information that should have been provided upstream. (2) Immediate feedback: when quality drops at Phase 4, the signal reaches Phase 3 instantly. No silent failures. (3) Learning from every mission: the flywheel captures what went wrong and what went right. Next mission is faster. (Phoenix Project)
+- **Test Pyramid** — shapes Phase 4. Many unit tests at the base. Fewer integration tests in the middle. Minimal end-to-end tests at the top. If QA depends entirely on slow end-to-end checks, the pipeline chokes. (Clean Coder)
+- **Boundaries between phases** — each phase produces artifacts for the next without coupling to implementation details. Phase 2 produces a design. Phase 3 consumes it. Phase 3 doesn't need to know how Phase 2 reasoned — only what it concluded. Dependency inversion between pipeline phases. (Clean Architecture)
+- **Tracer Bullets** — for uncertain missions, run a thin end-to-end slice through all phases first. One AC, fully analysed, designed, implemented, tested, reviewed. If the tracer hits the target, scale to the full mission. (Pragmatic Programmer)
+- **Theory of Constraints** — the pipeline moves at the speed of its slowest phase. Identify the constraint. Exploit it. Don't optimise phases that aren't the bottleneck. (Phoenix Project)
+
+The council is greater than any single operative. But only if the pipeline flows.
+
+**Reasoning Protocol.** Before committing to any approach at any phase:
+1. *Alternative Generation* — generate at least two viable paths before choosing. The first idea is rarely the best idea.
+2. *Adversarial Review* — actively argue against the chosen approach. What breaks? What was missed? What would a critic say?
+3. *Self-Verification* — before presenting any output, verify claims against evidence. If a claim can't be traced to a file read, a test run, or a command output, it doesn't ship.
+
 ## Questioning Protocol
 
 The council asks questions DURING Phase 1 (Analysis). This is the designated questioning phase.

@@ -12,7 +12,7 @@ func TestApp_FocusCycle(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 
 	if app.focus != FocusSidebar {
 		t.Fatalf("expected initial focus=FocusSidebar, got %d", app.focus)
@@ -42,7 +42,7 @@ func TestApp_ThemeCycleAll(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 
 	themes := []string{"treehouse", "classified", "nerv", "moonbase"}
 	result := app
@@ -60,7 +60,7 @@ func TestApp_SearchFilter(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 	app.registry = newTestRegistry()
 
 	if app.registry.Count() == 0 {
@@ -101,7 +101,7 @@ func TestApp_SearchEnter(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 	app.registry = newTestRegistry()
 
 	// Enter search mode
@@ -133,10 +133,10 @@ func TestApp_CursorBounds(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 	app.registry = newTestRegistry()
-	app.cursor = 0
-	app.selected = 0
+	app.dashboard.Cursor = 0
+	app.dashboard.Selected = 0
 
 	if app.registry.Count() < 2 {
 		t.Skip("need at least 2 agents in registry for cursor test")
@@ -145,25 +145,25 @@ func TestApp_CursorBounds(t *testing.T) {
 	// Try to go up past 0
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
 	result := model.(App)
-	if result.cursor != 0 {
-		t.Errorf("expected cursor to stay at 0 when going up, got %d", result.cursor)
+	if result.dashboard.Cursor != 0 {
+		t.Errorf("expected cursor to stay at 0 when going up, got %d", result.dashboard.Cursor)
 	}
 
 	// Go down
 	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
 	result = model.(App)
-	if result.cursor != 1 {
-		t.Errorf("expected cursor=1 after down, got %d", result.cursor)
+	if result.dashboard.Cursor != 1 {
+		t.Errorf("expected cursor=1 after down, got %d", result.dashboard.Cursor)
 	}
 
 	// Go to max and try to exceed
 	count := app.registry.Count()
-	result.cursor = count - 1
-	result.selected = count - 1
+	result.dashboard.Cursor = count - 1
+	result.dashboard.Selected = count - 1
 	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
 	result = model.(App)
-	if result.cursor != count-1 {
-		t.Errorf("expected cursor to stay at max (%d), got %d", count-1, result.cursor)
+	if result.dashboard.Cursor != count-1 {
+		t.Errorf("expected cursor to stay at max (%d), got %d", count-1, result.dashboard.Cursor)
 	}
 }
 

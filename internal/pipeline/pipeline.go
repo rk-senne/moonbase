@@ -111,6 +111,18 @@ func New(task string) *Pipeline {
 	}
 }
 
+// NewFast creates a pipeline with only implementation (phase 3) and QA (phase 4) active.
+// All other phases are pre-skipped. Used for trivial/well-specified tasks.
+func NewFast(task string) *Pipeline {
+	p := New(task)
+	for i := range p.Phases {
+		if p.Phases[i].Number != 3 && p.Phases[i].Number != 4 {
+			p.Phases[i].Status = StatusSkipped
+		}
+	}
+	return p
+}
+
 // generateTraceID creates a unique trace identifier using timestamp + random suffix.
 func generateTraceID() string {
 	ts := time.Now().UTC().Format("20060102T150405")

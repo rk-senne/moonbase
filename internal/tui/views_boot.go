@@ -14,7 +14,7 @@ func (a App) renderBoot() string {
 	if a.bootStep < 3 {
 		cascadeH := a.height / 3
 		cascade := generateCascade(a.width, cascadeH, a.bootStep)
-		cascadeStyled := lipgloss.NewStyle().Foreground(ColorActive).Render(cascade)
+		cascadeStyled := lipgloss.NewStyle().Foreground(a.themeData.Active).Render(cascade)
 		b.WriteString(cascadeStyled)
 		b.WriteString("\n")
 	}
@@ -28,16 +28,16 @@ func (a App) renderBoot() string {
 		b.WriteString("\n")
 	}
 
-	logo := lipgloss.NewStyle().Foreground(ColorBrand).Bold(true).Render(kndLogo)
+	logo := lipgloss.NewStyle().Foreground(a.themeData.Brand).Bold(true).Render(kndLogo)
 	b.WriteString(lipgloss.PlaceHorizontal(a.width, lipgloss.Center, logo))
 	b.WriteString("\n")
 
-	subtitle := lipgloss.NewStyle().Foreground(ColorInfo).Render(moonbaseLogo)
+	subtitle := lipgloss.NewStyle().Foreground(a.themeData.Info).Render(moonbaseLogo)
 	b.WriteString(lipgloss.PlaceHorizontal(a.width, lipgloss.Center, subtitle))
 	b.WriteString("\n\n")
 
 	for i := 0; i < a.bootStep && i < len(bootMessages); i++ {
-		style := lipgloss.NewStyle().Foreground(ColorActive)
+		style := lipgloss.NewStyle().Foreground(a.themeData.Active)
 		if i == a.bootStep-1 {
 			msg := bootMessages[i]
 			// Typewriter on the final message
@@ -51,7 +51,7 @@ func (a App) renderBoot() string {
 			}
 		} else {
 			line := fmt.Sprintf("  ✓ %s", bootMessages[i])
-			b.WriteString(lipgloss.PlaceHorizontal(a.width, lipgloss.Center, lipgloss.NewStyle().Foreground(ColorDim).Render(line)))
+			b.WriteString(lipgloss.PlaceHorizontal(a.width, lipgloss.Center, lipgloss.NewStyle().Foreground(a.themeData.Dim).Render(line)))
 		}
 		b.WriteString("\n")
 	}

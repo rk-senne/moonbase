@@ -402,15 +402,13 @@ func TestRunDeploy_WithTask(t *testing.T) {
 // === runHistory tests ===
 
 func TestRunHistory_NoHistory(t *testing.T) {
-	// history.historyPath is set at init() time and cannot be overridden.
-	// If other tests have saved history, this test may see them.
-	// Instead, we verify runHistory doesn't crash and produces valid output.
+	// Isolate to a temp HOME so history is reliably empty for this test.
+	t.Setenv("HOME", t.TempDir())
 	output := captureStdout(func() {
 		runHistory()
 	})
-	// Should either show "No mission history" or a valid history table
-	if !strings.Contains(output, "No mission history") && !strings.Contains(output, "Mission History") {
-		t.Errorf("expected 'No mission history' or 'Mission History' header, got:\n%s", output)
+	if !strings.Contains(output, "No mission history") {
+		t.Errorf("expected 'No mission history', got:\n%s", output)
 	}
 }
 
@@ -426,8 +424,8 @@ func TestRunReplay_InvalidID(t *testing.T) {
 }
 
 func TestRunReplay_NotFound(t *testing.T) {
-	// Since history.historyPath is set at init() time and can't be overridden,
-	// we just test the invalid ID path which always works
+	// Isolate to a temp HOME so history is empty, then exercise the invalid-ID path.
+	t.Setenv("HOME", t.TempDir())
 	code := expectExit(t, func() {
 		runReplay("not-a-number")
 	})

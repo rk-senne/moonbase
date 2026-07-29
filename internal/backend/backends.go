@@ -30,28 +30,21 @@ func (k *Kiro) Deploy(agent agents.Agent, context *discovery.ProjectContext, tas
 // Use this when the caller has already built the full prompt (e.g., mission pipeline
 // which injects per-phase context like file contents and git diffs).
 func (k *Kiro) DeployRaw(composed string, task string) (string, error) {
-	// Write the composed prompt to a temp file for kiro-cli to consume
-	tmpFile, err := os.CreateTemp("", "moonbase-prompt-*.md")
-	if err != nil {
-		return "", fmt.Errorf("creating temp prompt file: %w", err)
-	}
-	defer os.Remove(tmpFile.Name())
+	// The installed kiro-cli accepts the prompt as a positional [INPUT] argument.
+	// (Older builds used --system-prompt/--message, which no longer exist and cause
+	// "unexpected argument" errors.) `composed` already includes the task via
+	// ComposePrompt, so it is passed directly. `task` is retained for signature
+	// stability across backends.
+	_ = task
 
-	if _, err := tmpFile.WriteString(composed); err != nil {
-		tmpFile.Close()
-		return "", fmt.Errorf("writing prompt: %w", err)
-	}
-	tmpFile.Close()
-
-	// Execute kiro-cli with the prompt
-	args := []string{"chat",
-		"--system-prompt", tmpFile.Name(),
-		"--message", task,
-	}
+	args := []string{"chat"}
 	// Enhancement 1: headless execution flags for pipeline/pipe mode
 	if k.TrustTools {
 		args = append(args, "--trust-all-tools", "--no-interactive")
 	}
+	// "--" ends flag parsing so a prompt beginning with "---" (ComposePrompt emits
+	// "--- PROJECT RULES ---" first) is not misread as a CLI flag.
+	args = append(args, "--", composed)
 	cmd := exec.Command("kiro-cli", args...)
 	// SECURITY: SafeEnv prevents leaking user's full environment to child process.
 	cmd.Env = SafeEnv()

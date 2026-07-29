@@ -77,7 +77,7 @@ func TestFileIcon(t *testing.T) {
 func TestOpenComms(t *testing.T) {
 	app := NewApp()
 	app.registry = newTestRegistry()
-	app.selected = 0
+	app.dashboard.Selected = 0
 	app.width = 100
 	app.height = 40
 
@@ -170,13 +170,13 @@ func TestTerminalKeys_EnterWithCommand(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = false
-	app.termActive = true
-	app.termInput.Focus()
-	app.termInput.SetValue("echo hello")
+	app.terminal.Active = true
+	app.terminal.Input.Focus()
+	app.terminal.Input.SetValue("echo hello")
 
 	model, cmd := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
-	if result.termInput.Value() != "" {
+	if result.terminal.Input.Value() != "" {
 		t.Error("expected term input reset after enter")
 	}
 	if cmd == nil {
@@ -194,7 +194,7 @@ func TestFileBrowserKeys_Enter(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = true
-	app.termActive = false
+	app.terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	_ = model.(App)
@@ -208,7 +208,7 @@ func TestFileBrowserKeys_Backspace(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = true
-	app.termActive = false
+	app.terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyBackspace})
 	_ = model.(App)
@@ -219,7 +219,7 @@ func TestFileBrowserKeys_Dot(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = true
-	app.termActive = false
+	app.terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'.'}})
 	_ = model.(App)
@@ -230,7 +230,7 @@ func TestFileBrowserKeys_E(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = true
-	app.termActive = false
+	app.terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
 	_ = model.(App)
@@ -260,7 +260,7 @@ func TestDashboardKeys_D_GitDiff(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 
 	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
 	if cmd == nil {
@@ -273,7 +273,7 @@ func TestDashboardKeys_G_GitStatus(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 
 	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}})
 	if cmd == nil {
@@ -288,7 +288,7 @@ func TestDossierKeys_C_Comms(t *testing.T) {
 	app.view = ViewDossier
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 	app.registry = newTestRegistry()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'C'}})
@@ -322,7 +322,7 @@ func TestView_MainPanel_Terminal(t *testing.T) {
 	app.height = 40
 	app.view = ViewDashboard
 	app.browsing = false
-	app.termActive = true
+	app.terminal.Active = true
 	app.registry = newTestRegistry()
 
 	output := app.View()

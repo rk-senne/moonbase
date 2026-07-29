@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -62,18 +63,18 @@ func (a App) handleSpinnerTick(msg spinner.TickMsg) (tea.Model, tea.Cmd) {
 
 // handleSearchKeys handles key messages when in search mode.
 func (a App) handleSearchKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
-	case "esc":
+	switch {
+	case key.Matches(msg, a.keys.SearchCancel):
 		a.searching = false
 		a.searchInput.Reset()
 		a.searchInput.Blur()
 		a.filtered = nil
-	case "enter":
+	case key.Matches(msg, a.keys.SearchConfirm):
 		a.searching = false
 		a.searchInput.Blur()
 		if len(a.filtered) > 0 {
-			a.cursor = a.filtered[0]
-			a.selected = a.cursor
+			a.dashboard.Cursor = a.filtered[0]
+			a.dashboard.Selected = a.dashboard.Cursor
 			a.view = ViewDossier
 		}
 		a.searchInput.Reset()
@@ -89,53 +90,41 @@ func (a App) handleSearchKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 // handleTerminalKeys handles key messages when the embedded terminal is active.
 func (a App) handleTerminalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
-	case "esc":
-		a.termActive = false
-		a.termInput.Blur()
-	case "`":
-		a.termActive = false
-		a.termInput.Blur()
+	wasBrowserSwitch := key.Matches(msg, a.keys.TerminalToBrowser)
+	var cmd tea.Cmd
+	a.terminal, cmd = a.terminal.Update(msg, a.appContext())
+	// If user pressed the browser-switch key, activate file browser mode
+	if wasBrowserSwitch {
 		a.browsing = true
-	case "enter":
-		cmd := a.termInput.Value()
-		a.termInput.Reset()
-		if cmd != "" {
-			return a, a.execTermCmd(cmd)
-		}
-	default:
-		var c tea.Cmd
-		a.termInput, c = a.termInput.Update(msg)
-		return a, c
 	}
-	return a, nil
+	return a, cmd
 }
 
 // handleFileBrowserKeys handles key messages when the file browser is active.
 func (a App) handleFileBrowserKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
-	case "`":
+	switch {
+	case key.Matches(msg, a.keys.BrowserToTerminal):
 		a.browsing = false
-		a.termActive = true
-		a.termInput.Focus()
+		a.terminal.Active = true
+		a.terminal.Input.Focus()
 		return a, textinput.Blink
-	case "up", "k":
+	case key.Matches(msg, a.keys.BrowserUp):
 		a.fileBrowser.Up()
-	case "down", "j":
+	case key.Matches(msg, a.keys.BrowserDown):
 		a.fileBrowser.Down()
-	case "enter", "l":
+	case key.Matches(msg, a.keys.BrowserEnter):
 		a.fileBrowser.Enter()
-		a.cwd = a.fileBrowser.dir
-	case "backspace", "h":
+		a.terminal.Cwd = a.fileBrowser.dir
+	case key.Matches(msg, a.keys.BrowserBack):
 		a.fileBrowser.Back()
-		a.cwd = a.fileBrowser.dir
-	case "e":
+		a.terminal.Cwd = a.fileBrowser.dir
+	case key.Matches(msg, a.keys.BrowserEdit):
 		if a.fileBrowser.SelectedIsFile() {
 			return a, a.editFile(a.fileBrowser.SelectedPath())
 		}
-	case ".":
+	case key.Matches(msg, a.keys.BrowserRefresh):
 		a.fileBrowser.refresh()
-	case "esc":
+	case key.Matches(msg, a.keys.BrowserEsc):
 		a.browsing = false
 	}
 	return a, nil
@@ -151,17 +140,17 @@ func (a App) handlePhaseResultUpdate(msg PhaseResultMsg) (tea.Model, tea.Cmd) {
 
 // handlePipelineAborted processes a pipeline abort message.
 func (a App) handlePipelineAborted() (tea.Model, tea.Cmd) {
-	if a.cancelPipeline != nil {
-		a.cancelPipeline()
+	if a.pipeline.Cancel != nil {
+		a.pipeline.Cancel()
 	}
-	if a.pipelineState != nil {
-		a.pipelineState.Stop("Aborted by human")
-		a.pipelineChat = append(a.pipelineChat,
+	if a.pipeline.State != nil {
+		a.pipeline.State.Stop("Aborted by human")
+		a.pipeline.Chat = append(a.pipeline.Chat,
 			PipelineMsg{"", "🛑 Mission aborted by human."},
 		)
-		a.addIntel("Mission aborted: %s", a.pipelineState.Task)
+		a.addIntel("Mission aborted: %s", a.pipeline.State.Task)
 	}
-	a.pipelineRunning = false
+	a.pipeline.Running = false
 	return a, nil
 }
 
@@ -182,13 +171,7 @@ func (a App) handleFileChange(msg fileChangeMsg) (tea.Model, tea.Cmd) {
 
 // handleTermOutput processes embedded terminal command output.
 func (a App) handleTermOutput(msg termOutputMsg) (tea.Model, tea.Cmd) {
-	a.termOutput = append(a.termOutput, lipgloss.NewStyle().Foreground(ColorActive).Render("$ "+msg.cmd))
-	for _, line := range strings.Split(msg.output, "\n") {
-		a.termOutput = append(a.termOutput, line)
-	}
-	if len(a.termOutput) > maxTerminalLines {
-		a.termOutput = a.termOutput[len(a.termOutput)-maxTerminalLines:]
-	}
+	a.terminal = a.terminal.HandleOutput(msg, a.themeData)
 	return a, nil
 }
 
@@ -200,7 +183,7 @@ func (a App) ringBell() {
 
 // abortPendingTimedOut checks if the abort pending is within the 3s window.
 func (a App) abortPendingTimedOut() bool {
-	return time.Since(a.abortPendingAt) < 3*time.Second
+	return time.Since(a.pipeline.AbortAt) < 3*time.Second
 }
 
 // --- Init helper commands and message types ---

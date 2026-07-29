@@ -14,8 +14,9 @@ import (
 	"github.com/f5508037/moonbase/internal/pipeline"
 )
 
-// PhaseTimeout is the maximum duration a single pipeline phase can run before being cancelled.
-const PhaseTimeout = 120 * time.Second
+// PhaseTimeout is kept as a package-level default for backward compatibility in tests.
+// The actual timeout used during execution comes from the pipeline's configured PhaseTimeout.
+var PhaseTimeout = 120 * time.Second
 
 // PhaseResultMsg is sent when a pipeline phase completes (or fails).
 type PhaseResultMsg struct {
@@ -39,6 +40,7 @@ func executePhase(
 	be backend.Backend,
 	projectCtx *discovery.ProjectContext,
 	pipelineCtx *pipeline.PipelineContext,
+	phaseTimeout time.Duration,
 ) tea.Cmd {
 	return func() tea.Msg {
 		start := time.Now()
@@ -59,7 +61,7 @@ func executePhase(
 		composed := discovery.ComposePrompt(agent.Prompt, projectCtx, phaseInput)
 
 		// Execute with timeout
-		timeoutCtx, cancel := context.WithTimeout(ctx, PhaseTimeout)
+		timeoutCtx, cancel := context.WithTimeout(ctx, phaseTimeout)
 		defer cancel()
 
 		// Run backend deployment in a channel so we can respect timeout
@@ -93,7 +95,7 @@ func executePhase(
 			}
 			return PhaseResultMsg{
 				Phase:   phase.Number,
-				Err:     fmt.Errorf("phase %d timed out after 120s", phase.Number),
+				Err:     fmt.Errorf("phase %d timed out after %s", phase.Number, phaseTimeout),
 				Elapsed: time.Since(start),
 			}
 		case r := <-ch:
@@ -110,50 +112,50 @@ func executePhase(
 // startNextPhase determines and starts the next phase in the pipeline.
 // Returns the tea.Cmd to execute, or nil if pipeline is complete.
 func (a *App) startNextPhase() tea.Cmd {
-	if a.pipelineState == nil || !a.pipelineState.Active {
-		a.pipelineRunning = false
+	if a.pipeline.State == nil || !a.pipeline.State.Active {
+		a.pipeline.Running = false
 		return nil
 	}
 
 	// Check if we have a backend that can actually execute
 	if a.activeBackend == nil || a.activeBackend.Name() == "clipboard" {
 		// No real backend — stay in simulated mode
-		a.pipelineRunning = false
+		a.pipeline.Running = false
 		return nil
 	}
 
 	// Ensure pipeline context exists for graceful shutdown
-	if a.pipelineCtx == nil {
+	if a.pipeline.Ctx == nil {
 		ctx, cancel := context.WithCancel(context.Background())
-		a.pipelineCtx = ctx
-		a.cancelPipeline = cancel
+		a.pipeline.Ctx = ctx
+		a.pipeline.Cancel = cancel
 	}
 
-	phase := a.pipelineState.CurrentPhase()
+	phase := a.pipeline.State.CurrentPhase()
 	if phase == nil {
-		a.pipelineRunning = false
+		a.pipeline.Running = false
 		return nil
 	}
 
 	// Check conditional phases
 	if phase.Conditional {
-		trigger := a.pipelineState.ShouldInvokeConditional(phase)
+		trigger := a.pipeline.State.ShouldInvokeConditional(phase)
 		if !trigger.Invoke {
 			// Skip this phase
-			a.pipelineChat = append(a.pipelineChat,
+			a.pipeline.Chat = append(a.pipeline.Chat,
 				PipelineMsg{"", fmt.Sprintf("⏭️ %s — skipped (%s)", phase.Name, trigger.Reason)},
 			)
-			a.pipelineState.Skip()
+			a.pipeline.State.Skip()
 			return a.startNextPhase()
 		}
-		a.pipelineChat = append(a.pipelineChat,
+		a.pipeline.Chat = append(a.pipeline.Chat,
 			PipelineMsg{"", fmt.Sprintf("⚡ %s — triggered (%s)", phase.Name, trigger.Reason)},
 		)
 	}
 
 	// Start the phase (records start time for elapsed tracking)
 	phase.StartPhase()
-	a.pipelineRunning = true
+	a.pipeline.Running = true
 
 	if logging.Logger != nil {
 		logging.Logger.Info("pipeline phase starting",
@@ -163,24 +165,25 @@ func (a *App) startNextPhase() tea.Cmd {
 		)
 	}
 
-	a.pipelineChat = append(a.pipelineChat,
+	a.pipeline.Chat = append(a.pipeline.Chat,
 		PipelineMsg{"", "───────────────────────────────────"},
 		PipelineMsg{phase.Operative, fmt.Sprintf("Phase %d: %s starting...", phase.Number, phase.Name)},
 	)
 
 	return executePhase(
-		a.pipelineCtx,
+		a.pipeline.Ctx,
 		*phase,
 		a.registry,
 		a.activeBackend,
 		a.projectCtx,
-		a.pipelineState.Context,
+		a.pipeline.State.Context,
+		a.pipeline.State.PhaseTimeout,
 	)
 }
 
 // handlePhaseResult processes a completed phase and advances the pipeline.
 func (a *App) handlePhaseResult(msg PhaseResultMsg) tea.Cmd {
-	a.pipelineRunning = false
+	a.pipeline.Running = false
 
 	if msg.Err != nil {
 		// Phase failed
@@ -191,12 +194,12 @@ func (a *App) handlePhaseResult(msg PhaseResultMsg) tea.Cmd {
 				"elapsed", msg.Elapsed.String(),
 			)
 		}
-		a.pipelineChat = append(a.pipelineChat,
+		a.pipeline.Chat = append(a.pipeline.Chat,
 			PipelineMsg{"", fmt.Sprintf("❌ Phase %d failed: %v", msg.Phase, msg.Err)},
 			PipelineMsg{"", "Press [r] to retry or [s] to skip."},
 		)
-		if a.pipelineState != nil && a.pipelineState.CurrentPhase() != nil {
-			a.pipelineState.CurrentPhase().Status = pipeline.StatusFailed
+		if a.pipeline.State != nil && a.pipeline.State.CurrentPhase() != nil {
+			a.pipeline.State.CurrentPhase().Status = pipeline.StatusFailed
 		}
 		return nil
 	}
@@ -209,14 +212,14 @@ func (a *App) handlePhaseResult(msg PhaseResultMsg) tea.Cmd {
 		)
 	}
 	// Mark phase as complete with timing
-	if a.pipelineState != nil && a.pipelineState.CurrentPhase() != nil {
-		a.pipelineState.CurrentPhase().CompletePhase()
+	if a.pipeline.State != nil && a.pipeline.State.CurrentPhase() != nil {
+		a.pipeline.State.CurrentPhase().CompletePhase()
 	}
-	a.pipelineState.Context.RecordPhase(msg.Phase, msg.Output)
+	a.pipeline.State.Context.RecordPhase(msg.Phase, msg.Output)
 
 	// Send cmux notification on phase completion
 	if backend.CmuxAvailable() {
-		phase := a.pipelineState.CurrentPhase()
+		phase := a.pipeline.State.CurrentPhase()
 		if phase != nil {
 			backend.CmuxNotify(
 				fmt.Sprintf("Phase %d Complete", msg.Phase),
@@ -231,20 +234,20 @@ func (a *App) handlePhaseResult(msg PhaseResultMsg) tea.Cmd {
 		summary = summary[:maxSummaryChars] + "..."
 	}
 	elapsed := msg.Elapsed.Round(time.Millisecond)
-	a.pipelineChat = append(a.pipelineChat,
-		PipelineMsg{a.pipelineState.CurrentPhase().Operative, summary},
+	a.pipeline.Chat = append(a.pipeline.Chat,
+		PipelineMsg{a.pipeline.State.CurrentPhase().Operative, summary},
 		PipelineMsg{"", fmt.Sprintf("✅ Phase %d complete (%s)", msg.Phase, elapsed)},
 	)
 
 	// Apply risk gate if this was QA (phase 4)
 	if msg.Phase == 4 {
-		routing, err := a.pipelineState.ApplyRiskGate(msg.Output)
-		a.pipelineChat = append(a.pipelineChat,
+		routing, err := a.pipeline.State.ApplyRiskGate(msg.Output)
+		a.pipeline.Chat = append(a.pipeline.Chat,
 			PipelineMsg{"", fmt.Sprintf("🎯 Risk Gate: %s — %s", routing.Level, routing.Action)},
 		)
 
 		if routing.Level == pipeline.RiskCritical {
-			a.pipelineChat = append(a.pipelineChat,
+			a.pipeline.Chat = append(a.pipeline.Chat,
 				PipelineMsg{"", "🛑 CRITICAL — Pipeline stopped. Human intervention required."},
 			)
 			// Notify via cmux on critical risk
@@ -254,7 +257,7 @@ func (a *App) handlePhaseResult(msg PhaseResultMsg) tea.Cmd {
 			return nil
 		}
 		if err != nil {
-			a.pipelineChat = append(a.pipelineChat,
+			a.pipeline.Chat = append(a.pipeline.Chat,
 				PipelineMsg{"", fmt.Sprintf("🛑 %v", err)},
 			)
 			return nil
@@ -266,18 +269,18 @@ func (a *App) handlePhaseResult(msg PhaseResultMsg) tea.Cmd {
 	}
 
 	// Advance to next phase
-	a.pipelineState.Advance()
+	a.pipeline.State.Advance()
 
 	// Check if pipeline is complete
-	if !a.pipelineState.Active {
-		a.pipelineChat = append(a.pipelineChat,
+	if !a.pipeline.State.Active {
+		a.pipeline.Chat = append(a.pipeline.Chat,
 			PipelineMsg{"", ""},
 			PipelineMsg{"", "━━━ MISSION COMPLETE ━━━"},
 		)
-		a.addIntel("Mission complete: %s", a.pipelineState.Task)
+		a.addIntel("Mission complete: %s", a.pipeline.State.Task)
 		// Notify via cmux on mission completion
 		if backend.CmuxAvailable() {
-			backend.CmuxNotify("━━━ MISSION COMPLETE ━━━", a.pipelineState.Task)
+			backend.CmuxNotify("━━━ MISSION COMPLETE ━━━", a.pipeline.State.Task)
 		}
 		return nil
 	}

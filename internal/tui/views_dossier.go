@@ -11,7 +11,7 @@ func (a App) renderDossier() string {
 	sidebarWidth := 24
 	bodyH := a.height - 3
 
-	agent := a.registry.Get(a.selected)
+	agent := a.registry.Get(a.dashboard.Selected)
 
 	header := a.renderHeader("Dossier › " + agent.Designation)
 	sidebar := a.renderSidebar(sidebarWidth, bodyH)
@@ -24,9 +24,9 @@ func (a App) renderDossier() string {
 	}
 
 	var d strings.Builder
-	nameStyle := lipgloss.NewStyle().Foreground(ColorBrand).Bold(true)
-	labelStyle := lipgloss.NewStyle().Foreground(ColorInfo)
-	dimStyle := lipgloss.NewStyle().Foreground(ColorDim)
+	nameStyle := lipgloss.NewStyle().Foreground(a.themeData.Brand).Bold(true)
+	labelStyle := lipgloss.NewStyle().Foreground(a.themeData.Info)
+	dimStyle := lipgloss.NewStyle().Foreground(a.themeData.Dim)
 
 	d.WriteString(nameStyle.Render(fmt.Sprintf("  %s", strings.ToUpper(agent.Name))) + "\n")
 	d.WriteString(dimStyle.Render(fmt.Sprintf("  %s", agent.Description)) + "\n\n")
@@ -60,26 +60,26 @@ func (a App) renderDossier() string {
 	d.WriteString("  [enter] Deploy    [c] Copy prompt\n")
 	d.WriteString("  [t] Spawn hook    [esc] Back\n")
 
-	dossierPanel := StylePanel.Width(mainWidth).Render(d.String())
+	dossierPanel := a.styles.Panel.Width(mainWidth).Render(d.String())
 
 	// Portrait panel
 	var p strings.Builder
 	portrait := portraitFor(agent.Name)
-	portraitStyled := lipgloss.NewStyle().Foreground(ColorBrand).Render(portrait)
+	portraitStyled := lipgloss.NewStyle().Foreground(a.themeData.Brand).Render(portrait)
 	p.WriteString(labelStyle.Render("  ╭─ PORTRAIT ─╮") + "\n")
 	p.WriteString(portraitStyled + "\n")
 	p.WriteString(labelStyle.Render("  ╰────────────╯") + "\n")
 
 	portraitPanel := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(ColorDim).
+		BorderForeground(a.themeData.Dim).
 		Padding(0, 1).
 		Width(portraitW).
 		Render(p.String())
 
 	mainBody := lipgloss.JoinHorizontal(lipgloss.Top, dossierPanel, " ", portraitPanel)
 	body := lipgloss.JoinHorizontal(lipgloss.Top, sidebar, " ", mainBody)
-	statusBar := a.renderStatusBar("[enter] DEPLOY  [c] COPY  [t] SPAWN HOOK  [esc] BACK  [↑↓] NAV")
+	statusBar := a.renderContextualStatusBar()
 
 	return lipgloss.JoinVertical(lipgloss.Left, header, body, statusBar)
 }

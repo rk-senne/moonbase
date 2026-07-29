@@ -27,16 +27,17 @@ type Phase struct {
 	Duration string `json:"duration,omitempty"`
 }
 
-var historyPath string
-
-func init() {
+// path returns the history file location. It is resolved lazily (not cached at
+// init) so that HOME overrides — used for test isolation via t.Setenv("HOME", …)
+// — are respected. In production this always resolves to the same path.
+func path() string {
 	home, _ := os.UserHomeDir()
-	historyPath = filepath.Join(home, ".config", "moonbase", "history.json")
+	return filepath.Join(home, ".config", "moonbase", "history.json")
 }
 
 // Load reads all missions from the history file.
 func Load() []Mission {
-	data, err := os.ReadFile(historyPath)
+	data, err := os.ReadFile(path())
 	if err != nil {
 		return nil
 	}
@@ -132,7 +133,8 @@ func Export(id int) string {
 // writeHistory atomically writes the missions slice to the history file.
 // Uses write-to-temp-then-rename for crash safety.
 func writeHistory(missions []Mission) error {
-	dir := filepath.Dir(historyPath)
+	histPath := path()
+	dir := filepath.Dir(histPath)
 	// SECURITY: Directory created with 0700 (owner-only access).
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return fmt.Errorf("creating history directory: %w", err)
@@ -144,13 +146,13 @@ func writeHistory(missions []Mission) error {
 	}
 
 	// Atomic write: write to temp file, then rename
-	tmpFile := historyPath + ".tmp"
+	tmpFile := histPath + ".tmp"
 	// SECURITY: History file created with 0600 (owner-only read/write).
 	if err := os.WriteFile(tmpFile, data, 0o600); err != nil {
 		return fmt.Errorf("writing temp history file: %w", err)
 	}
 
-	if err := os.Rename(tmpFile, historyPath); err != nil {
+	if err := os.Rename(tmpFile, histPath); err != nil {
 		os.Remove(tmpFile) // clean up on failure
 		return fmt.Errorf("renaming history file: %w", err)
 	}

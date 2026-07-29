@@ -18,29 +18,19 @@ import (
 // saveTestMissions saves test missions via the history API and returns a cleanup function.
 func saveTestMissions(t *testing.T, missions []history.Mission) func() {
 	t.Helper()
-	// Backup existing history
-	existing := history.Load()
+	// Isolate history I/O to a temp HOME so tests never read or write the real
+	// ~/.config/moonbase/history.json. history.Save/Load resolve their path from
+	// HOME lazily, so this fully redirects them for the duration of the test.
+	t.Setenv("HOME", t.TempDir())
 
-	// Save test missions
 	for _, m := range missions {
-		_, err := history.Save(m)
-		if err != nil {
+		if _, err := history.Save(m); err != nil {
 			t.Fatalf("failed to save test mission: %v", err)
 		}
 	}
 
-	// Return cleanup that restores original state
-	return func() {
-		// Get the history file path from home
-		home, _ := os.UserHomeDir()
-		histPath := filepath.Join(home, ".config", "moonbase", "history.json")
-		if existing == nil {
-			os.Remove(histPath)
-		} else {
-			data, _ := json.MarshalIndent(existing, "", "  ")
-			os.WriteFile(histPath, data, 0o600)
-		}
-	}
+	// No cleanup needed — the temp HOME is removed automatically by t.TempDir().
+	return func() {}
 }
 
 func TestRunHistory_JSONOutput_WithData(t *testing.T) {

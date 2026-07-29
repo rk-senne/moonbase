@@ -3,6 +3,7 @@ package tui
 import (
 	"testing"
 
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/f5508037/moonbase/internal/pipeline"
 )
@@ -12,7 +13,7 @@ func TestDashboardKeys_Mission(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'m'}})
 	result := model.(App)
@@ -26,7 +27,7 @@ func TestDashboardKeys_Search(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
 	result := model.(App)
@@ -40,12 +41,12 @@ func TestDashboardKeys_NumberJump(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'3'}})
 	result := model.(App)
-	if result.cursor != 3 {
-		t.Errorf("expected cursor=3 after '3', got %d", result.cursor)
+	if result.dashboard.Cursor != 3 {
+		t.Errorf("expected cursor=3 after '3', got %d", result.dashboard.Cursor)
 	}
 	if result.view != ViewDossier {
 		t.Errorf("expected ViewDossier after number key, got %d", result.view)
@@ -57,7 +58,7 @@ func TestDashboardKeys_History(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'H'}})
 	result := model.(App)
@@ -71,7 +72,7 @@ func TestDossierKeys_EscBack(t *testing.T) {
 	app.view = ViewDossier
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
 	result := model.(App)
@@ -85,7 +86,7 @@ func TestDossierKeys_Enter(t *testing.T) {
 	app.view = ViewDossier
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 	app.registry = newTestRegistry()
 
 	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
@@ -99,13 +100,13 @@ func TestPipelineKeys_EscAbort(t *testing.T) {
 	app.view = ViewPipeline
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
-	app.pipelineRunning = true
-	app.pipelineState = pipeline.New("test")
+	app.terminal.Active = false
+	app.pipeline.Running = true
+	app.pipeline.State = pipeline.New("test")
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
 	result := model.(App)
-	if !result.abortPending {
+	if !result.pipeline.AbortPending {
 		t.Error("expected abortPending=true after first esc during running pipeline")
 	}
 }
@@ -115,8 +116,8 @@ func TestPipelineKeys_EscBackWhenIdle(t *testing.T) {
 	app.view = ViewPipeline
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
-	app.pipelineRunning = false
+	app.terminal.Active = false
+	app.pipeline.Running = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
 	result := model.(App)
@@ -130,15 +131,15 @@ func TestPipelineKeys_Retry(t *testing.T) {
 	app.view = ViewPipeline
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
-	app.pipelineRunning = false
-	app.pipelineState = pipeline.New("test")
-	app.pipelineState.Phases[0].Status = pipeline.StatusFailed
+	app.terminal.Active = false
+	app.pipeline.Running = false
+	app.pipeline.State = pipeline.New("test")
+	app.pipeline.State.Phases[0].Status = pipeline.StatusFailed
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}})
 	result := model.(App)
-	if result.pipelineState.Phases[0].Status != pipeline.StatusRunning {
-		t.Errorf("expected phase 0 to be running after retry, got %d", result.pipelineState.Phases[0].Status)
+	if result.pipeline.State.Phases[0].Status != pipeline.StatusRunning {
+		t.Errorf("expected phase 0 to be running after retry, got %d", result.pipeline.State.Phases[0].Status)
 	}
 }
 
@@ -147,18 +148,18 @@ func TestPipelineKeys_Skip(t *testing.T) {
 	app.view = ViewPipeline
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
-	app.pipelineRunning = false
-	app.pipelineState = pipeline.New("test")
-	app.pipelineState.Phases[0].Status = pipeline.StatusRunning
+	app.terminal.Active = false
+	app.pipeline.Running = false
+	app.pipeline.State = pipeline.New("test")
+	app.pipeline.State.Phases[0].Status = pipeline.StatusRunning
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
 	result := model.(App)
-	if result.pipelineState.Phases[0].Status != pipeline.StatusSkipped {
-		t.Errorf("expected phase 0 to be skipped, got %d", result.pipelineState.Phases[0].Status)
+	if result.pipeline.State.Phases[0].Status != pipeline.StatusSkipped {
+		t.Errorf("expected phase 0 to be skipped, got %d", result.pipeline.State.Phases[0].Status)
 	}
-	if result.pipelineState.Current != 1 {
-		t.Errorf("expected pipeline to advance to phase 1 after skip, got %d", result.pipelineState.Current)
+	if result.pipeline.State.Current != 1 {
+		t.Errorf("expected pipeline to advance to phase 1 after skip, got %d", result.pipeline.State.Current)
 	}
 }
 
@@ -187,11 +188,11 @@ func TestMissionKeys_EnterSubmit(t *testing.T) {
 	if result.view != ViewPipeline {
 		t.Errorf("expected ViewPipeline after mission submit, got %d", result.view)
 	}
-	if result.pipelineState == nil {
+	if result.pipeline.State == nil {
 		t.Fatal("expected pipelineState to be set")
 	}
-	if result.pipelineState.Task != "deploy the fleet" {
-		t.Errorf("expected task='deploy the fleet', got '%s'", result.pipelineState.Task)
+	if result.pipeline.State.Task != "deploy the fleet" {
+		t.Errorf("expected task='deploy the fleet', got '%s'", result.pipeline.State.Task)
 	}
 }
 
@@ -208,7 +209,7 @@ func TestMissionKeys_EnterEmpty(t *testing.T) {
 	if result.view != ViewMission {
 		t.Errorf("expected to stay in ViewMission with empty input, got %d", result.view)
 	}
-	if result.pipelineState != nil {
+	if result.pipeline.State != nil {
 		t.Error("expected pipelineState to remain nil on empty submit")
 	}
 }
@@ -242,5 +243,115 @@ func TestCommsKeys_MessageInput(t *testing.T) {
 
 	if result.commsInput.Value() != "hi" {
 		t.Errorf("expected comms input='hi', got '%s'", result.commsInput.Value())
+	}
+}
+
+func TestDefaultKeyMap_AllActionsHaveKeysAndHelp(t *testing.T) {
+	km := DefaultKeyMap()
+	bindings := []struct {
+		name    string
+		binding key.Binding
+	}{
+		{"Up", km.Up},
+		{"Down", km.Down},
+		{"Enter", km.Enter},
+		{"Back", km.Back},
+		{"Tab", km.Tab},
+		{"NewMission", km.NewMission},
+		{"NextPhase", km.NextPhase},
+		{"RetryPhase", km.RetryPhase},
+		{"SkipPhase", km.SkipPhase},
+		{"Help", km.Help},
+		{"Protocol", km.Protocol},
+		{"CycleTheme", km.CycleTheme},
+		{"OpenComms", km.OpenComms},
+		{"Search", km.Search},
+		{"History", km.History},
+		{"Docs", km.Docs},
+		{"Projects", km.Projects},
+		{"CopyPrompt", km.CopyPrompt},
+		{"SpawnHook", km.SpawnHook},
+		{"JumpToAgent", km.JumpToAgent},
+		{"LaunchLazygit", km.LaunchLazygit},
+		{"LaunchBtop", km.LaunchBtop},
+		{"LaunchNvim", km.LaunchNvim},
+		{"LaunchCmux", km.LaunchCmux},
+		{"LaunchFish", km.LaunchFish},
+		{"Quit", km.Quit},
+		{"GitDiff", km.GitDiff},
+		{"GitStatus", km.GitStatus},
+		{"ToggleWatcher", km.ToggleWatcher},
+		{"CreatePR", km.CreatePR},
+		{"SendMessage", km.SendMessage},
+		{"AttachFile", km.AttachFile},
+		{"SnippetPicker", km.SnippetPicker},
+		{"CommsQuit", km.CommsQuit},
+		{"SearchConfirm", km.SearchConfirm},
+		{"SearchCancel", km.SearchCancel},
+		{"TerminalEsc", km.TerminalEsc},
+		{"TerminalToBrowser", km.TerminalToBrowser},
+		{"TerminalSubmit", km.TerminalSubmit},
+		{"BrowserToTerminal", km.BrowserToTerminal},
+		{"BrowserUp", km.BrowserUp},
+		{"BrowserDown", km.BrowserDown},
+		{"BrowserEnter", km.BrowserEnter},
+		{"BrowserBack", km.BrowserBack},
+		{"BrowserEdit", km.BrowserEdit},
+		{"BrowserRefresh", km.BrowserRefresh},
+		{"BrowserEsc", km.BrowserEsc},
+		{"SnippetUp", km.SnippetUp},
+		{"SnippetDown", km.SnippetDown},
+		{"SnippetConfirm", km.SnippetConfirm},
+		{"SnippetCancel", km.SnippetCancel},
+		{"ContextConfirm", km.ContextConfirm},
+		{"ContextCancel", km.ContextCancel},
+		{"DocsPageDown", km.DocsPageDown},
+		{"DocsPageUp", km.DocsPageUp},
+	}
+
+	for _, b := range bindings {
+		t.Run(b.name, func(t *testing.T) {
+			keys := b.binding.Keys()
+			if len(keys) == 0 {
+				t.Errorf("%s has no keys bound", b.name)
+			}
+			help := b.binding.Help()
+			if help.Key == "" {
+				t.Errorf("%s has empty help key", b.name)
+			}
+			if help.Desc == "" {
+				t.Errorf("%s has empty help description", b.name)
+			}
+		})
+	}
+}
+
+func TestKeyMap_FullHelpCoversAllBindings(t *testing.T) {
+	km := DefaultKeyMap()
+	groups := km.FullHelp()
+	if len(groups) != 6 {
+		t.Fatalf("expected 6 help groups (Navigation, Missions, Views, Tools, Comms, System), got %d", len(groups))
+	}
+
+	// Count total bindings in FullHelp
+	total := 0
+	for _, group := range groups {
+		total += len(group)
+	}
+	// We expect at least 30 bindings across all groups
+	if total < 30 {
+		t.Errorf("expected at least 30 bindings in FullHelp, got %d", total)
+	}
+}
+
+func TestKeyMap_ShortHelp(t *testing.T) {
+	km := DefaultKeyMap()
+	short := km.ShortHelp()
+	if len(short) == 0 {
+		t.Fatal("ShortHelp returned empty slice")
+	}
+	// ShortHelp should have the essential nav keys
+	if len(short) != 6 {
+		t.Errorf("expected 6 bindings in ShortHelp, got %d", len(short))
 	}
 }

@@ -94,7 +94,7 @@ func TestApp_ViewRendering_Pipeline_NoState(t *testing.T) {
 	app.view = ViewPipeline
 	app.width = 100
 	app.height = 40
-	app.pipelineState = nil
+	app.pipeline.State = nil
 
 	output := app.View()
 	if output == "" {
@@ -111,9 +111,9 @@ func TestApp_ViewRendering_Pipeline_WithState(t *testing.T) {
 	app.view = ViewPipeline
 	app.width = 100
 	app.height = 40
-	app.pipelineState = pipeline.New("test task")
-	app.pipelineState.Phases[0].Status = pipeline.StatusRunning
-	app.pipelineChat = []PipelineMsg{
+	app.pipeline.State = pipeline.New("test task")
+	app.pipeline.State.Phases[0].Status = pipeline.StatusRunning
+	app.pipeline.Chat = []PipelineMsg{
 		{"", "━━━ MISSION: test task ━━━"},
 		{"Numbuh 1", "Starting analysis..."},
 	}
@@ -133,9 +133,9 @@ func TestApp_ViewRendering_Pipeline_RiskDisplay(t *testing.T) {
 	app.view = ViewPipeline
 	app.width = 100
 	app.height = 40
-	app.pipelineState = pipeline.New("test task")
-	app.pipelineState.Context.RiskLevel = "MEDIUM"
-	app.pipelineState.Context.ReworkCount = 1
+	app.pipeline.State = pipeline.New("test task")
+	app.pipeline.State.Context.RiskLevel = "MEDIUM"
+	app.pipeline.State.Context.ReworkCount = 1
 
 	output := app.View()
 	if !strings.Contains(output, "MEDIUM") {
@@ -150,7 +150,7 @@ func TestApp_ViewRendering_Dossier(t *testing.T) {
 	app.width = 120
 	app.height = 40
 	app.registry = newTestRegistry()
-	app.selected = 0
+	app.dashboard.Selected = 0
 
 	output := app.View()
 	if output == "" {
@@ -247,16 +247,16 @@ func TestApp_PipelineAbortedMsg(t *testing.T) {
 	app := NewApp()
 	app.ready = true
 	app.view = ViewPipeline
-	app.pipelineState = pipeline.New("abort test")
-	app.pipelineState.Phases[0].Status = pipeline.StatusRunning
-	app.pipelineRunning = true
+	app.pipeline.State = pipeline.New("abort test")
+	app.pipeline.State.Phases[0].Status = pipeline.StatusRunning
+	app.pipeline.Running = true
 
 	model, _ := app.Update(PipelineAbortedMsg{})
 	result := model.(App)
-	if result.pipelineRunning {
+	if result.pipeline.Running {
 		t.Error("expected pipelineRunning=false after abort")
 	}
-	if result.pipelineState.Active {
+	if result.pipeline.State.Active {
 		t.Error("expected pipeline to be stopped after abort")
 	}
 }
@@ -268,8 +268,8 @@ func TestApp_TermOutputMsg(t *testing.T) {
 	model, _ := app.Update(termOutputMsg{cmd: "ls", output: "file1\nfile2"})
 	result := model.(App)
 
-	if len(result.termOutput) < 2 {
-		t.Errorf("expected at least 2 terminal output lines, got %d", len(result.termOutput))
+	if len(result.terminal.Output) < 2 {
+		t.Errorf("expected at least 2 terminal output lines, got %d", len(result.terminal.Output))
 	}
 }
 
@@ -283,8 +283,8 @@ func TestApp_TermOutputMsg_MaxLines(t *testing.T) {
 		app = model.(App)
 	}
 
-	if len(app.termOutput) > maxTerminalLines {
-		t.Errorf("expected termOutput <= %d, got %d", maxTerminalLines, len(app.termOutput))
+	if len(app.terminal.Output) > maxTerminalLines {
+		t.Errorf("expected termOutput <= %d, got %d", maxTerminalLines, len(app.terminal.Output))
 	}
 }
 
@@ -294,17 +294,17 @@ func TestPipelineKeys_Advance(t *testing.T) {
 	app.view = ViewPipeline
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
-	app.pipelineRunning = false
-	app.pipelineState = pipeline.New("test")
-	app.pipelineState.Phases[0].Status = pipeline.StatusRunning
+	app.terminal.Active = false
+	app.pipeline.Running = false
+	app.pipeline.State = pipeline.New("test")
+	app.pipeline.State.Phases[0].Status = pipeline.StatusRunning
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
 	result := model.(App)
 
 	// Should advance to next phase
-	if result.pipelineState.Current != 1 {
-		t.Errorf("expected pipeline to advance to index 1, got %d", result.pipelineState.Current)
+	if result.pipeline.State.Current != 1 {
+		t.Errorf("expected pipeline to advance to index 1, got %d", result.pipeline.State.Current)
 	}
 }
 
@@ -316,7 +316,7 @@ func TestDashboardKeys_Protocol(t *testing.T) {
 	app.view = ViewDashboard
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 
 	// Directly set view to test rendering
 	app.view = ViewProtocol
@@ -331,7 +331,7 @@ func TestApp_HelpToggleFromDossier(t *testing.T) {
 	app.view = ViewDossier
 	app.ready = true
 	app.browsing = false
-	app.termActive = false
+	app.terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
 	result := model.(App)

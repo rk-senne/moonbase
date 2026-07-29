@@ -11,7 +11,7 @@ import (
 )
 
 func (a *App) openComms() {
-	agent := a.registry.Get(a.selected)
+	agent := a.registry.Get(a.dashboard.Selected)
 
 	// Guard against zero/negative dimensions
 	vpWidth := a.width - 6
@@ -31,7 +31,7 @@ func (a *App) openComms() {
 			viewport: viewport.New(vpWidth, vpHeight),
 			agent:    agent.Name,
 		}
-		a.comms.rebuildContent()
+		a.comms.rebuildContent(a.themeData)
 	} else {
 		a.comms = newCommsState(agent.Name, agent.Prompt, a.width, a.height)
 	}
@@ -49,12 +49,12 @@ func (a *App) sendCommsMessage() tea.Cmd {
 		return nil
 	}
 	a.commsInput.Reset()
-	a.comms.AddUserMessage(msg)
+	a.comms.AddUserMessage(msg, a.themeData)
 	a.comms.streaming = true
 
 	// Start streaming and store channel for continued polling
-	a.streamCh = chat.Stream(a.comms.conv)
-	return pollStream(a.streamCh)
+	a.pipeline.StreamCh = chat.Stream(a.comms.conv)
+	return pollStream(a.pipeline.StreamCh)
 }
 
 func pollStream(ch <-chan chat.StreamChunk) tea.Cmd {
@@ -121,12 +121,12 @@ func (a *App) relayToAgent(targetName, msg string) tea.Cmd {
 		viewport: viewport.New(a.width-6, a.height-6),
 		agent:    target.Name,
 	}
-	a.comms.rebuildContent()
+	a.comms.rebuildContent(a.themeData)
 
-	a.comms.AddUserMessage(relayMsg)
+	a.comms.AddUserMessage(relayMsg, a.themeData)
 	a.comms.streaming = true
 	a.addIntel("Relayed to %s from %s", target.Name, fromAgent)
 
-	a.streamCh = chat.Stream(a.comms.conv)
-	return pollStream(a.streamCh)
+	a.pipeline.StreamCh = chat.Stream(a.comms.conv)
+	return pollStream(a.pipeline.StreamCh)
 }

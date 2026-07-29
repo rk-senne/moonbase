@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -15,6 +16,85 @@ import (
 	"github.com/f5508037/moonbase/internal/discovery"
 	"github.com/f5508037/moonbase/internal/pipeline"
 )
+
+// executeAndRecordPhase runs a single phase and records results to flywheel.
+// Returns the output string and any error.
+func executeAndRecordPhase(
+	p *pipeline.Pipeline,
+	phase *pipeline.Phase,
+	agent *agents.Agent,
+	ctx *discovery.ProjectContext,
+	flywheel *pipeline.FlywheelLog,
+	task string,
+) (string, error) {
+	phase.StartPhase()
+
+	phaseInput := p.Context.ForPhase(phase.Number)
+
+	// File injection for Phase 3 (Implementation)
+	if phase.Number == 3 {
+		if fileCtx := injectFileContext(p.Context); fileCtx != "" {
+			phaseInput += fileCtx
+		}
+	}
+	// Diff injection for Phase 4 (QA)
+	if phase.Number == 4 && p.Context.Diff != "" {
+		phaseInput += fmt.Sprintf("\n\n## Actual Changes (git diff)\n\n```diff\n%s\n```", p.Context.Diff)
+	}
+
+	composed := discovery.ComposePrompt(agent.Prompt, ctx, phaseInput)
+	output, err := deployToBackend(agent, composed, phaseInput)
+
+	if err != nil {
+		phase.Status = pipeline.StatusFailed
+		flywheel.Append(pipeline.FlywheelEntry{
+			Timestamp:  time.Now().UTC(),
+			TraceID:    p.TraceID,
+			Phase:      phase.Number,
+			Agent:      phase.AgentName,
+			Task:       task,
+			Outcome:    "failed",
+			DurationMs: time.Since(phase.StartedAt).Milliseconds(),
+			OutputSize: 0,
+		})
+		return "", err
+	}
+
+	p.Context.RecordPhase(phase.Number, output)
+	phase.CompletePhase()
+
+	flywheel.Append(pipeline.FlywheelEntry{
+		Timestamp:   time.Now().UTC(),
+		TraceID:     p.TraceID,
+		Phase:       phase.Number,
+		Agent:       phase.AgentName,
+		Task:        task,
+		Outcome:     "complete",
+		RiskLevel:   p.Context.RiskLevel,
+		DurationMs:  phase.ElapsedTime().Milliseconds(),
+		OutputSize:  len(output),
+		ReworkCount: p.Context.ReworkCount,
+	})
+
+	// Capture git diff after Phase 3
+	if phase.Number == 3 {
+		if diffOutput, dErr := exec.Command("git", "diff").Output(); dErr == nil && len(diffOutput) > 0 {
+			p.Context.Diff = string(diffOutput)
+		}
+	}
+
+	// Parse structured meta
+	if meta := pipeline.ParseMeta(output); meta != nil {
+		if len(meta.FilesChanged) > 0 {
+			p.Context.FilesChanged = append(p.Context.FilesChanged, meta.FilesChanged...)
+		}
+		if len(meta.Decisions) > 0 {
+			p.Context.Decisions = append(p.Context.Decisions, meta.Decisions...)
+		}
+	}
+
+	return output, nil
+}
 
 // runMission executes the full KND Council pipeline from the CLI.
 // It deploys agents sequentially, accumulates context, and applies risk gates.
@@ -34,6 +114,9 @@ func runMission(task string) {
 
 	// Create pipeline
 	p := pipeline.New(task)
+
+	// Create flywheel logger
+	flywheel := pipeline.NewFlywheelLog()
 
 	// Trace: print TraceID at start
 	if missionTrace {
@@ -65,60 +148,20 @@ func runMission(task string) {
 		}
 
 		fmt.Printf("   🔄 Phase %d: %s (%s)...\n", phase.Number, phase.Name, agent.Designation)
-		phase.StartPhase()
 
 		if missionTrace {
-			fmt.Printf("   [trace] Phase %d started at %s\n", phase.Number, phase.StartedAt.Format(time.RFC3339))
+			fmt.Printf("   [trace] Phase %d started at %s\n", phase.Number, time.Now().Format(time.RFC3339))
 		}
 
-		// Enhancement 3: Pre-flight file injection for Phase 3 (Implementation)
-		phaseInput := p.Context.ForPhase(phase.Number)
-		if phase.Number == 3 {
-			fileContext := injectFileContext(p.Context)
-			if fileContext != "" {
-				phaseInput += fileContext
-			}
-		}
-
-		// Enhancement 5: Inject git diff for Phase 4 (QA)
-		if phase.Number == 4 && p.Context.Diff != "" {
-			phaseInput += fmt.Sprintf("\n\n## Actual Changes (git diff)\n\n```diff\n%s\n```", p.Context.Diff)
-		}
-
-		// Compose full prompt: steering + agent + context
-		composed := discovery.ComposePrompt(agent.Prompt, ctx, phaseInput)
-
-		// Deploy to backend
-		output, err := deployToBackend(agent, composed, phaseInput)
+		output, err := executeAndRecordPhase(p, phase, agent, ctx, flywheel, task)
 		if err != nil {
 			handlePhaseFailure(p, phase, err)
 			break
 		}
 
-		// Record output
-		p.Context.RecordPhase(phase.Number, output)
-		phase.CompletePhase()
-
 		if missionTrace {
 			fmt.Printf("   [trace] Phase %d completed at %s (elapsed: %s)\n", phase.Number, phase.CompletedAt.Format(time.RFC3339), phase.ElapsedTime().Round(time.Millisecond))
 			fmt.Printf("   [trace] Phase %d output size: %d bytes\n", phase.Number, len(output))
-		}
-
-		// Enhancement 4: Parse structured meta from agent output
-		if meta := pipeline.ParseMeta(output); meta != nil {
-			if len(meta.FilesChanged) > 0 {
-				p.Context.FilesChanged = append(p.Context.FilesChanged, meta.FilesChanged...)
-			}
-			if len(meta.Decisions) > 0 {
-				p.Context.Decisions = append(p.Context.Decisions, meta.Decisions...)
-			}
-		}
-
-		// Enhancement 5: Capture git diff after Phase 3 completes
-		if phase.Number == 3 {
-			if diffOutput, dErr := exec.Command("git", "diff").Output(); dErr == nil && len(diffOutput) > 0 {
-				p.Context.Diff = string(diffOutput)
-			}
 		}
 
 		fmt.Printf("   ✅ Phase %d complete (%d chars)\n", phase.Number, len(output))
@@ -133,12 +176,30 @@ func runMission(task string) {
 				break
 			}
 			if targetIdx >= 0 {
+				// Log rework to flywheel
+				flywheel.Append(pipeline.FlywheelEntry{
+					Timestamp:   time.Now().UTC(),
+					TraceID:     p.TraceID,
+					Phase:       phase.Number,
+					Agent:       phase.AgentName,
+					Task:        task,
+					Outcome:     "rework",
+					RiskLevel:   p.Context.RiskLevel,
+					DurationMs:  phase.ElapsedTime().Milliseconds(),
+					OutputSize:  len(output),
+					ReworkCount: p.Context.ReworkCount,
+				})
 				// Loop back — adjust i to re-run from the target phase
 				i = targetIdx - 1 // -1 because loop will increment
 				continue
 			}
 		}
 	}
+
+	// Save checkpoint after pipeline execution
+	home, _ := os.UserHomeDir()
+	checkpointDir := filepath.Join(home, ".moonbase", "checkpoints")
+	pipeline.SaveCheckpoint(p, checkpointDir)
 
 	// Enhancement 6: Run conditional phases in parallel
 	runConditionalPhasesParallel(p, reg, ctx)
@@ -169,25 +230,25 @@ func runMissionFast(task string) {
 		fmt.Printf("   Project: %s\n\n", ctx.Summary())
 	}
 
-	// Fast pipeline: only Phase 3 (Implementation) and Phase 4 (QA)
-	fastPhases := []pipeline.Phase{
-		{Number: 3, Name: "Implementation", Operative: "Numbuh 3", AgentName: "numbuh-3", Status: pipeline.StatusPending},
-		{Number: 4, Name: "QA", Operative: "Numbuh 4", AgentName: "numbuh-4", Status: pipeline.StatusPending},
-	}
+	// Fast pipeline: only Phase 3 (Implementation) and Phase 4 (QA) active
+	p := pipeline.NewFast(task)
 
-	p := pipeline.New(task)
+	// Create flywheel logger
+	flywheel := pipeline.NewFlywheelLog()
 
 	// Trace: print TraceID at start
 	if missionTrace {
 		fmt.Printf("   [trace] TraceID: %s\n\n", p.TraceID)
 	}
 
-	// Skip phases 1, 2, 5 and all conditionals
 	for i := range p.Phases {
-		p.Phases[i].Status = pipeline.StatusSkipped
-	}
+		phase := &p.Phases[i]
 
-	for _, phase := range fastPhases {
+		// Only run non-skipped phases (3 and 4)
+		if phase.Status == pipeline.StatusSkipped {
+			continue
+		}
+
 		agent := reg.GetByName(phase.AgentName)
 		if agent == nil {
 			fmt.Printf("   ⚠️  Phase %d: agent %s not found\n", phase.Number, phase.AgentName)
@@ -195,39 +256,20 @@ func runMissionFast(task string) {
 		}
 
 		fmt.Printf("   🔄 Phase %d: %s (%s)...\n", phase.Number, phase.Name, agent.Designation)
-		phase.StartPhase()
 
 		if missionTrace {
-			fmt.Printf("   [trace] Phase %d started at %s\n", phase.Number, phase.StartedAt.Format(time.RFC3339))
+			fmt.Printf("   [trace] Phase %d started at %s\n", phase.Number, time.Now().Format(time.RFC3339))
 		}
 
-		phaseInput := p.Context.ForPhase(phase.Number)
-
-		// Enhancement 5: Inject diff for QA
-		if phase.Number == 4 && p.Context.Diff != "" {
-			phaseInput += fmt.Sprintf("\n\n## Actual Changes (git diff)\n\n```diff\n%s\n```", p.Context.Diff)
-		}
-
-		composed := discovery.ComposePrompt(agent.Prompt, ctx, phaseInput)
-		output, err := deployToBackend(agent, composed, phaseInput)
+		output, err := executeAndRecordPhase(p, phase, agent, ctx, flywheel, task)
 		if err != nil {
 			fmt.Printf("   ❌ Phase %d failed: %v\n", phase.Number, err)
 			break
 		}
 
-		p.Context.RecordPhase(phase.Number, output)
-		phase.CompletePhase()
-
 		if missionTrace {
 			fmt.Printf("   [trace] Phase %d completed at %s (elapsed: %s)\n", phase.Number, phase.CompletedAt.Format(time.RFC3339), phase.ElapsedTime().Round(time.Millisecond))
 			fmt.Printf("   [trace] Phase %d output size: %d bytes\n", phase.Number, len(output))
-		}
-
-		// Capture diff after implementation
-		if phase.Number == 3 {
-			if diffOutput, dErr := exec.Command("git", "diff").Output(); dErr == nil && len(diffOutput) > 0 {
-				p.Context.Diff = string(diffOutput)
-			}
 		}
 
 		fmt.Printf("   ✅ Phase %d complete (%d chars)\n", phase.Number, len(output))
@@ -241,6 +283,11 @@ func runMissionFast(task string) {
 			}
 		}
 	}
+
+	// Save checkpoint after pipeline execution
+	home, _ := os.UserHomeDir()
+	checkpointDir := filepath.Join(home, ".moonbase", "checkpoints")
+	pipeline.SaveCheckpoint(p, checkpointDir)
 
 	fmt.Println("\n   ✅ Fast mission complete.")
 }

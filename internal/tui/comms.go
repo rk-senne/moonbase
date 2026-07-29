@@ -38,32 +38,32 @@ func newCommsState(agent, systemPrompt string, width, height int) *CommsState {
 	}
 }
 
-func (c *CommsState) AddUserMessage(msg string) {
+func (c *CommsState) AddUserMessage(msg string, t Theme) {
 	c.conv.Add(chat.RoleUser, msg)
-	c.rebuildContent()
+	c.rebuildContent(t)
 }
 
-func (c *CommsState) AppendStreamToken(token string) {
+func (c *CommsState) AppendStreamToken(token string, t Theme) {
 	c.buffer += token
-	c.rebuildContent()
+	c.rebuildContent(t)
 }
 
-func (c *CommsState) FinishStream() {
+func (c *CommsState) FinishStream(t Theme) {
 	if c.buffer != "" {
 		c.conv.Add(chat.RoleAssistant, c.buffer)
 		c.buffer = ""
 	}
 	c.streaming = false
-	c.rebuildContent()
+	c.rebuildContent(t)
 	chat.Save(c.conv)
 }
 
-func (c *CommsState) rebuildContent() {
+func (c *CommsState) rebuildContent(t Theme) {
 	var b strings.Builder
-	dimStyle := lipgloss.NewStyle().Foreground(ColorDim)
+	dimStyle := lipgloss.NewStyle().Foreground(t.Dim)
 	userStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#888888"))
-	agentStyle := lipgloss.NewStyle().Foreground(ColorActive)
-	nameStyle := lipgloss.NewStyle().Foreground(ColorBrand).Bold(true)
+	agentStyle := lipgloss.NewStyle().Foreground(t.Active)
+	nameStyle := lipgloss.NewStyle().Foreground(t.Brand).Bold(true)
 
 	for _, msg := range c.conv.Messages {
 		ts := msg.Timestamp.Format("15:04")
@@ -100,48 +100,47 @@ func (a App) renderComms() string {
 	// Chat viewport
 	vpStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(ColorInfo).
+		BorderForeground(a.themeData.Info).
 		Width(a.width - 2).
 		Height(a.height - 5)
 
 	chatView := vpStyle.Render(a.comms.viewport.View())
 
 	// Input bar
-	inputPrefix := lipgloss.NewStyle().Foreground(ColorBrand).Bold(true).Render(" > ")
+	inputPrefix := lipgloss.NewStyle().Foreground(a.themeData.Brand).Bold(true).Render(" > ")
 	var inputBar string
 
 	if a.contextFile {
-		inputBar = lipgloss.NewStyle().Foreground(ColorInfo).Render(" 📎 Attach: ") + a.contextInput.View()
+		inputBar = lipgloss.NewStyle().Foreground(a.themeData.Info).Render(" 📎 Attach: ") + a.contextInput.View()
 	} else if a.snippetPicker {
 		inputBar = a.renderSnippetPicker()
 	} else if a.comms.streaming {
-		typingAnim := lipgloss.NewStyle().Foreground(ColorActive).Render(a.anim.RenderTyping())
-		inputBar = inputPrefix + typingAnim + lipgloss.NewStyle().Foreground(ColorDim).Render(" streaming...")
+		typingAnim := lipgloss.NewStyle().Foreground(a.themeData.Active).Render(a.anim.RenderTyping())
+		inputBar = inputPrefix + typingAnim + lipgloss.NewStyle().Foreground(a.themeData.Dim).Render(" streaming...")
 	} else {
 		inputBar = inputPrefix + a.commsInput.View()
 	}
 
-	hints := "[enter] SEND  [@agent] SWITCH  [>agent] RELAY  [>>agent msg] RELAY+MSG  [esc] BACK"
-	statusBar := a.renderStatusBar(hints)
+	statusBar := a.renderContextualStatusBar()
 
 	return lipgloss.JoinVertical(lipgloss.Left, header, chatView, inputBar, statusBar)
 }
 
 func (a App) renderSnippetPicker() string {
-	labelStyle := lipgloss.NewStyle().Foreground(ColorInfo).Bold(true)
+	labelStyle := lipgloss.NewStyle().Foreground(a.themeData.Info).Bold(true)
 	var b strings.Builder
 	b.WriteString(labelStyle.Render(" 📋 SNIPPETS: "))
 	if len(a.snippetList) == 0 {
-		b.WriteString(lipgloss.NewStyle().Foreground(ColorDim).Render("(none saved — use: moonbase snippet save <name>)"))
+		b.WriteString(lipgloss.NewStyle().Foreground(a.themeData.Dim).Render("(none saved — use: moonbase snippet save <name>)"))
 	} else {
 		for i, s := range a.snippetList {
 			if i == a.snippetCursor {
-				b.WriteString(lipgloss.NewStyle().Foreground(ColorActive).Bold(true).Render(fmt.Sprintf(" [%s] ", s.Name)))
+				b.WriteString(lipgloss.NewStyle().Foreground(a.themeData.Active).Bold(true).Render(fmt.Sprintf(" [%s] ", s.Name)))
 			} else {
-				b.WriteString(lipgloss.NewStyle().Foreground(ColorDim).Render(fmt.Sprintf("  %s  ", s.Name)))
+				b.WriteString(lipgloss.NewStyle().Foreground(a.themeData.Dim).Render(fmt.Sprintf("  %s  ", s.Name)))
 			}
 		}
-		b.WriteString(lipgloss.NewStyle().Foreground(ColorDim).Render(" ↑↓/enter"))
+		b.WriteString(lipgloss.NewStyle().Foreground(a.themeData.Dim).Render(" ↑↓/enter"))
 	}
 	return b.String()
 }

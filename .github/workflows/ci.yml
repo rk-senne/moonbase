@@ -28,8 +28,13 @@ jobs:
       - name: Build
         run: go build ./...
 
+      - name: Vulnerability check
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
       - name: Test
-        run: go test ./... -count=1 -timeout 300s -v 2>&1 | tee test-output.txt | grep -E "^(=== RUN|--- PASS|--- FAIL|FAIL|ok )"
+        run: go test -race ./... -count=1 -timeout 300s -v 2>&1 | tee test-output.txt | grep -E "^(=== RUN|--- PASS|--- FAIL|FAIL|ok )"
         env:
           CI: "true"
 
