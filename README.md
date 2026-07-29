@@ -23,6 +23,45 @@ moonbase mission "add pagination to /users API"  # run full pipeline
 
 ---
 
+## Installation
+
+moonbase is a single self-contained binary (agents are embedded) for macOS and Linux.
+
+### Install script (recommended)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/rk-senne/moonbase/main/install.sh | sh
+```
+
+Downloads the latest release for your platform, verifies its checksum, installs to
+`~/.local/bin`, and sets up the agents. Override with `MOONBASE_INSTALL_DIR` or pin a
+version with `MOONBASE_VERSION=v1.6.0`.
+
+### With Go
+
+```bash
+go install github.com/rk-senne/moonbase/cmd/moonbase@latest
+moonbase setup   # install the embedded agents to ~/.moonbase/agents
+```
+
+### Download a release
+
+Grab `moonbase_<os>_<arch>.tar.gz` from the
+[Releases page](https://github.com/rk-senne/moonbase/releases), extract it, put
+`moonbase` on your `PATH`, then run `moonbase setup`.
+
+### Build from source
+
+```bash
+git clone https://github.com/rk-senne/moonbase.git
+cd moonbase && make build && cp bin/moonbase ~/.local/bin/
+```
+
+> Agents are baked into the binary, so moonbase works in **any project** with no repo
+> checkout — `moonbase init` / `moonbase setup` just work from anywhere.
+
+---
+
 ## Quick Start
 
 ```bash

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `install.sh` — one-line installer (`curl -fsSL https://raw.githubusercontent.com/rk-senne/moonbase/main/install.sh | sh`) that detects your OS/arch, downloads the latest release, verifies its checksum, installs the binary to `~/.local/bin`, and runs `moonbase setup`. README now documents installation via the script, `go install`, release download, or source. (Requires the repository/releases to be publicly accessible.)
+
 ### Changed
 - chore(updater): the self-updater now derives the GitHub owner/repo from the module path baked into the binary (`debug.ReadBuildInfo`) instead of a hardcoded owner, and `.goreleaser.yml` auto-detects the repository from the git `origin` remote. Forks are followed automatically with no config edits; a fallback default is used only when build info is unavailable.
 
