@@ -4,9 +4,9 @@
 package backend
 
 import (
-	"github.com/f5508037/moonbase/internal/agents"
-	"github.com/f5508037/moonbase/internal/discovery"
-	"github.com/f5508037/moonbase/internal/logging"
+	"github.com/rk-senne/moonbase/internal/agents"
+	"github.com/rk-senne/moonbase/internal/discovery"
+	"github.com/rk-senne/moonbase/internal/logging"
 )
 
 // Backend is the interface all AI tool integrations implement.

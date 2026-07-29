@@ -6,7 +6,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/f5508037/moonbase/internal/docs"
+	"github.com/rk-senne/moonbase/internal/docs"
 )
 
 // DocsState holds the document viewer state

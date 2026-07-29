@@ -7,10 +7,10 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/f5508037/moonbase/internal/agents"
-	"github.com/f5508037/moonbase/internal/chat"
-	"github.com/f5508037/moonbase/internal/discovery"
-	"github.com/f5508037/moonbase/internal/pipeline"
+	"github.com/rk-senne/moonbase/internal/agents"
+	"github.com/rk-senne/moonbase/internal/chat"
+	"github.com/rk-senne/moonbase/internal/discovery"
+	"github.com/rk-senne/moonbase/internal/pipeline"
 )
 
 // mockBackend implements backend.Backend for testing executePhase.

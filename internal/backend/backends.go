@@ -6,10 +6,10 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/f5508037/moonbase/internal/agents"
-	"github.com/f5508037/moonbase/internal/chat"
-	clip "github.com/f5508037/moonbase/internal/clipboard"
-	"github.com/f5508037/moonbase/internal/discovery"
+	"github.com/rk-senne/moonbase/internal/agents"
+	"github.com/rk-senne/moonbase/internal/chat"
+	clip "github.com/rk-senne/moonbase/internal/clipboard"
+	"github.com/rk-senne/moonbase/internal/discovery"
 )
 
 // Kiro deploys agents via kiro-cli

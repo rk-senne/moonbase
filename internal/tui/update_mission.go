@@ -7,7 +7,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/f5508037/moonbase/internal/pipeline"
+	"github.com/rk-senne/moonbase/internal/pipeline"
 )
 
 // handleMissionKeys handles key messages when the view is ViewMission.

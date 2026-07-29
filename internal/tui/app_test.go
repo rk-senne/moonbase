@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/f5508037/moonbase/internal/agents"
+	"github.com/rk-senne/moonbase/internal/agents"
 )
 
 // newTestRegistry creates a registry pre-loaded with agents from the real agents directory.

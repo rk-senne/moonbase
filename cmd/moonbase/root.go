@@ -8,10 +8,10 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/f5508037/moonbase/internal/backend"
-	clip "github.com/f5508037/moonbase/internal/clipboard"
-	"github.com/f5508037/moonbase/internal/logging"
-	"github.com/f5508037/moonbase/internal/tui"
+	"github.com/rk-senne/moonbase/internal/backend"
+	clip "github.com/rk-senne/moonbase/internal/clipboard"
+	"github.com/rk-senne/moonbase/internal/logging"
+	"github.com/rk-senne/moonbase/internal/tui"
 	"github.com/spf13/cobra"
 )
 

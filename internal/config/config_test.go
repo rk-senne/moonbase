@@ -291,7 +291,7 @@ func TestSave_CreatesFileWithCorrectPermissions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal failed: %v", err)
 	}
-	header := []byte("# Moonbase configuration\n# https://github.com/f5508037/moonbase\n\n")
+	header := []byte("# Moonbase configuration\n# https://github.com/rk-senne/moonbase\n\n")
 	content := append(header, data...)
 	if err := os.WriteFile(configPath, content, 0o600); err != nil {
 		t.Fatalf("write failed: %v", err)

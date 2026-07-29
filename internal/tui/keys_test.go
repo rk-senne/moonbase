@@ -5,7 +5,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/f5508037/moonbase/internal/pipeline"
+	"github.com/rk-senne/moonbase/internal/pipeline"
 )
 
 func TestDashboardKeys_Mission(t *testing.T) {

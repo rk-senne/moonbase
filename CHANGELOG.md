@@ -101,7 +101,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Security: SafeEnv isolation, hook command validation, input sanitization
 - Mission history with persistence
 
-[1.6.0]: https://github.com/f5508037/moonbase/compare/v1.5.0...v1.6.0
-[1.2.0]: https://github.com/f5508037/moonbase/compare/v1.1.0...v1.2.0
-[1.1.0]: https://github.com/f5508037/moonbase/compare/v1.0.0...v1.1.0
-[1.0.0]: https://github.com/f5508037/moonbase/releases/tag/v1.0.0
+[1.6.0]: https://github.com/rk-senne/moonbase/compare/v1.5.0...v1.6.0
+[1.2.0]: https://github.com/rk-senne/moonbase/compare/v1.1.0...v1.2.0
+[1.1.0]: https://github.com/rk-senne/moonbase/compare/v1.0.0...v1.1.0
+[1.0.0]: https://github.com/rk-senne/moonbase/releases/tag/v1.0.0

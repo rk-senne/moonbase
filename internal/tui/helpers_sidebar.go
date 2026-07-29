@@ -3,7 +3,7 @@ package tui
 import (
 	"strings"
 
-	"github.com/f5508037/moonbase/internal/agents"
+	"github.com/rk-senne/moonbase/internal/agents"
 )
 
 // agentEntry represents a sidebar roster entry.

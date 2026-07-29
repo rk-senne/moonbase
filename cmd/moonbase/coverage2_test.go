@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/f5508037/moonbase/internal/agents"
-	"github.com/f5508037/moonbase/internal/history"
+	"github.com/rk-senne/moonbase/internal/agents"
+	"github.com/rk-senne/moonbase/internal/history"
 )
 
 // === runHistory coverage: JSON output, all flag, table format with data ===

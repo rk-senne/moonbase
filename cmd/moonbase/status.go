@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/f5508037/moonbase/internal/agents"
-	"github.com/f5508037/moonbase/internal/backend"
-	"github.com/f5508037/moonbase/internal/discovery"
+	"github.com/rk-senne/moonbase/internal/agents"
+	"github.com/rk-senne/moonbase/internal/backend"
+	"github.com/rk-senne/moonbase/internal/discovery"
 )
 
 // runStatus prints a quick health check of the moonbase environment.

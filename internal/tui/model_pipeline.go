@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/f5508037/moonbase/internal/chat"
-	"github.com/f5508037/moonbase/internal/pipeline"
+	"github.com/rk-senne/moonbase/internal/chat"
+	"github.com/rk-senne/moonbase/internal/pipeline"
 )
 
 // PipelineModel owns pipeline execution state: the pipeline itself, its chat/output

@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	moonbase "github.com/f5508037/moonbase"
+	moonbase "github.com/rk-senne/moonbase"
 )
 
 // runInstall implements `moonbase install` — copies agent .md files into a target directory.

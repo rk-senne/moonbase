@@ -9,13 +9,13 @@ import (
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/f5508037/moonbase/internal/chat"
-	"github.com/f5508037/moonbase/internal/discovery"
-	"github.com/f5508037/moonbase/internal/docs"
-	"github.com/f5508037/moonbase/internal/history"
-	"github.com/f5508037/moonbase/internal/pipeline"
-	"github.com/f5508037/moonbase/internal/platform"
-	"github.com/f5508037/moonbase/internal/projects"
+	"github.com/rk-senne/moonbase/internal/chat"
+	"github.com/rk-senne/moonbase/internal/discovery"
+	"github.com/rk-senne/moonbase/internal/docs"
+	"github.com/rk-senne/moonbase/internal/history"
+	"github.com/rk-senne/moonbase/internal/pipeline"
+	"github.com/rk-senne/moonbase/internal/platform"
+	"github.com/rk-senne/moonbase/internal/projects"
 )
 
 // === renderDocs comprehensive ===

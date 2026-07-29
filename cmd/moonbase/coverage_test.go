@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/f5508037/moonbase/internal/agents"
+	"github.com/rk-senne/moonbase/internal/agents"
 )
 
 // expectExit calls fn and expects it to trigger osExit.

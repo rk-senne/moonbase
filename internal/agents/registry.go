@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/f5508037/moonbase/internal/logging"
+	"github.com/rk-senne/moonbase/internal/logging"
 )
 
 // AgentSource constants for identifying where an agent was loaded from.

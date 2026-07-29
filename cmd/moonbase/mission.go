@@ -10,11 +10,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/f5508037/moonbase/internal/agents"
-	"github.com/f5508037/moonbase/internal/backend"
-	clip "github.com/f5508037/moonbase/internal/clipboard"
-	"github.com/f5508037/moonbase/internal/discovery"
-	"github.com/f5508037/moonbase/internal/pipeline"
+	"github.com/rk-senne/moonbase/internal/agents"
+	"github.com/rk-senne/moonbase/internal/backend"
+	clip "github.com/rk-senne/moonbase/internal/clipboard"
+	"github.com/rk-senne/moonbase/internal/discovery"
+	"github.com/rk-senne/moonbase/internal/pipeline"
 )
 
 // executeAndRecordPhase runs a single phase and records results to flywheel.

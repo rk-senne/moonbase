@@ -2,7 +2,7 @@ package tui
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/f5508037/moonbase/internal/agents"
+	"github.com/rk-senne/moonbase/internal/agents"
 )
 
 // AgentsLoadedMsg is the Bubbletea message sent when agents finish loading from disk.

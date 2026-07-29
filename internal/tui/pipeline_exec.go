@@ -7,11 +7,11 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/f5508037/moonbase/internal/agents"
-	"github.com/f5508037/moonbase/internal/backend"
-	"github.com/f5508037/moonbase/internal/discovery"
-	"github.com/f5508037/moonbase/internal/logging"
-	"github.com/f5508037/moonbase/internal/pipeline"
+	"github.com/rk-senne/moonbase/internal/agents"
+	"github.com/rk-senne/moonbase/internal/backend"
+	"github.com/rk-senne/moonbase/internal/discovery"
+	"github.com/rk-senne/moonbase/internal/logging"
+	"github.com/rk-senne/moonbase/internal/pipeline"
 )
 
 // PhaseTimeout is kept as a package-level default for backward compatibility in tests.

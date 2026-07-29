@@ -7,7 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/f5508037/moonbase/internal/watcher"
+	"github.com/rk-senne/moonbase/internal/watcher"
 )
 
 // handleDashboardKeys handles key messages when the current view is the

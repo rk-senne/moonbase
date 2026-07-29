@@ -11,7 +11,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/f5508037/moonbase/internal/backend"
+	"github.com/rk-senne/moonbase/internal/backend"
 )
 
 // handleWindowSize processes tea.WindowSizeMsg.

@@ -9,11 +9,11 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/f5508037/moonbase/internal/agents"
-	"github.com/f5508037/moonbase/internal/backend"
-	clip "github.com/f5508037/moonbase/internal/clipboard"
-	"github.com/f5508037/moonbase/internal/config"
-	"github.com/f5508037/moonbase/internal/discovery"
+	"github.com/rk-senne/moonbase/internal/agents"
+	"github.com/rk-senne/moonbase/internal/backend"
+	clip "github.com/rk-senne/moonbase/internal/clipboard"
+	"github.com/rk-senne/moonbase/internal/config"
+	"github.com/rk-senne/moonbase/internal/discovery"
 )
 
 // maxPipeInputSize is the maximum bytes accepted from piped stdin (1MB).

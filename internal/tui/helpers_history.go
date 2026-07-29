@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/f5508037/moonbase/internal/history"
+	"github.com/rk-senne/moonbase/internal/history"
 )
 
 // --- Mission History View ---

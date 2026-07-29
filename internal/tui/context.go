@@ -1,9 +1,9 @@
 package tui
 
 import (
-	"github.com/f5508037/moonbase/internal/agents"
-	"github.com/f5508037/moonbase/internal/backend"
-	"github.com/f5508037/moonbase/internal/discovery"
+	"github.com/rk-senne/moonbase/internal/agents"
+	"github.com/rk-senne/moonbase/internal/backend"
+	"github.com/rk-senne/moonbase/internal/discovery"
 )
 
 // AppContext is a read-only struct passed to sub-model Update/View methods so they

@@ -5,8 +5,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/f5508037/moonbase/internal/agents"
-	"github.com/f5508037/moonbase/internal/config"
+	"github.com/rk-senne/moonbase/internal/agents"
+	"github.com/rk-senne/moonbase/internal/config"
 )
 
 // runGuideOverview shows the general operations manual.

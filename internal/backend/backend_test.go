@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/f5508037/moonbase/internal/agents"
-	clip "github.com/f5508037/moonbase/internal/clipboard"
-	"github.com/f5508037/moonbase/internal/discovery"
-	"github.com/f5508037/moonbase/internal/logging"
+	"github.com/rk-senne/moonbase/internal/agents"
+	clip "github.com/rk-senne/moonbase/internal/clipboard"
+	"github.com/rk-senne/moonbase/internal/discovery"
+	"github.com/rk-senne/moonbase/internal/logging"
 )
 
 func TestDetectAll_Returns6Backends(t *testing.T) {

@@ -9,13 +9,13 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/f5508037/moonbase/internal/agents"
-	"github.com/f5508037/moonbase/internal/backend"
-	"github.com/f5508037/moonbase/internal/discovery"
-	"github.com/f5508037/moonbase/internal/history"
-	"github.com/f5508037/moonbase/internal/platform"
-	"github.com/f5508037/moonbase/internal/snippets"
-	"github.com/f5508037/moonbase/internal/watcher"
+	"github.com/rk-senne/moonbase/internal/agents"
+	"github.com/rk-senne/moonbase/internal/backend"
+	"github.com/rk-senne/moonbase/internal/discovery"
+	"github.com/rk-senne/moonbase/internal/history"
+	"github.com/rk-senne/moonbase/internal/platform"
+	"github.com/rk-senne/moonbase/internal/snippets"
+	"github.com/rk-senne/moonbase/internal/watcher"
 )
 
 type View int

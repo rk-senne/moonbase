@@ -5,7 +5,7 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/f5508037/moonbase/internal/updater"
+	"github.com/rk-senne/moonbase/internal/updater"
 )
 
 // runUpdateCheck checks for available updates without installing.

@@ -5,7 +5,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/f5508037/moonbase/internal/history"
+	"github.com/rk-senne/moonbase/internal/history"
 	"github.com/spf13/cobra"
 )
 

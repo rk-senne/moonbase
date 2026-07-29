@@ -6,9 +6,9 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/f5508037/moonbase/internal/agents"
-	"github.com/f5508037/moonbase/internal/pipeline"
-	"github.com/f5508037/moonbase/internal/projects"
+	"github.com/rk-senne/moonbase/internal/agents"
+	"github.com/rk-senne/moonbase/internal/pipeline"
+	"github.com/rk-senne/moonbase/internal/projects"
 )
 
 // === View rendering tests ===

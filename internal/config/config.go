@@ -125,7 +125,7 @@ func Save(cfg Config) error {
 		return fmt.Errorf("marshaling config: %w", err)
 	}
 
-	header := []byte("# Moonbase configuration\n# https://github.com/f5508037/moonbase\n\n")
+	header := []byte("# Moonbase configuration\n# https://github.com/rk-senne/moonbase\n\n")
 	content := append(header, data...)
 
 	return os.WriteFile(path, content, 0o600)

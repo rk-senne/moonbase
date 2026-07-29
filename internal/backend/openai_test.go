@@ -8,8 +8,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/f5508037/moonbase/internal/agents"
-	"github.com/f5508037/moonbase/internal/discovery"
+	"github.com/rk-senne/moonbase/internal/agents"
+	"github.com/rk-senne/moonbase/internal/discovery"
 )
 
 func TestOpenAI_Deploy_StreamsResponse(t *testing.T) {

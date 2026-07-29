@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/f5508037/moonbase/internal/snippets"
+	"github.com/rk-senne/moonbase/internal/snippets"
 )
 
 // === AnimState tests ===

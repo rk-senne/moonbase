@@ -6,7 +6,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/f5508037/moonbase/internal/chat"
+	"github.com/rk-senne/moonbase/internal/chat"
 )
 
 // CommsState holds the COMMS panel state

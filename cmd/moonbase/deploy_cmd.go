@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/huh"
-	"github.com/f5508037/moonbase/internal/agents"
+	"github.com/rk-senne/moonbase/internal/agents"
 	"github.com/spf13/cobra"
 )
 
