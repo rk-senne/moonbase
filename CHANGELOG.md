@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - refactor(tui): began decomposing the `App` god struct (57→47 fields) into focused value-type sub-models (`TerminalModel`, `DashboardModel`, `PipelineModel`); further extraction of remaining field groups deferred to a future phase.
 
 ### Fixed
+- fix(install): `moonbase setup`/`install` no longer destroys agents when run outside the repo. `findAgentsSource()` falls back to `~/.moonbase/agents`, which is also the setup target; copying that directory onto itself truncated every agent to 0 bytes (`copyFile` opens the destination with `O_TRUNC`). Both `copyFile` and `installAgentsTo` now guard against source==target and skip safely.
 - fix(history): history file path is now resolved lazily from `HOME` on each call instead of being cached at package `init()`, so tests can isolate history I/O. Behaviour is identical in production.
 - fix(test): history tests no longer read or write the real `~/.config/moonbase/history.json` — they isolate to a temp `HOME` via `t.Setenv`. Previously they polluted the user's real history file (which had accumulated ~488 test-only entries) and could not be isolated because the path was fixed at init.
 - fix(test): `captureStdout` test helper drained its `os.Pipe` only after the captured function returned, deadlocking on output larger than the OS pipe buffer (~64KB); it now drains concurrently. Surfaced by the history-command test as the accumulated history file crossed the threshold.

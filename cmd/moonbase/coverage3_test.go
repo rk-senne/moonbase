@@ -101,6 +101,52 @@ func TestRunInstall_ListingMode_GlobalNoAllFlag(t *testing.T) {
 
 // === copyFile additional coverage ===
 
+// TestCopyFile_SelfCopyDoesNotTruncate is a regression test for the bug where
+// `moonbase setup`, run outside the repo, resolved its agent source to
+// ~/.moonbase/agents (the same as the target) and truncated every agent to 0
+// bytes — because copyFile opens the destination with O_TRUNC before reading
+// the source. copyFile must now skip a self-copy and leave the file intact.
+func TestCopyFile_SelfCopyDoesNotTruncate(t *testing.T) {
+	tmpDir := t.TempDir()
+	f := filepath.Join(tmpDir, "agent.md")
+	content := "---\nname: numbuh-4\n---\n# Numbuh 4\n\n## Doctrine\nimportant content\n"
+	os.WriteFile(f, []byte(content), 0o644)
+
+	if err := copyFile(f, f); err != nil {
+		t.Fatalf("copyFile(f, f) returned error: %v", err)
+	}
+
+	data, err := os.ReadFile(f)
+	if err != nil {
+		t.Fatalf("reading file: %v", err)
+	}
+	if string(data) != content {
+		t.Errorf("self-copy corrupted the file.\nexpected: %q\ngot:      %q", content, string(data))
+	}
+	if len(data) == 0 {
+		t.Error("self-copy truncated the file to 0 bytes (the original bug)")
+	}
+}
+
+// TestCopyFile_SelfCopyViaRelativePath ensures the guard also catches a
+// self-copy expressed through differing-but-equivalent paths.
+func TestCopyFile_SelfCopyViaRelativePath(t *testing.T) {
+	tmpDir := t.TempDir()
+	f := filepath.Join(tmpDir, "agent.md")
+	content := "non-empty content\n"
+	os.WriteFile(f, []byte(content), 0o644)
+
+	// dst points at the same file via a "./" detour.
+	dst := filepath.Join(tmpDir, ".", "agent.md")
+	if err := copyFile(f, dst); err != nil {
+		t.Fatalf("copyFile returned error: %v", err)
+	}
+	data, _ := os.ReadFile(f)
+	if string(data) != content {
+		t.Errorf("equivalent-path self-copy corrupted the file: got %q", string(data))
+	}
+}
+
 func TestCopyFile_SuccessPreservesContent(t *testing.T) {
 	tmpDir := t.TempDir()
 	src := filepath.Join(tmpDir, "agent.md")

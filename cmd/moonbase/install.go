@@ -73,6 +73,19 @@ func installAgentsTo(targetDir string, global bool) {
 		osExit(1)
 	}
 
+	// Guard against source == target. This happens when 'moonbase setup' is run
+	// outside the repo: findAgentsSource() falls back to ~/.moonbase/agents, which
+	// is also the setup target. Copying a directory onto itself would truncate
+	// every agent to 0 bytes. Nothing fresh to copy — tell the user where to run.
+	if srcAbs, e1 := filepath.Abs(agentsSource); e1 == nil {
+		if dstAbs, e2 := filepath.Abs(targetDir); e2 == nil && srcAbs == dstAbs {
+			fmt.Printf("   Agents are already installed at %s\n", targetDir)
+			fmt.Println("   (source and target are the same directory — nothing to copy)")
+			fmt.Println("   To refresh from source, run this from the moonbase repository.")
+			return
+		}
+	}
+
 	// SECURITY: Create target directory with restrictive permissions (0755).
 	if err := os.MkdirAll(targetDir, 0o755); err != nil {
 		fmt.Fprintf(os.Stderr, "❌ Cannot create %s: %v\n", targetDir, err)
@@ -167,6 +180,15 @@ func isAgentsDir(path string) bool {
 // copyFile copies src to dst with explicit file permissions.
 // SECURITY: Destination is created with 0644 (owner rw, others read-only).
 func copyFile(src, dst string) error {
+	// Guard against copying a file onto itself. copyFile opens the destination
+	// with O_TRUNC, so a self-copy would truncate the file to 0 bytes before the
+	// source is read. Skip silently — the file already has the intended content.
+	if srcAbs, err1 := filepath.Abs(src); err1 == nil {
+		if dstAbs, err2 := filepath.Abs(dst); err2 == nil && srcAbs == dstAbs {
+			return nil
+		}
+	}
+
 	source, err := os.Open(src)
 	if err != nil {
 		return fmt.Errorf("copying %s to %s: %w", src, dst, err)
