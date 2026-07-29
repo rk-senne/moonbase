@@ -7,6 +7,26 @@ This document consolidates findings from a systematic study of all 10 books in t
 
 ---
 
+## Execution Status (2026-07-29)
+
+**19 of 24 findings implemented** this session (all 8 HIGH + all Small-effort items),
+across three verified batches (each: build + vet + `go test -race` + lint + per-finding QA).
+
+**Done:** F-01, F-03, F-04, F-06, F-07, F-08, F-10, F-12, F-13, F-14, F-15, F-16, F-17,
+F-18, F-19, F-21, F-22, F-23, F-24.
+
+**Remaining (deferred — all MED, Medium-effort, architectural):**
+- **F-02** — full `mission.go` SRP extraction (partially eased by F-04/F-13; the shared
+  pipeline-loop extraction is the larger remaining piece).
+- **F-05** — full `Pipeline` struct encapsulation (explicitly Out of Scope below; touches 33+ access sites).
+- **F-09** — graceful SIGINT shutdown (checkpoint + flywheel on interrupt).
+- **F-11** — `ForPhase` phase-dependency spec (replace the hard-coded switch).
+- **F-20** — file-based mission WIP lock.
+
+These need more design discussion and are good candidates for a dedicated follow-up.
+
+---
+
 ## Summary
 
 | Metric | Count |
