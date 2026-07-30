@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.14.0] - 2026-07-31
+
 ### Added
 - feat(discovery): progressive skill loading — `SkillRegistry` indexes skills by metadata at startup, loads full content on demand via `LoadContent(name)`
 - feat(discovery): `@skill(name)` protocol — agents see a lightweight skill catalog and request full content on demand, saving context window tokens
@@ -175,6 +177,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Security: SafeEnv isolation, hook command validation, input sanitization
 - Mission history with persistence
 
+[1.14.0]: https://github.com/rk-senne/moonbase/compare/v1.13.0...v1.14.0
 [1.13.0]: https://github.com/rk-senne/moonbase/compare/v1.12.0...v1.13.0
 [1.12.0]: https://github.com/rk-senne/moonbase/compare/v1.11.0...v1.12.0
 [1.11.0]: https://github.com/rk-senne/moonbase/compare/v1.10.0...v1.11.0
