@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -639,7 +640,7 @@ echo "Backend response: task completed successfully"
 		Tools:       []string{"read", "shell"},
 	}
 
-	output, err := deployToBackend(agent, "composed prompt here", "test task", 5*time.Minute)
+	output, err := deployToBackend(context.Background(), agent, "composed prompt here", "test task", 5*time.Minute)
 	if err != nil {
 		t.Fatalf("expected success, got error: %v", err)
 	}
@@ -679,7 +680,7 @@ exit 1
 	w.Close()
 	defer func() { os.Stdin = oldStdin }()
 
-	output, err := deployToBackend(agent, "test prompt", "test task", 5*time.Minute)
+	output, err := deployToBackend(context.Background(), agent, "test prompt", "test task", 5*time.Minute)
 	if err != nil {
 		// Valid error paths:
 		// 1. kiro-cli found on PATH but fails after retries
@@ -718,7 +719,7 @@ func TestDeployToBackend_NoBackendAvailable(t *testing.T) {
 	w.Close() // EOF immediately
 	defer func() { os.Stdin = oldStdin }()
 
-	_, err := deployToBackend(agent, "test", "task", 5*time.Minute)
+	_, err := deployToBackend(context.Background(), agent, "test", "task", 5*time.Minute)
 	// Either clipboard works (macOS has pbcopy at absolute path sometimes)
 	// or we get the no backend error
 	if err != nil {
@@ -1321,7 +1322,7 @@ echo "Response from kiro-cli for phase"
 
 	// Long composed prompt to exercise the temp file path
 	longPrompt := strings.Repeat("This is a long prompt for testing. ", 100)
-	output, err := deployToBackend(agent, longPrompt, "implement the feature", 5*time.Minute)
+	output, err := deployToBackend(context.Background(), agent, longPrompt, "implement the feature", 5*time.Minute)
 	if err != nil {
 		t.Fatalf("deployToBackend failed: %v", err)
 	}

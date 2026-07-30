@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/rk-senne/moonbase/internal/agents"
@@ -20,6 +22,7 @@ import (
 // executeAndRecordPhase runs a single phase and records results to flywheel.
 // Returns the output string and any error.
 func executeAndRecordPhase(
+	missionCtx context.Context,
 	p *pipeline.Pipeline,
 	phase *pipeline.Phase,
 	agent *agents.Agent,
@@ -43,7 +46,7 @@ func executeAndRecordPhase(
 	}
 
 	composed := discovery.ComposePrompt(agent.Prompt, ctx, phaseInput)
-	output, err := deployToBackend(agent, composed, phaseInput, p.PhaseTimeout)
+	output, err := deployToBackend(missionCtx, agent, composed, phaseInput, p.PhaseTimeout)
 
 	if err != nil {
 		phase.Status = pipeline.StatusFailed
@@ -99,6 +102,18 @@ func executeAndRecordPhase(
 // runMission executes the full KND Council pipeline from the CLI.
 // It deploys agents sequentially, accumulates context, and applies risk gates.
 func runMission(task string) {
+	// Acquire WIP lock
+	release, lockErr := acquireMissionLock(missionForce)
+	if lockErr != nil {
+		fmt.Fprintf(os.Stderr, "❌ %v\n", lockErr)
+		return
+	}
+	defer release()
+
+	// Set up graceful shutdown via SIGINT/SIGTERM
+	missionCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	fmt.Println("🌙 KND Council — Mission Pipeline")
 	fmt.Printf("   Task: %s\n\n", task)
 
@@ -126,6 +141,12 @@ func runMission(task string) {
 
 	// Execute mandatory phases (1-5)
 	for i := 0; i < len(p.Phases); i++ {
+		// Check for interrupt before starting next phase
+		if missionCtx.Err() != nil {
+			handleMissionInterrupt(p, &p.Phases[i], flywheel, task)
+			return
+		}
+
 		phase := &p.Phases[i]
 
 		// Skip conditional phases if not triggered
@@ -153,8 +174,13 @@ func runMission(task string) {
 			fmt.Printf("   [trace] Phase %d started at %s\n", phase.Number, time.Now().Format(time.RFC3339))
 		}
 
-		output, err := executeAndRecordPhase(p, phase, agent, ctx, flywheel, task)
+		output, err := executeAndRecordPhase(missionCtx, p, phase, agent, ctx, flywheel, task)
 		if err != nil {
+			// Check if the error was due to interrupt
+			if missionCtx.Err() != nil {
+				handleMissionInterrupt(p, phase, flywheel, task)
+				return
+			}
 			handlePhaseFailure(p, phase, err)
 			break
 		}
@@ -202,7 +228,7 @@ func runMission(task string) {
 	pipeline.SaveCheckpoint(p, checkpointDir)
 
 	// Enhancement 6: Run conditional phases in parallel
-	runConditionalPhasesParallel(p, reg, ctx)
+	runConditionalPhasesParallel(p, reg, ctx, missionCtx)
 
 	// Final summary
 	fmt.Println()
@@ -217,6 +243,18 @@ func runMission(task string) {
 // runMissionFast executes a collapsed pipeline: Implementation → QA only.
 // Skips Analysis and Architecture for trivial/well-specified tasks.
 func runMissionFast(task string) {
+	// Acquire WIP lock
+	release, lockErr := acquireMissionLock(missionForce)
+	if lockErr != nil {
+		fmt.Fprintf(os.Stderr, "❌ %v\n", lockErr)
+		return
+	}
+	defer release()
+
+	// Set up graceful shutdown via SIGINT/SIGTERM
+	missionCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	fmt.Println("🌙 KND Council — Fast Mission (Implementation → QA)")
 	fmt.Printf("   Task: %s\n\n", task)
 
@@ -242,6 +280,12 @@ func runMissionFast(task string) {
 	}
 
 	for i := range p.Phases {
+		// Check for interrupt before starting next phase
+		if missionCtx.Err() != nil {
+			handleMissionInterrupt(p, &p.Phases[i], flywheel, task)
+			return
+		}
+
 		phase := &p.Phases[i]
 
 		// Only run non-skipped phases (3 and 4)
@@ -261,8 +305,12 @@ func runMissionFast(task string) {
 			fmt.Printf("   [trace] Phase %d started at %s\n", phase.Number, time.Now().Format(time.RFC3339))
 		}
 
-		output, err := executeAndRecordPhase(p, phase, agent, ctx, flywheel, task)
+		output, err := executeAndRecordPhase(missionCtx, p, phase, agent, ctx, flywheel, task)
 		if err != nil {
+			if missionCtx.Err() != nil {
+				handleMissionInterrupt(p, phase, flywheel, task)
+				return
+			}
 			fmt.Printf("   ❌ Phase %d failed: %v\n", phase.Number, err)
 			break
 		}
@@ -294,7 +342,7 @@ func runMissionFast(task string) {
 
 // runConditionalPhasesParallel executes phases 6, 7, 8 concurrently.
 // Enhancement 6: These phases are independent and can run in parallel.
-func runConditionalPhasesParallel(p *pipeline.Pipeline, reg *agents.Registry, ctx *discovery.ProjectContext) {
+func runConditionalPhasesParallel(p *pipeline.Pipeline, reg *agents.Registry, ctx *discovery.ProjectContext, missionCtx context.Context) {
 	// Collect conditional phases that should trigger
 	type conditionalWork struct {
 		phase *pipeline.Phase
@@ -337,7 +385,7 @@ func runConditionalPhasesParallel(p *pipeline.Pipeline, reg *agents.Registry, ct
 		go func(phase *pipeline.Phase, agent *agents.Agent) {
 			phaseInput := p.Context.ForPhase(phase.Number)
 			composed := discovery.ComposePrompt(agent.Prompt, ctx, phaseInput)
-			output, err := deployToBackend(agent, composed, phaseInput, p.PhaseTimeout)
+			output, err := deployToBackend(missionCtx, agent, composed, phaseInput, p.PhaseTimeout)
 			results <- result{phase.Number, output, err}
 		}(w.phase, w.agent)
 	}
@@ -409,9 +457,13 @@ func injectFileContext(pCtx *pipeline.PipelineContext) string {
 // deadline is set to phaseTimeout, and per-attempt timeouts are derived as
 // phaseTimeout / DefaultMaxAttempts (capped at a sensible minimum of 30s).
 //
+// The missionCtx is the parent context from the mission runner; if the mission is
+// interrupted (SIGINT/SIGTERM), the derived context will be cancelled immediately,
+// aborting any in-flight backend call.
+//
 // Falls back to clipboard + stdin if no AI backend is available.
 // SECURITY: All subprocess execution uses SafeEnv() via the backend package.
-func deployToBackend(agent *agents.Agent, composed string, task string, phaseTimeout time.Duration) (string, error) {
+func deployToBackend(missionCtx context.Context, agent *agents.Agent, composed string, task string, phaseTimeout time.Duration) (string, error) {
 	be := backend.Preferred()
 
 	if be.Name() != "clipboard" {
@@ -422,7 +474,7 @@ func deployToBackend(agent *agents.Agent, composed string, task string, phaseTim
 			perAttempt = 30 * time.Second
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), phaseTimeout)
+		ctx, cancel := context.WithTimeout(missionCtx, phaseTimeout)
 		defer cancel()
 
 		output, err := backend.WithRetryCtx(ctx, func() (string, error) {
@@ -533,4 +585,28 @@ func handleRiskGate(p *pipeline.Pipeline, output string) (shouldContinue bool, t
 
 	// LOW risk or unknown — proceed normally
 	return true, -1
+}
+
+// handleMissionInterrupt handles graceful shutdown when SIGINT/SIGTERM is received.
+// It marks the current phase as failed, logs an "interrupted" flywheel entry, saves
+// a checkpoint for later resume, and prints a clear message to the user.
+func handleMissionInterrupt(p *pipeline.Pipeline, phase *pipeline.Phase, flywheel *pipeline.FlywheelLog, task string) {
+	phase.Status = pipeline.StatusFailed
+
+	flywheel.Append(pipeline.FlywheelEntry{
+		Timestamp:  time.Now().UTC(),
+		TraceID:    p.TraceID,
+		Phase:      phase.Number,
+		Agent:      phase.AgentName,
+		Task:       task,
+		Outcome:    "interrupted",
+		DurationMs: time.Since(phase.StartedAt).Milliseconds(),
+		OutputSize: 0,
+	})
+
+	home := mustUserHomeDir()
+	checkpointDir := filepath.Join(home, ".moonbase", "checkpoints")
+	pipeline.SaveCheckpoint(p, checkpointDir)
+
+	fmt.Printf("\n🛑 Mission interrupted — checkpoint saved (trace %s). Resume with 'moonbase replay %s'.\n", p.TraceID, p.TraceID)
 }

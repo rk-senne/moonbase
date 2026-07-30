@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 )
@@ -24,13 +25,37 @@ func (a *App) filterAgents() {
 		a.filtered = nil
 		return
 	}
-	a.filtered = nil
+
+	type scored struct {
+		index int
+		score int
+	}
+
+	var matches []scored
 	for i, agent := range a.registry.All() {
 		name := strings.ToLower(agent.Name)
 		desc := strings.ToLower(agent.Description)
-		if strings.Contains(name, query) || strings.Contains(desc, query) {
-			a.filtered = append(a.filtered, i)
+
+		nameScore, nameHit := fuzzyMatch(query, name)
+		descScore, descHit := fuzzyMatch(query, desc)
+
+		if nameHit || descHit {
+			best := nameScore
+			if descScore > best {
+				best = descScore
+			}
+			matches = append(matches, scored{index: i, score: best})
 		}
+	}
+
+	// Stable sort by score descending — ties preserve registry order.
+	sort.SliceStable(matches, func(i, j int) bool {
+		return matches[i].score > matches[j].score
+	})
+
+	a.filtered = nil
+	for _, m := range matches {
+		a.filtered = append(a.filtered, m.index)
 	}
 }
 
