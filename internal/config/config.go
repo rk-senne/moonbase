@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	"github.com/rk-senne/moonbase/internal/agents"
+	"github.com/rk-senne/moonbase/internal/pipeline"
 	"gopkg.in/yaml.v3"
 )
 
@@ -53,6 +54,10 @@ type Config struct {
 	Compile CompileConfig `yaml:"compile,omitempty"` // Compilation settings
 	Deploy  DeployConfig  `yaml:"deploy,omitempty"`  // Deployment mode settings
 	Safety  SafetyConfig  `yaml:"safety,omitempty"`  // Safety delegation settings
+
+	// Token/cost observability configuration.
+	ModelPricing map[string]pipeline.ModelPrice `yaml:"model_pricing,omitempty"` // Override default model prices (USD per 1M tokens)
+	TokenBudget  TokenBudgetConfig              `yaml:"token_budget,omitempty"`  // Per-mission token budget
 }
 
 // CompileConfig controls Kiro-native JSON compilation.
@@ -70,6 +75,13 @@ type DeployConfig struct {
 // SafetyConfig controls safety mechanism delegation.
 type SafetyConfig struct {
 	DelegateToKiro bool `yaml:"delegate_to_kiro,omitempty"` // When true + native mode: skip moonbase safety checks
+}
+
+// TokenBudgetConfig controls per-mission token budget enforcement.
+// When MaxTokensPerMission is 0 (default), no budget enforcement occurs.
+type TokenBudgetConfig struct {
+	MaxTokensPerMission int `yaml:"max_tokens_per_mission"` // Hard cap (0 = unlimited, default)
+	WarnThresholdPct    int `yaml:"warn_threshold_pct"`     // Warn at this % of budget (default 80)
 }
 
 // DefaultConfig returns a Config with sensible defaults.
