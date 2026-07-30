@@ -42,7 +42,7 @@ func acquireMissionLock(force bool) (release func(), err error) {
 			if isProcessAlive(info.PID) && !force {
 				elapsed := time.Since(info.StartedAt).Truncate(time.Second)
 				return nil, fmt.Errorf(
-					"Mission already in progress (PID %d, started %s ago). Use --force to override.",
+					"mission already in progress (PID %d, started %s ago); use --force to override",
 					info.PID, elapsed,
 				)
 			}

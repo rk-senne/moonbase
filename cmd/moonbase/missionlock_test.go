@@ -67,8 +67,8 @@ func TestAcquireMissionLock_SecondAcquireWithoutForce_Fails(t *testing.T) {
 	}
 	// Verify error message contains expected information
 	errMsg := err.Error()
-	if !contains(errMsg, "Mission already in progress") {
-		t.Errorf("error should mention 'Mission already in progress', got: %s", errMsg)
+	if !contains(errMsg, "mission already in progress") {
+		t.Errorf("error should mention 'mission already in progress', got: %s", errMsg)
 	}
 	if !contains(errMsg, "--force") {
 		t.Errorf("error should mention '--force', got: %s", errMsg)

@@ -81,7 +81,7 @@ func TestApp_SearchFilter(t *testing.T) {
 	result.filterAgents()
 
 	// Should have filtered results
-	if result.views.Search.Filtered == nil || len(result.views.Search.Filtered) == 0 {
+	if len(result.views.Search.Filtered) == 0 {
 		// Try with the searchInput value to confirm it's set
 		t.Skipf("no agents matched query 'numbuh' (searchInput.Value()=%q, registry count=%d)", result.views.Search.Input.Value(), result.registry.Count())
 	}
@@ -113,7 +113,7 @@ func TestApp_SearchEnter(t *testing.T) {
 	result.views.Search.Input.SetValue("1")
 	result.filterAgents()
 
-	if result.views.Search.Filtered == nil || len(result.views.Search.Filtered) == 0 {
+	if len(result.views.Search.Filtered) == 0 {
 		t.Skip("no agents matched search query '1'")
 	}
 

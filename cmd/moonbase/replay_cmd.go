@@ -32,6 +32,7 @@ func runReplay(idStr string) {
 		fmt.Fprintf(os.Stderr, "❌ Invalid mission ID: %s\n", idStr)
 		fmt.Fprintf(os.Stderr, "   Must be a number. Run 'moonbase history' to see mission IDs.\n")
 		osExit(1)
+		return
 	}
 
 	mission := history.GetByID(id)
@@ -39,6 +40,7 @@ func runReplay(idStr string) {
 		fmt.Fprintf(os.Stderr, "❌ Mission #%d not found.\n", id)
 		fmt.Fprintf(os.Stderr, "   Run 'moonbase history' to see available missions.\n")
 		osExit(1)
+		return
 	}
 
 	fmt.Printf("🌙 Replaying mission #%d: %s\n\n", mission.ID, mission.Task)

@@ -36,7 +36,7 @@ func runHistory() {
 	}
 
 	missions := history.List(limit)
-	if missions == nil || len(missions) == 0 {
+	if len(missions) == 0 {
 		fmt.Println("No mission history found.")
 		return
 	}

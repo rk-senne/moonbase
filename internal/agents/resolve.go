@@ -78,7 +78,7 @@ func FindAgentsDir(configPath string) (string, error) {
 			"   To fix, run one of:\n" +
 			"     • make install          (from moonbase source — installs binary + agents globally)\n" +
 			"     • moonbase setup        (if binary is already installed)\n" +
-			"     • moonbase install --all (copies agents to current project's .kiro/agents/)\n")
+			"     • moonbase install --all (copies agents to current project's .kiro/agents/)")
 }
 
 // FindAllAgentDirs returns all discoverable agent directories in priority order:

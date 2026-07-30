@@ -76,12 +76,9 @@ func TestAnimState_PulseBadge(t *testing.T) {
 
 func TestAnimState_TypewriterText(t *testing.T) {
 	a := &AnimState{typewriterAt: 0}
-	result := a.TypewriterText("Hello World")
-	// typewriterAt=0 means not started, but the function returns full[:0]+"█" = "█"
-	// Actually: if typewriterAt >= len(full), return full. 0 < 11, so returns full[:0]+"█"
-	// Let's test with typewriterAt >= len to get full text
+	// typewriterAt >= len(full) returns the full text; assert that branch.
 	a.typewriterAt = 100
-	result = a.TypewriterText("Hello World")
+	result := a.TypewriterText("Hello World")
 	if result != "Hello World" {
 		t.Errorf("expected full text when typewriterAt>=len, got %s", result)
 	}

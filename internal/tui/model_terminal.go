@@ -65,9 +65,7 @@ func (m TerminalModel) Update(msg tea.KeyPressMsg, ctx AppContext) (TerminalMode
 // HandleOutput processes a termOutputMsg and appends it to the output buffer.
 func (m TerminalModel) HandleOutput(msg termOutputMsg, themeData Theme) TerminalModel {
 	m.Output = append(m.Output, lipgloss.NewStyle().Foreground(themeData.Active).Render("$ "+msg.cmd))
-	for _, line := range strings.Split(msg.output, "\n") {
-		m.Output = append(m.Output, line)
-	}
+	m.Output = append(m.Output, strings.Split(msg.output, "\n")...)
 	if len(m.Output) > maxTerminalLines {
 		m.Output = m.Output[len(m.Output)-maxTerminalLines:]
 	}

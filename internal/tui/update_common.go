@@ -203,14 +203,12 @@ func (a App) pollWatcher() tea.Cmd {
 		return nil
 	}
 	return func() tea.Msg {
-		select {
-		case ev, ok := <-a.env.Infra.Watcher.Events:
-			if !ok {
-				// Watcher closed, stop polling
-				return nil
-			}
-			return fileChangeMsg{path: ev.Path}
+		ev, ok := <-a.env.Infra.Watcher.Events
+		if !ok {
+			// Watcher closed, stop polling
+			return nil
 		}
+		return fileChangeMsg{path: ev.Path}
 	}
 }
 

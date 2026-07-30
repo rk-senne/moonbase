@@ -2356,12 +2356,6 @@ func TestRenderBoot_LastStep_Typewriter(t *testing.T) {
 func TestRelayToAgent_InlineRegistry(t *testing.T) {
 	origDir, _ := os.Getwd()
 	defer os.Chdir(origDir)
-	// Use absolute path to agents directory to avoid cwd issues
-	absAgentsDir := filepath.Join(origDir, "..", "..", "agents")
-	if _, err := os.Stat(absAgentsDir); err != nil {
-		// Try finding from FindAgentsDir
-		absAgentsDir = origDir
-	}
 
 	app := NewApp()
 	app.width = 100
