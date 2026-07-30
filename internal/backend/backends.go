@@ -57,6 +57,26 @@ func (k *Kiro) DeployRaw(composed string, task string) (string, error) {
 	return string(output), nil
 }
 
+// DeployNative deploys an agent via kiro-cli's native agent JSON support.
+// Uses `kiro-cli chat --agent <name>` which loads the compiled JSON, resolves
+// file:// prompt references, and applies Kiro's permission/hook/MCP engine.
+//
+// SECURITY: When deploying natively, moonbase delegates safety to Kiro's engine.
+// SafeEnv is NOT applied — Kiro manages env isolation for the agent session.
+// This is intentional: the agent JSON already declares permissions via toolsSettings.
+func (k *Kiro) DeployNative(agentName string) ([]string, error) {
+	if agentName == "" {
+		return nil, fmt.Errorf("agent name is empty")
+	}
+
+	args := []string{"chat", "--agent", agentName}
+	if k.TrustTools {
+		args = append(args, "--trust-all-tools", "--no-interactive")
+	}
+
+	return append([]string{"kiro-cli"}, args...), nil
+}
+
 // Codex deploys agents via OpenAI Codex CLI
 type Codex struct{}
 

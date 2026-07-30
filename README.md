@@ -113,6 +113,7 @@ moonbase status
 | `moonbase mission <task>` | Run full KND Council pipeline on a task |
 | `moonbase mission --fast <task>` | Skip analysis/architecture, run implementation + QA only (use for trivial/well-specified tasks) |
 | `moonbase install [--all] [--global]` | Install agents to project's `.kiro/agents/` (or `~/.kiro/agents/` with `--global`) |
+| `moonbase compile [--out] [--validate] [--agent]` | Compile agents to Kiro-native JSON |
 | `moonbase setup` | Install agents globally to `~/.moonbase/agents/` |
 | `moonbase status` | Show environment health check |
 | `moonbase lint` | Validate all agent `.md` files |
@@ -225,6 +226,7 @@ moonbase/
 │   ├── agents/          ← YAML frontmatter parser + registry
 │   ├── pipeline/        ← Orchestrator, risk gate, triggers
 │   ├── discovery/       ← Project context (.kiro/specs, stack detection)
+│   ├── compile/         ← Kiro-native JSON compiler (types, compile, write, staleness)
 │   ├── backend/         ← AI backend integrations (kiro-cli, openai, anthropic, kimi, ollama, clipboard)
 │   ├── clipboard/       ← Cross-platform clipboard (macOS/Linux/Windows)
 │   ├── config/          ← YAML config (no secrets)
@@ -257,6 +259,20 @@ When deployed, agents automatically find:
 - `.kiro/steering/` — project conventions and rules
 - Build configs — detects Go/Java/Node/Python/Rust
 - README — project overview
+
+### Kiro Native Interop
+
+```bash
+moonbase compile --validate    # Emit Kiro-native JSON for all 14 agents
+moonbase deploy 3 --native     # Deploy via kiro-cli chat --agent numbuh-3
+```
+
+Compiles moonbase's `.md` agent definitions into Kiro-native agent JSON that
+passes `kiro-cli agent validate`. When deployed natively, agents inherit Kiro's
+permission engine (shell allowlists, write paths), hook system (`agentSpawn`,
+`preToolUse`, `postToolUse`, `stop`), and MCP server infrastructure — without
+moonbase reimplementing enforcement. See `docs/MIGRATION-NATIVE.md` for the
+safety delegation table and opt-in guide.
 
 ### Security
 

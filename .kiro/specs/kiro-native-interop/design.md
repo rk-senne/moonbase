@@ -18,6 +18,48 @@ agents/*.md  →  moonbase compile  →  .kiro/agents/*.json + *.prompt.md
                                    (inherits Kiro's hooks/permissions/MCP)
 ```
 
+## Phase 0 Findings — Schema Corrections (verified live via `kiro-cli agent validate`)
+
+The original R-3 mapping *guessed* several Kiro field names. Validated against the real
+`kiro-cli` (`/opt/homebrew/bin/kiro-cli`), the following corrections are **authoritative**
+and supersede any conflicting text below in this document and in requirements R-3:
+
+1. **Hook triggers use Kiro lifecycle names** (not `onActivate`/`onComplete`), object-format,
+   with `timeout_ms` (snake, milliseconds — NOT `timeoutMs`):
+   - `hooks.on_activate` → `hooks.agentSpawn`
+   - `hooks.pre_tool_use` → `hooks.preToolUse`
+   - `hooks.post_tool_use` → `hooks.postToolUse`
+   - `hooks.on_complete` → `hooks.stop`
+   - Shape: `"hooks": { "agentSpawn": [ { "command": "…", "timeout_ms": 5000 } ] }`.
+   (`onActivate`/`timeoutMs` **fail** validation: "did not match any variant of untagged enum".)
+
+2. **No `toolset` and no `toolsSettings.shell.readOnly`** — not in Kiro's schema (they don't
+   error but are silently ignored → false enforcement). Map moonbase `shell.read_only: true`
+   to `toolsSettings.shell.denyByDefault: true` + `autoAllowReadonly: true`, and simply do NOT
+   grant the `write` tool. **Drop R-3.3's `toolset: "read-only"` entirely.**
+
+3. **`mcpServers` is a JSON object keyed by server name, NOT an array** (array fails:
+   "invalid type: sequence, expected a map"). Emit
+   `"mcpServers": { "<name>": { "command": …, "args": […], "env": {…} } }`. Omit when empty.
+
+4. **Per-server `allowed_tools`** has no field inside the server object; scope MCP tools via the
+   agent's top-level `allowedTools` with `@<name>/<tool>` patterns
+   (e.g. `"allowedTools": ["read", "@github/create_pull_request"]`).
+
+5. **Prompt reference**: relative `file://<name>.prompt.md` (companion file beside the JSON)
+   passes schema validation; runtime resolution is confirmed in Task 7.2 (manual native deploy).
+
+Minimal agent using the corrected schema (validated ✅ — zero error output from `kiro-cli agent validate`):
+```json
+{ "name":"nb4","description":"QA","prompt":"file://nb4.prompt.md",
+  "tools":["read","shell","grep","glob"], "allowedTools":["read","grep","glob"],
+  "toolsSettings":{"shell":{"allowedCommands":["go test ./..."],"denyByDefault":true,"autoAllowReadonly":true}},
+  "hooks":{"agentSpawn":[{"command":"git branch --show-current","timeout_ms":5000}]} }
+```
+
+The `KiroAgent` struct MUST therefore use `MCPServers map[string]KiroMCPServer` (not a slice) and
+`Hooks` keyed by `agentSpawn/preToolUse/postToolUse/stop`, and MUST NOT include `toolset`/`readOnly`.
+
 ## Design Decisions
 
 ### D-1 — `moonbase compile` as a Dedicated Command (not overloading `install`)

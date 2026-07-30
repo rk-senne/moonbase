@@ -393,3 +393,170 @@ func TestParseAgentFile_ExtraUnknownFields(t *testing.T) {
 		t.Errorf("expected name 'extra', got: %s", agent.Name)
 	}
 }
+
+// === MCP Server Parsing Tests ===
+
+func TestParseAgentFile_MCPServersValid(t *testing.T) {
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "mcp-agent.md")
+
+	content := `---
+name: mcp-test
+role: Test
+tools:
+  - read
+mcp_servers:
+  - name: github
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-github"]
+    env:
+      GITHUB_TOKEN: "${GITHUB_TOKEN}"
+    allowed_tools:
+      - create_pull_request
+      - list_issues
+  - name: postgres
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-postgres"]
+    env:
+      DATABASE_URL: "${DATABASE_URL}"
+---
+# MCP Test Agent
+
+Body here.
+`
+	os.WriteFile(path, []byte(content), 0o644)
+
+	agent, err := ParseAgentFile(path)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !agent.HasMCPServers() {
+		t.Fatal("expected HasMCPServers() to be true")
+	}
+	if len(agent.MCPServers) != 2 {
+		t.Fatalf("expected 2 MCP servers, got %d", len(agent.MCPServers))
+	}
+
+	gh := agent.MCPServers[0]
+	if gh.Name != "github" {
+		t.Errorf("expected name 'github', got %q", gh.Name)
+	}
+	if gh.Command != "npx" {
+		t.Errorf("expected command 'npx', got %q", gh.Command)
+	}
+	if len(gh.Args) != 2 || gh.Args[0] != "-y" {
+		t.Errorf("expected args [-y @model...], got %v", gh.Args)
+	}
+	if gh.Env["GITHUB_TOKEN"] != "${GITHUB_TOKEN}" {
+		t.Errorf("expected env GITHUB_TOKEN, got %v", gh.Env)
+	}
+	if len(gh.AllowedTools) != 2 || gh.AllowedTools[0] != "create_pull_request" {
+		t.Errorf("expected allowed_tools, got %v", gh.AllowedTools)
+	}
+
+	pg := agent.MCPServers[1]
+	if pg.Name != "postgres" {
+		t.Errorf("expected name 'postgres', got %q", pg.Name)
+	}
+}
+
+func TestParseAgentFile_MCPServersMissing(t *testing.T) {
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "no-mcp.md")
+
+	content := "---\nname: no-mcp\nrole: Test\ntools:\n  - read\n---\n# No MCP\n"
+	os.WriteFile(path, []byte(content), 0o644)
+
+	agent, err := ParseAgentFile(path)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if agent.HasMCPServers() {
+		t.Error("expected HasMCPServers() to be false for agent without mcp_servers")
+	}
+	if len(agent.MCPServers) != 0 {
+		t.Errorf("expected empty MCPServers, got %d", len(agent.MCPServers))
+	}
+}
+
+func TestParseAgentFile_MCPServersDuplicateName(t *testing.T) {
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "dup-mcp.md")
+
+	content := `---
+name: dup-agent
+role: Test
+tools:
+  - read
+mcp_servers:
+  - name: github
+    command: npx
+  - name: github
+    command: node
+---
+# Dup MCP
+`
+	os.WriteFile(path, []byte(content), 0o644)
+
+	_, err := ParseAgentFile(path)
+	if err == nil {
+		t.Fatal("expected error for duplicate mcp_server name")
+	}
+	if !strings.Contains(err.Error(), "duplicate mcp_server name") {
+		t.Errorf("expected duplicate name error, got: %v", err)
+	}
+}
+
+func TestParseAgentFile_MCPServersEmptyCommand(t *testing.T) {
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "empty-cmd.md")
+
+	content := `---
+name: empty-cmd-agent
+role: Test
+tools:
+  - read
+mcp_servers:
+  - name: broken
+    command: ""
+---
+# Empty Command
+`
+	os.WriteFile(path, []byte(content), 0o644)
+
+	_, err := ParseAgentFile(path)
+	if err == nil {
+		t.Fatal("expected error for empty mcp_server command")
+	}
+	if !strings.Contains(err.Error(), "empty command") {
+		t.Errorf("expected empty command error, got: %v", err)
+	}
+}
+
+func TestParseAgentFile_MCPServersEmptyName(t *testing.T) {
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "empty-name.md")
+
+	content := `---
+name: empty-name-agent
+role: Test
+tools:
+  - read
+mcp_servers:
+  - name: ""
+    command: npx
+---
+# Empty Name
+`
+	os.WriteFile(path, []byte(content), 0o644)
+
+	_, err := ParseAgentFile(path)
+	if err == nil {
+		t.Fatal("expected error for empty mcp_server name")
+	}
+	if !strings.Contains(err.Error(), "empty name") {
+		t.Errorf("expected empty name error, got: %v", err)
+	}
+}

@@ -91,8 +91,31 @@ func ParseAgentFile(path string) (*Agent, error) {
 		return nil, fmt.Errorf("parsing YAML in %s: %w", path, err)
 	}
 
+	// Validate MCP servers: no duplicate names, no empty commands.
+	if err := validateMCPServers(agent.Name, agent.MCPServers); err != nil {
+		return nil, fmt.Errorf("validating %s: %w", path, err)
+	}
+
 	agent.Prompt = string(body)
 	agent.FilePath = path
 
 	return &agent, nil
+}
+
+// validateMCPServers checks MCP server configurations for correctness.
+func validateMCPServers(agentName string, servers []MCPServerConfig) error {
+	seen := make(map[string]bool, len(servers))
+	for _, s := range servers {
+		if s.Name == "" {
+			return fmt.Errorf("agent %s: mcp_server has empty name", agentName)
+		}
+		if s.Command == "" {
+			return fmt.Errorf("agent %s: mcp_server %q has empty command", agentName, s.Name)
+		}
+		if seen[s.Name] {
+			return fmt.Errorf("agent %s: duplicate mcp_server name %q", agentName, s.Name)
+		}
+		seen[s.Name] = true
+	}
+	return nil
 }

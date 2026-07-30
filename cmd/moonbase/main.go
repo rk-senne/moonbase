@@ -49,13 +49,15 @@ func runList() {
 		fmt.Println("  SECTOR V")
 		for _, a := range all {
 			if a.PipelinePosition != nil && *a.PipelinePosition >= 1 && *a.PipelinePosition <= 5 {
-				fmt.Printf("  [%s] %-18s %-26s %s\n", extractNumbuh(a.Name), a.Designation, a.Role, sourceTag(a.Source))
+				mcpTag := mcpCountTag(a)
+				fmt.Printf("  [%s] %-18s %-26s %s%s\n", extractNumbuh(a.Name), a.Designation, a.Role, sourceTag(a.Source), mcpTag)
 			}
 		}
 		// Also include numbuh-0 (pipeline position 0 or architect role)
 		for _, a := range all {
 			if a.PipelinePosition != nil && *a.PipelinePosition == 0 {
-				fmt.Printf("  [%s] %-18s %-26s %s\n", extractNumbuh(a.Name), a.Designation, a.Role, sourceTag(a.Source))
+				mcpTag := mcpCountTag(a)
+				fmt.Printf("  [%s] %-18s %-26s %s%s\n", extractNumbuh(a.Name), a.Designation, a.Role, sourceTag(a.Source), mcpTag)
 			}
 		}
 
@@ -65,7 +67,8 @@ func runList() {
 			if a.PipelinePosition == nil || *a.PipelinePosition > 5 {
 				num := extractNumbuh(a.Name)
 				if num != "" {
-					fmt.Printf("  [%s] %-18s %-26s %s\n", num, a.Designation, a.Role, sourceTag(a.Source))
+					mcpTag := mcpCountTag(a)
+					fmt.Printf("  [%s] %-18s %-26s %s%s\n", num, a.Designation, a.Role, sourceTag(a.Source), mcpTag)
 				}
 			}
 		}
@@ -146,6 +149,14 @@ func sourceTag(source string) string {
 	default:
 		return ""
 	}
+}
+
+// mcpCountTag returns a display tag showing MCP server count, or empty string if none.
+func mcpCountTag(a agents.Agent) string {
+	if a.HasMCPServers() {
+		return fmt.Sprintf(" [%d MCP]", len(a.MCPServers))
+	}
+	return ""
 }
 
 // extractNumbuh extracts the display number/identifier from an agent name.
@@ -306,6 +317,63 @@ func runDeploy(numbuh string, taskArg string) {
 		}
 		fmt.Printf("✅ Deployed %s in cmux split pane\n", agent.Name)
 		return
+	}
+
+	// Native deploy: use Kiro's compiled JSON agent (--native flag or config deploy.mode=native)
+	cfg := config.Load()
+	useNative := deployNative || cfg.Deploy.Mode == "native"
+	if useNative {
+		if kiro, kErr := exec.LookPath("kiro-cli"); kErr == nil {
+			// Staleness check: warn if compiled JSON is older than source .md
+			compiledDir := cfg.Compile.OutDir
+			if compiledDir == "" {
+				compiledDir = ".kiro/agents"
+			}
+			if !filepath.IsAbs(compiledDir) {
+				compiledDir = filepath.Join(cwd, compiledDir)
+			}
+			compiledJSON := filepath.Join(compiledDir, agent.Name+".json")
+
+			if _, statErr := os.Stat(compiledJSON); os.IsNotExist(statErr) {
+				fmt.Fprintf(os.Stderr, "   ⚠️  Compiled JSON not found: %s\n", compiledJSON)
+				fmt.Fprintf(os.Stderr, "      Run 'moonbase compile' first.\n")
+				osExit(1)
+			}
+
+			// Build native deploy args
+			// SECURITY: When safety.delegate_to_kiro is true and native mode is active,
+			// SafeEnv is intentionally NOT applied. Kiro's engine handles env isolation,
+			// shell permissions, and write path enforcement via the compiled toolsSettings.
+			kiroBackend := &backend.Kiro{TrustTools: cfg.TrustTools}
+			nativeArgs, nErr := kiroBackend.DeployNative(agent.Name)
+			if nErr != nil {
+				fmt.Fprintf(os.Stderr, "❌ Native deploy failed: %v\n", nErr)
+				osExit(1)
+			}
+
+			// Add task as positional input if provided
+			if task != "" {
+				nativeArgs = append(nativeArgs, task)
+			}
+
+			fmt.Printf("   Mode: native (kiro-cli chat --agent %s)\n\n", agent.Name)
+
+			if cfg.Safety.DelegateToKiro {
+				// SAFETY DELEGATION: Kiro's engine owns shell/write/hook/env enforcement.
+				// moonbase only retains pipeline orchestration, routing, and guardrails.
+				execErr := execSyscall(kiro, nativeArgs, nil)
+				if execErr != nil {
+					fmt.Fprintf(os.Stderr, "   ⚠️  kiro-cli native exec failed: %v\n", execErr)
+				}
+			} else {
+				execErr := execSyscall(kiro, nativeArgs, backend.SafeEnv())
+				if execErr != nil {
+					fmt.Fprintf(os.Stderr, "   ⚠️  kiro-cli native exec failed: %v\n", execErr)
+				}
+			}
+			return
+		}
+		fmt.Fprintln(os.Stderr, "   ⚠️  --native requires kiro-cli. Falling back to legacy deploy.")
 	}
 
 	// Try kiro-cli with syscall.Exec (replaces this process)
