@@ -221,7 +221,7 @@ moonbase/
 │   ├── specs/           ← Feature specs (requirements, design, tasks)
 │   ├── steering/        ← Project-wide dev rules
 │   └── agents/          ← Installed agents for kiro-cli
-├── internal/            ← Go source (16 packages)
+├── internal/            ← Go source (17 packages)
 │   ├── agents/          ← YAML frontmatter parser + registry
 │   ├── pipeline/        ← Orchestrator, risk gate, triggers
 │   ├── discovery/       ← Project context (.kiro/specs, stack detection)
@@ -308,11 +308,11 @@ git tag v1.4.0 && git push --tags
 
 | Metric | Value |
 |--------|-------|
-| Tests | 1,218 |
-| Packages tested | 16/16 (100%) |
-| Go LOC | 9,308 |
+| Tests | 1,494 (1,242 test functions incl. subtests) |
+| Packages tested | 18/19 (the root package is `go:embed`-only) |
+| Go LOC | ~15,300 |
 | Direct dependencies | 8 |
-| CI | GitHub Actions (vet + build + test on every push) |
+| CI | GitHub Actions (vet + build + `govulncheck` + `-race` test on every push) |
 | Releases | goreleaser (4 platform binaries on tag) |
 | Agent lint | `moonbase lint` validates all 14 agents |
 
@@ -323,7 +323,7 @@ git tag v1.4.0 && git push --tags
 | Layer | Tool | Why |
 |-------|------|-----|
 | Language | Go 1.26 | Single binary, fast, cross-platform |
-| TUI | Bubbletea + Lipgloss | Elm architecture, terminal styling |
+| TUI | Bubble Tea v2 + Lip Gloss v2 + Bubbles v2 | Elm architecture, terminal styling, components |
 | Agents | Markdown + YAML frontmatter | Portable, readable, versionable |
 | Backend | Kiro CLI (primary), OpenAI, Anthropic, Kimi, Ollama | Tool execution, API streaming, multi-turn |
 | Clipboard | pbcopy / xclip / xsel / wl-copy / clip | Cross-platform fallback |

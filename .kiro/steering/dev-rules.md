@@ -2,9 +2,9 @@
 
 ## Stack
 - Go 1.26.5+
-- Bubbletea (TUI framework, Elm architecture)
-- Lipgloss (terminal styling)
-- Bubbles (pre-built components: spinners, tables, viewports, inputs)
+- Bubble Tea v2 (`charm.land/bubbletea/v2`) — TUI framework, Elm architecture
+- Lip Gloss v2 (`charm.land/lipgloss/v2`) — terminal styling
+- Bubbles v2 (`charm.land/bubbles/v2`) — pre-built components: spinners, tables, viewports, inputs
 - gopkg.in/yaml.v3 (YAML parsing)
 
 ## Build & Test
