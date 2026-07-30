@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- feat(discovery): progressive skill loading — `SkillRegistry` indexes skills by metadata at startup, loads full content on demand via `LoadContent(name)`
+- feat(discovery): `@skill(name)` protocol — agents see a lightweight skill catalog and request full content on demand, saving context window tokens
+- feat(discovery): `parseFrontmatterOnly` reads ≤1KB per skill file for YAML frontmatter extraction (name + description)
+- feat(discovery): `EmitKiroSkillResources` writes Kiro-native `skill://` directory structure (`<name>/SKILL.md`)
+- feat(discovery): backward-compatible legacy skill path — skills without YAML frontmatter are still loaded eagerly into `ProjectContext.Skills`
+- feat(init): `moonbase init` now scaffolds example skill with YAML frontmatter in Kiro-native directory format
+
 ## [1.13.0] - 2026-07-31
 
 ### Added

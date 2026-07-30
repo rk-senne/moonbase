@@ -313,10 +313,26 @@ model_pricing:
 ### Skills & Stored Prompts
 
 When `moonbase init` scaffolds a project, it creates:
-- `.kiro/skills/` — Domain-specific knowledge agents reference
+- `.kiro/skills/` — Domain-specific knowledge agents reference progressively
 - `.kiro/prompts/` — Reusable named workflows
 
-Agents automatically discover and incorporate skills into their context.
+**Progressive Skill Loading:** Skills use YAML frontmatter (`name`, `description`) so
+agents see a lightweight catalog (~100 tokens per skill) instead of full content. Agents
+request specific skills with `@skill(name)` to load content on demand — saving context
+window tokens for what matters.
+
+```markdown
+---
+name: docker-build
+description: Docker multi-stage build patterns and CI integration.
+---
+
+# Docker Build Patterns
+...
+```
+
+Agents automatically discover skills and display the catalog. Legacy skills without
+frontmatter are still loaded eagerly for backward compatibility.
 
 ---
 
