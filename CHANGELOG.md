@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.11.0] - 2026-07-30
+
 ### Changed
 - deps/tui: migrated the terminal UI to the **Charm v2 stack** — `charm.land/bubbletea/v2` (v2.0.8), `charm.land/lipgloss/v2` (v2.0.5), `charm.land/bubbles/v2` (v2.1.1). No user-facing behavior change: the app now uses the declarative `View() tea.View` model, `tea.KeyPressMsg` keyboard events, and typed mouse messages (`MouseWheelMsg`/`MouseClickMsg`). A side benefit of lipgloss v2's border-width accounting is that dashboard panels now fit the target width exactly (v1 overflowed by a few columns). Golden snapshots were regenerated once; visible text is byte-for-byte identical.
 
@@ -144,6 +146,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Security: SafeEnv isolation, hook command validation, input sanitization
 - Mission history with persistence
 
+[1.11.0]: https://github.com/rk-senne/moonbase/compare/v1.10.0...v1.11.0
 [1.10.0]: https://github.com/rk-senne/moonbase/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/rk-senne/moonbase/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/rk-senne/moonbase/compare/v1.7.0...v1.8.0
