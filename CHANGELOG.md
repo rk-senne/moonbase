@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-07-30
+
 ### Added
 - tui: **mouse support** — the mouse wheel now scrolls the active view (the COMMS transcript and document viewports, and the operative-roster / project-navigator cursors), and a click dismisses the boot splash. Enabled via cell-motion mode. Fully additive: every action still has a keyboard equivalent, so nothing changes for keyboard-only use. (Click-to-select an operative from the roster is a planned follow-up — it needs a render hit-map.)
 
@@ -134,6 +136,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Security: SafeEnv isolation, hook command validation, input sanitization
 - Mission history with persistence
 
+[1.9.0]: https://github.com/rk-senne/moonbase/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/rk-senne/moonbase/compare/v1.7.0...v1.8.0
 [1.7.0]: https://github.com/rk-senne/moonbase/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/rk-senne/moonbase/compare/v1.5.0...v1.6.0
