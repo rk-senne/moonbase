@@ -83,3 +83,109 @@ func TestComputeLeadTimeInsights_EmptyInput(t *testing.T) {
 		t.Errorf("longest name: got %q, want empty", longest.name)
 	}
 }
+
+func TestFormatTokenCount(t *testing.T) {
+	tests := []struct {
+		input int
+		want  string
+	}{
+		{0, "0"},
+		{500, "500"},
+		{1000, "1K"},
+		{45000, "45K"},
+		{142000, "142K"},
+		{1200000, "1.2M"},
+		{2500000, "2.5M"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.want, func(t *testing.T) {
+			got := formatTokenCount(tt.input)
+			if got != tt.want {
+				t.Errorf("formatTokenCount(%d) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestTruncateTrace(t *testing.T) {
+	short := "trace-123"
+	if got := truncateTrace(short); got != short {
+		t.Errorf("truncateTrace(%q) = %q, want %q", short, got, short)
+	}
+
+	long := "20260730T120000-very-long-trace-id-here"
+	got := truncateTrace(long)
+	if len(got) > 24 { // 20 + "..."
+		t.Errorf("truncateTrace did not truncate: %q", got)
+	}
+	if got[len(got)-3:] != "..." {
+		t.Error("truncateTrace should end with ...")
+	}
+}
+
+func TestDisplayTokenCostInsights_NoData(t *testing.T) {
+	// When no entries have token data, should not panic.
+	// We can't easily capture stdout here, but we verify no panic.
+	entries := []pipeline.FlywheelEntry{
+		{Phase: 1, Agent: "numbuh-1", Outcome: "complete", DurationMs: 100},
+		{Phase: 3, Agent: "numbuh-3", Outcome: "complete", DurationMs: 200},
+	}
+
+	// Should not panic — graceful degradation
+	displayTokenCostInsights(entries)
+}
+
+func TestDisplayTokenCostInsights_WithData(t *testing.T) {
+	// Entries with token data — should not panic.
+	entries := []pipeline.FlywheelEntry{
+		{
+			TraceID:          "trace-1",
+			Phase:            1,
+			Agent:            "numbuh-1",
+			Outcome:          "complete",
+			PromptTokens:     30000,
+			CompletionTokens: 8000,
+			TotalTokens:      38000,
+			Model:            "gpt-4o",
+			EstimatedCostUSD: 0.155,
+		},
+		{
+			TraceID:          "trace-1",
+			Phase:            3,
+			Agent:            "numbuh-3",
+			Outcome:          "complete",
+			PromptTokens:     60000,
+			CompletionTokens: 18000,
+			TotalTokens:      78000,
+			Model:            "gpt-4o",
+			EstimatedCostUSD: 0.33,
+		},
+		{
+			TraceID:          "trace-2",
+			Phase:            1,
+			Agent:            "numbuh-1",
+			Outcome:          "complete",
+			PromptTokens:     25000,
+			CompletionTokens: 6000,
+			TotalTokens:      31000,
+			Model:            "gpt-4o",
+			EstimatedCostUSD: 0.1225,
+		},
+		// Entry without tokens — should be excluded from averages
+		{
+			TraceID:  "trace-2",
+			Phase:    4,
+			Agent:    "numbuh-4",
+			Outcome:  "complete",
+		},
+	}
+
+	// Should not panic, should handle mixed data gracefully
+	displayTokenCostInsights(entries)
+}
+
+func TestDisplayTokenCostInsights_Empty(t *testing.T) {
+	// Empty entries list
+	displayTokenCostInsights(nil)
+}
