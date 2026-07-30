@@ -9,37 +9,27 @@ This document consolidates findings from a systematic study of all 10 books in t
 
 ## Execution Status (updated 2026-07-30)
 
-**21 of 24 findings implemented**, across verified batches (each: build + vet +
-`go test -race` + lint + per-finding QA). Plus a subsequence fuzzy agent-search UX
-upgrade (not a numbered finding) and an O(1) agent-registry index.
+**23 of 24 findings implemented**, across verified batches (each: build + vet +
+`go test -race` + lint + integration tests + per-finding QA). Plus a subsequence fuzzy
+agent-search UX upgrade and an O(1) agent-registry index.
 
-**Done:** F-01, F-03, F-04, F-06, F-07, F-08, F-09, F-10, F-12, F-13, F-14, F-15, F-16,
-F-17, F-18, F-19, F-20, F-21, F-22, F-23, F-24.
+**Done:** F-01, F-02, F-03, F-04, F-06, F-07, F-08, F-09, F-10, F-11, F-12, F-13, F-14,
+F-15, F-16, F-17, F-18, F-19, F-20, F-21, F-22, F-23, F-24.
 
-- **F-09** — graceful SIGINT/SIGTERM shutdown: `signal.NotifyContext` in
-  `runMission`/`runMissionFast`, threaded through `deployToBackend`; on interrupt it
-  marks the phase interrupted, writes an `"interrupted"` flywheel entry, saves a
-  checkpoint, and prints a `moonbase replay <id>` hint. (commit 1e4398a)
-- **F-20** — file-based mission WIP lock at `~/.moonbase/mission.lock` (PID + start,
-  0600), liveness via `syscall.Kill(pid,0)`, stale/corrupt takeover, `--force` flag.
-  (commit 1e4398a)
+- **F-11** — `ForPhase` is now driven by a declarative `PhaseInputSpec` (per-phase
+  required prior phases + limits) instead of a hard-coded switch; assembly is a generic
+  loop. Behaviour-identical (all `TestPipelineContext_ForPhase_*` pass unchanged).
+- **F-02** — `deployToBackend`/`fallbackDeploy` moved into `internal/backend`
+  (`DeployComposed`); `runMission`/`runMissionFast` now share a single
+  `runPipelineLoop(...)` parameterised by `pipelineLoopOptions`. Behaviour-identical
+  (integration tests + full suite green).
 
-**Remaining (deferred — all MED, Medium-effort, architectural refactors):**
-- **F-02** — full `mission.go` SRP extraction. `runMission` and `runMissionFast` still
-  share a large phase loop; extract a single `runPipelineLoop(...)` used by both, and
-  move `deployToBackend`/`fallbackDeploy` into `internal/backend`. Partially eased by
-  F-04/F-13 already. (Effort: M)
-- **F-11** — `ForPhase` phase-dependency spec (`internal/pipeline/context.go`): replace
-  the hard-coded per-phase switch with a declarative `PhaseInputSpec` (required prior
-  phases + max lengths) so adding/reordering phases is a data change, not code. (Effort: M)
-- **F-05** — full `Pipeline` struct encapsulation (Out of Scope in the section below;
-  33+ direct field-access sites — establish behaviour methods on new code only). (Effort: M)
+**Remaining:**
+- **F-05** — full `Pipeline` struct encapsulation. Intentionally left as an ongoing
+  convention (new code uses behaviour methods; 33+ existing field-access sites are not
+  worth a big-bang rewrite). Out of Scope by design — see below.
 
-### Continuing in a fresh session
-This doc is the source of truth for what's left. To resume: `cd` into this repo and run
-`kiro-cli chat --resume` (same directory), or `/chat load <file>` if you exported with
-`/chat save`. Then point the new session at the three remaining items above (start with
-F-02, then F-11). All work is committed on `main`.
+All research-backlog work is complete except the deliberately-scoped-out F-05.
 
 ---
 

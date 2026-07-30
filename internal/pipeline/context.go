@@ -40,64 +40,38 @@ func (pc *PipelineContext) RecordPhase(phase int, output string) {
 }
 
 // ForPhase composes the input context for a given phase.
-// It includes the original task plus relevant prior phase outputs.
+// It includes the original task plus relevant prior phase outputs,
+// driven by the declarative PhaseInputSpec for the target phase.
 func (pc *PipelineContext) ForPhase(phase int) string {
 	var sections []string
 
 	// Always include the original task
 	sections = append(sections, fmt.Sprintf("## Original Task\n\n%s", pc.Task))
 
-	// Include relevant prior outputs based on what the current phase needs
-	switch {
-	case phase == 1:
-		// Analyst gets just the task (no prior context)
-	case phase == 2:
-		// Architect gets the requirements from phase 1
-		if out, ok := pc.PhaseOutputs[1]; ok {
-			sections = append(sections, fmt.Sprintf("## Requirements (from Phase 1 — Analyst)\n\n%s", out))
+	// Look up the spec for this phase
+	spec := lookupPhaseInputSpec(phase)
+
+	// Assemble prior-phase outputs according to the spec
+	for _, reqPhase := range spec.RequiresPhases {
+		out, ok := pc.PhaseOutputs[reqPhase]
+		if !ok {
+			continue
 		}
-	case phase == 3:
-		// Implementer gets requirements + design
-		if out, ok := pc.PhaseOutputs[1]; ok {
-			sections = append(sections, fmt.Sprintf("## Requirements (from Phase 1 — Analyst)\n\n%s", summarize(out, 3000)))
+
+		// Apply truncation if specified
+		if maxLen, hasLimit := spec.MaxPerPhase[reqPhase]; hasLimit && maxLen > 0 {
+			out = summarize(out, maxLen)
 		}
-		if out, ok := pc.PhaseOutputs[2]; ok {
-			sections = append(sections, fmt.Sprintf("## Design (from Phase 2 — Architect)\n\n%s", out))
-		}
-		// If this is a rework, include QA feedback
-		if pc.ReworkCount > 0 {
-			if out, ok := pc.PhaseOutputs[4]; ok {
-				sections = append(sections, fmt.Sprintf("## QA Feedback (REWORK REQUIRED — attempt %d)\n\n%s", pc.ReworkCount, out))
-			}
-		}
-	case phase == 4:
-		// QA gets requirements + what was implemented
-		if out, ok := pc.PhaseOutputs[1]; ok {
-			sections = append(sections, fmt.Sprintf("## Requirements (from Phase 1 — Analyst)\n\n%s", summarize(out, 2000)))
-		}
-		if out, ok := pc.PhaseOutputs[3]; ok {
-			sections = append(sections, fmt.Sprintf("## Implementation (from Phase 3 — Implementer)\n\n%s", out))
-		}
-	case phase == 5:
-		// Reviewer gets a summary of everything
-		if out, ok := pc.PhaseOutputs[1]; ok {
-			sections = append(sections, fmt.Sprintf("## Requirements (from Phase 1)\n\n%s", summarize(out, 1500)))
-		}
-		if out, ok := pc.PhaseOutputs[2]; ok {
-			sections = append(sections, fmt.Sprintf("## Design (from Phase 2)\n\n%s", summarize(out, 1500)))
-		}
-		if out, ok := pc.PhaseOutputs[3]; ok {
-			sections = append(sections, fmt.Sprintf("## Implementation (from Phase 3)\n\n%s", summarize(out, 2000)))
-		}
+
+		// Use the configured header
+		header := spec.HeaderFormat[reqPhase]
+		sections = append(sections, fmt.Sprintf("%s\n\n%s", header, out))
+	}
+
+	// Include rework feedback from QA (Phase 4) when spec declares it
+	if spec.IncludeRework && pc.ReworkCount > 0 {
 		if out, ok := pc.PhaseOutputs[4]; ok {
-			sections = append(sections, fmt.Sprintf("## QA Report (from Phase 4)\n\n%s", out))
-		}
-	default:
-		// Specialists/oversight get everything summarized
-		for i := 1; i <= 5; i++ {
-			if out, ok := pc.PhaseOutputs[i]; ok {
-				sections = append(sections, fmt.Sprintf("## Phase %d Output\n\n%s", i, summarize(out, 1000)))
-			}
+			sections = append(sections, fmt.Sprintf("## QA Feedback (REWORK REQUIRED — attempt %d)\n\n%s", pc.ReworkCount, out))
 		}
 	}
 

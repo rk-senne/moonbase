@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rk-senne/moonbase/internal/agents"
+	"github.com/rk-senne/moonbase/internal/backend"
 	"github.com/rk-senne/moonbase/internal/history"
 )
 
@@ -618,9 +618,9 @@ echo "phase output"
 	}
 }
 
-// === deployToBackend coverage ===
+// === DeployComposed coverage (backend package) ===
 
-func TestDeployToBackend_KiroCLISuccess(t *testing.T) {
+func TestDeployComposed_KiroCLISuccess(t *testing.T) {
 	origPath := os.Getenv("PATH")
 	defer os.Setenv("PATH", origPath)
 
@@ -633,14 +633,7 @@ echo "Backend response: task completed successfully"
 	os.WriteFile(fakeKiro, []byte(script), 0o755)
 	os.Setenv("PATH", tmpBin+":"+origPath)
 
-	agent := &agents.Agent{
-		Name:        "numbuh-1",
-		Designation: "Nigel Uno",
-		Role:        "Analyst",
-		Tools:       []string{"read", "shell"},
-	}
-
-	output, err := deployToBackend(context.Background(), agent, "composed prompt here", "test task", 5*time.Minute)
+	output, err := backend.DeployComposed(context.Background(), "composed prompt here", "test task", 5*time.Minute)
 	if err != nil {
 		t.Fatalf("expected success, got error: %v", err)
 	}
@@ -649,7 +642,7 @@ echo "Backend response: task completed successfully"
 	}
 }
 
-func TestDeployToBackend_KiroCLIFailsFallsBack(t *testing.T) {
+func TestDeployComposed_KiroCLIFailsFallsBack(t *testing.T) {
 	origPath := os.Getenv("PATH")
 	defer os.Setenv("PATH", origPath)
 
@@ -663,14 +656,7 @@ exit 1
 	os.WriteFile(fakeKiro, []byte(script), 0o755)
 	os.Setenv("PATH", tmpBin+":"+origPath)
 
-	agent := &agents.Agent{
-		Name:        "numbuh-2",
-		Designation: "Hoagie",
-		Role:        "Architect",
-		Tools:       []string{"read"},
-	}
-
-	// deployToBackend will try kiro-cli (fails), then try clipboard
+	// DeployComposed will try kiro-cli (fails), then try clipboard
 	// On macOS, clipboard (pbcopy) is available so it will try to read stdin
 	// We provide stdin via a pipe to prevent blocking
 	oldStdin := os.Stdin
@@ -680,7 +666,7 @@ exit 1
 	w.Close()
 	defer func() { os.Stdin = oldStdin }()
 
-	output, err := deployToBackend(context.Background(), agent, "test prompt", "test task", 5*time.Minute)
+	output, err := backend.DeployComposed(context.Background(), "test prompt", "test task", 5*time.Minute)
 	if err != nil {
 		// Valid error paths:
 		// 1. kiro-cli found on PATH but fails after retries
@@ -696,19 +682,12 @@ exit 1
 	}
 }
 
-func TestDeployToBackend_NoBackendAvailable(t *testing.T) {
+func TestDeployComposed_NoBackendAvailable(t *testing.T) {
 	origPath := os.Getenv("PATH")
 	defer os.Setenv("PATH", origPath)
 
 	// Empty PATH — no kiro-cli available
 	os.Setenv("PATH", "/nonexistent-xyz-path")
-
-	agent := &agents.Agent{
-		Name:        "numbuh-4",
-		Designation: "Wallabee",
-		Role:        "QA",
-		Tools:       []string{"read", "shell"},
-	}
 
 	// Also make clipboard unavailable by providing no stdin
 	// On macOS pbcopy is at /usr/bin/pbcopy which won't be in PATH
@@ -719,7 +698,7 @@ func TestDeployToBackend_NoBackendAvailable(t *testing.T) {
 	w.Close() // EOF immediately
 	defer func() { os.Stdin = oldStdin }()
 
-	_, err := deployToBackend(context.Background(), agent, "test", "task", 5*time.Minute)
+	_, err := backend.DeployComposed(context.Background(), "test", "task", 5*time.Minute)
 	// Either clipboard works (macOS has pbcopy at absolute path sometimes)
 	// or we get the no backend error
 	if err != nil {
@@ -1093,7 +1072,7 @@ func TestRunMission_DeployToBackendFails(t *testing.T) {
 	origPath := os.Getenv("PATH")
 	defer os.Setenv("PATH", origPath)
 
-	// No kiro-cli available and no clipboard — deployToBackend will fail
+	// No kiro-cli available and no clipboard — DeployComposed will fail
 	os.Setenv("PATH", "/nonexistent-xyz")
 
 	tmpDir := t.TempDir()
@@ -1300,7 +1279,7 @@ func TestRunDeploy_NoAgentsDir(t *testing.T) {
 	}
 }
 
-func TestDeployToBackend_TempFileCreation(t *testing.T) {
+func TestDeployComposed_TempFileCreation(t *testing.T) {
 	origPath := os.Getenv("PATH")
 	defer os.Setenv("PATH", origPath)
 
@@ -1313,18 +1292,11 @@ echo "Response from kiro-cli for phase"
 	os.WriteFile(fakeKiro, []byte(script), 0o755)
 	os.Setenv("PATH", tmpBin+":"+origPath)
 
-	agent := &agents.Agent{
-		Name:        "numbuh-3",
-		Designation: "Kuki",
-		Role:        "Implementer",
-		Tools:       []string{"read", "shell", "write"},
-	}
-
 	// Long composed prompt to exercise the temp file path
 	longPrompt := strings.Repeat("This is a long prompt for testing. ", 100)
-	output, err := deployToBackend(context.Background(), agent, longPrompt, "implement the feature", 5*time.Minute)
+	output, err := backend.DeployComposed(context.Background(), longPrompt, "implement the feature", 5*time.Minute)
 	if err != nil {
-		t.Fatalf("deployToBackend failed: %v", err)
+		t.Fatalf("DeployComposed failed: %v", err)
 	}
 	if !strings.Contains(output, "Response from kiro-cli") {
 		t.Errorf("expected kiro-cli response, got: %s", output)
