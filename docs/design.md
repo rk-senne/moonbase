@@ -113,7 +113,7 @@ moonbase/
 
 | Layer | Tool | Why |
 |-------|------|-----|
-| Language | Go 1.24 | Single binary, fast, cross-platform |
+| Language | Go 1.26 | Single binary, fast, cross-platform |
 | TUI Framework | Bubbletea | Elm architecture, composable, active |
 | Styling | Lipgloss | CSS-like terminal styling, colors, borders |
 | Components | Bubbles | Pre-built spinners, tables, viewports, inputs |

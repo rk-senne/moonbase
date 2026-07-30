@@ -1,7 +1,7 @@
 # Moonbase Development Rules
 
 ## Stack
-- Go 1.22+
+- Go 1.26.5+
 - Bubbletea (TUI framework, Elm architecture)
 - Lipgloss (terminal styling)
 - Bubbles (pre-built components: spinners, tables, viewports, inputs)

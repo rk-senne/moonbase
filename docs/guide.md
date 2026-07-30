@@ -7,7 +7,7 @@ A step-by-step guide from zero to running AI agents on your project.
 ## 1. Install
 
 ```bash
-# From source (requires Go 1.24+)
+# From source (requires Go 1.26.5+)
 git clone git@github.com:rk-senne/moonbase.git
 cd moonbase
 make build

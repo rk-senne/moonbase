@@ -322,7 +322,7 @@ git tag v1.4.0 && git push --tags
 
 | Layer | Tool | Why |
 |-------|------|-----|
-| Language | Go 1.24 | Single binary, fast, cross-platform |
+| Language | Go 1.26 | Single binary, fast, cross-platform |
 | TUI | Bubbletea + Lipgloss | Elm architecture, terminal styling |
 | Agents | Markdown + YAML frontmatter | Portable, readable, versionable |
 | Backend | Kiro CLI (primary), OpenAI, Anthropic, Kimi, Ollama | Tool execution, API streaming, multi-turn |

@@ -248,7 +248,7 @@ As a developer debugging pipeline issues, I want structured logs with timestamps
 |------------|---------|---------|--------|
 | `github.com/charmbracelet/glamour` | v1.0.0 | Markdown rendering | Already in go.mod |
 | `github.com/spf13/cobra` | v1.8+ | CLI framework | New dependency |
-| `log/slog` | stdlib | Structured logging | Go 1.21+ (we use 1.24) |
+| `log/slog` | stdlib | Structured logging | Go 1.21+ (we use 1.26) |
 | `github.com/charmbracelet/bubbletea` | v1.3.10 | TUI (existing) | Already in go.mod |
 
 ---
