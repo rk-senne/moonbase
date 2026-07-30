@@ -15,10 +15,10 @@ func (a App) handleMissionKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, a.keys.Back):
 		a.view = ViewDashboard
-		a.missionInput.Reset()
-		a.missionInput.Blur()
+		a.mission.Input.Reset()
+		a.mission.Input.Blur()
 	case key.Matches(msg, a.keys.Enter):
-		task := a.missionInput.Value()
+		task := a.mission.Input.Value()
 		if task != "" {
 			a.addIntel("Mission briefed: %s", task)
 			a.pipeline.State = pipeline.New(task)
@@ -28,8 +28,8 @@ func (a App) handleMissionKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			a.pipeline.Chat = []PipelineMsg{
 				{"", fmt.Sprintf("━━━ MISSION: %s ━━━", task)},
 			}
-			a.missionInput.Reset()
-			a.missionInput.Blur()
+			a.mission.Input.Reset()
+			a.mission.Input.Blur()
 			a.view = ViewPipeline
 			a.pipeline.MissionStart = time.Now()
 
@@ -55,7 +55,7 @@ func (a App) handleMissionKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	default:
 		var cmd tea.Cmd
-		a.missionInput, cmd = a.missionInput.Update(msg)
+		a.mission.Input, cmd = a.mission.Input.Update(msg)
 		return a, cmd
 	}
 	return a, nil

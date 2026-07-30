@@ -17,7 +17,7 @@ func (a App) renderMission() string {
 	b.WriteString(titleStyle.Render("  ◆ NEW MISSION BRIEFING") + "\n\n")
 	b.WriteString(dimStyle.Render("  Describe the objective. The KND Council will execute the") + "\n")
 	b.WriteString(dimStyle.Render("  full pipeline: Analyst → Architect → Implement → QA → Review") + "\n\n")
-	b.WriteString("  Mission: " + a.missionInput.View() + "\n\n")
+	b.WriteString("  Mission: " + a.mission.Input.View() + "\n\n")
 	b.WriteString(dimStyle.Render("  [enter] Deploy council    [esc] Cancel") + "\n")
 
 	body := a.styles.Panel.Width(a.width - 4).Render(b.String())

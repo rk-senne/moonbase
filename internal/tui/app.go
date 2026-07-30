@@ -14,7 +14,6 @@ import (
 	"github.com/rk-senne/moonbase/internal/discovery"
 	"github.com/rk-senne/moonbase/internal/history"
 	"github.com/rk-senne/moonbase/internal/platform"
-	"github.com/rk-senne/moonbase/internal/snippets"
 	"github.com/rk-senne/moonbase/internal/watcher"
 )
 
@@ -78,7 +77,7 @@ type App struct {
 	spinner        spinner.Model
 	intel          []IntelEntry
 	system         SystemModel
-	missionInput   textinput.Model
+	mission        MissionModel
 	search         SearchModel
 	theme          string
 	themeData      Theme
@@ -87,7 +86,6 @@ type App struct {
 	startTime      time.Time
 	focus          FocusPanel
 	blink          bool
-	missions       []MissionEntry
 	comms          *CommsState
 	commsInput     textinput.Model
 	anim           AnimState
@@ -95,11 +93,8 @@ type App struct {
 	ctx            platform.Context
 	projectCtx     *discovery.ProjectContext
 	activeBackend  backend.Backend
-	snippetPicker  bool
-	snippetList    []snippets.Snippet
-	snippetCursor  int
-	contextFile    bool // ctrl+f mode: typing file path
-	contextInput   textinput.Model
+	snippetPick    SnippetPickerModel
+	ctxFile        ContextFileModel
 	docs           *DocsState
 	projectNav     *ProjectsState
 	terminal       TerminalModel
@@ -195,17 +190,16 @@ func NewApp() App {
 		intel:         []IntelEntry{},
 		projectCtx:    projectCtx,
 		activeBackend: activeBackend,
-		missionInput: ti,
+		mission:      MissionModel{Input: ti, History: missionEntries},
 		search:       SearchModel{Input: si},
 		commsInput:   ci,
-		contextInput: fi,
+		ctxFile:      ContextFileModel{Input: fi},
 		theme:        "moonbase",
 		themeData:    initialTheme,
 		styles:       initialStyles,
 		clock:        time.Now().Format("15:04:05"),
 		startTime:    time.Now(),
 		focus:        FocusSidebar,
-		missions:     missionEntries,
 		fileWatcher:  fw,
 		ctx:          platform.Detect(),
 		terminal:     term,

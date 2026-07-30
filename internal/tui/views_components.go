@@ -293,7 +293,7 @@ func (a App) renderRightPanel(width int, maxH int) string {
 	// Mission History
 	missionLabel := labelStyle.Render("─ MISSION HISTORY ")
 	s.WriteString(missionLabel + strings.Repeat("─", max(1, width-lipgloss.Width(missionLabel))) + "\n")
-	for i, m := range a.missions {
+	for i, m := range a.mission.History {
 		if i >= 5 {
 			break
 		}
@@ -309,9 +309,9 @@ func (a App) renderRightPanel(width int, maxH int) string {
 			}
 			name = string(runes)
 		}
-		s.WriteString(fmt.Sprintf(" %s #%d %s\n", m.Status, len(a.missions)-i, name))
+		s.WriteString(fmt.Sprintf(" %s #%d %s\n", m.Status, len(a.mission.History)-i, name))
 	}
-	if len(a.missions) == 0 {
+	if len(a.mission.History) == 0 {
 		s.WriteString(dimStyle.Render(" No missions yet.") + "\n")
 	}
 

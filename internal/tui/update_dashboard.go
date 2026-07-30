@@ -97,7 +97,7 @@ func (a App) handleDashboardKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case key.Matches(msg, a.keys.NewMission):
 		a.view = ViewMission
-		a.missionInput.Focus()
+		a.mission.Input.Focus()
 		return a, textinput.Blink
 	case key.Matches(msg, a.keys.CycleTheme):
 		a.cycleTheme()

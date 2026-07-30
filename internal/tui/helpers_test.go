@@ -13,8 +13,8 @@ func TestCommsKeys_SnippetPicker(t *testing.T) {
 	app.ready = true
 	app.comms = newCommsState("test-agent", "system prompt", 80, 40)
 	app.commsInput.Focus()
-	app.snippetPicker = true
-	app.snippetList = nil
+	app.snippetPick.Active = true
+	app.snippetPick.List = nil
 
 	// Navigate in snippet picker
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
@@ -24,8 +24,8 @@ func TestCommsKeys_SnippetPicker(t *testing.T) {
 	// Esc exits snippet picker
 	model, _ = app.Update(tea.KeyMsg{Type: tea.KeyEscape})
 	result = model.(App)
-	if result.snippetPicker {
-		t.Error("expected snippetPicker=false after esc")
+	if result.snippetPick.Active {
+		t.Error("expected snippetPick.Active=false after esc")
 	}
 }
 
@@ -35,14 +35,14 @@ func TestCommsKeys_ContextFile(t *testing.T) {
 	app.ready = true
 	app.comms = newCommsState("test-agent", "system prompt", 80, 40)
 	app.commsInput.Focus()
-	app.contextFile = true
-	app.contextInput.Focus()
+	app.ctxFile.Active = true
+	app.ctxFile.Input.Focus()
 
 	// Esc exits context file mode
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
 	result := model.(App)
-	if result.contextFile {
-		t.Error("expected contextFile=false after esc")
+	if result.ctxFile.Active {
+		t.Error("expected ctxFile.Active=false after esc")
 	}
 }
 
@@ -52,15 +52,15 @@ func TestCommsKeys_ContextFileEnter(t *testing.T) {
 	app.ready = true
 	app.comms = newCommsState("test-agent", "system prompt", 80, 40)
 	app.commsInput.Focus()
-	app.contextFile = true
-	app.contextInput.Focus()
-	app.contextInput.SetValue("/nonexistent/path")
+	app.ctxFile.Active = true
+	app.ctxFile.Input.Focus()
+	app.ctxFile.Input.SetValue("/nonexistent/path")
 
 	// Enter with invalid path should exit context file mode
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
-	if result.contextFile {
-		t.Error("expected contextFile=false after enter")
+	if result.ctxFile.Active {
+		t.Error("expected ctxFile.Active=false after enter")
 	}
 }
 

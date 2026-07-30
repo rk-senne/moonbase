@@ -14,8 +14,8 @@ func TestRenderSnippetPicker_Empty(t *testing.T) {
 	app := NewApp()
 	app.width = 100
 	app.height = 40
-	app.snippetList = nil
-	app.snippetCursor = 0
+	app.snippetPick.List = nil
+	app.snippetPick.Cursor = 0
 
 	result := app.renderSnippetPicker()
 	if result == "" {
@@ -27,11 +27,11 @@ func TestRenderSnippetPicker_WithSnippets(t *testing.T) {
 	app := NewApp()
 	app.width = 100
 	app.height = 40
-	app.snippetList = []snippets.Snippet{
+	app.snippetPick.List = []snippets.Snippet{
 		{Name: "greeting", Content: "hello"},
 		{Name: "farewell", Content: "bye"},
 	}
-	app.snippetCursor = 0
+	app.snippetPick.Cursor = 0
 
 	result := app.renderSnippetPicker()
 	if result == "" {

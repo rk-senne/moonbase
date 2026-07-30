@@ -268,7 +268,7 @@ func TestRenderSidebar_WithMissions(t *testing.T) {
 	app.height = 40
 	app.registry = newTestRegistry()
 	app.view = ViewDashboard
-	app.missions = []MissionEntry{
+	app.mission.History = []MissionEntry{
 		{Name: "add pagination", Status: "✅"},
 		{Name: "fix auth bug", Status: "❌"},
 		{Name: "refactor db", Status: "🔄"},
@@ -364,7 +364,7 @@ func TestRenderRightPanel_FocusRight(t *testing.T) {
 	app.system.Clean = false
 	app.system.Docker = 3
 	app.system.ChangedLines = 75
-	app.missions = []MissionEntry{
+	app.mission.History = []MissionEntry{
 		{Name: "test mission 1", Status: "✅"},
 		{Name: "test mission 2", Status: "❌"},
 		{Name: "test mission 3", Status: "✅"},
@@ -427,7 +427,7 @@ func TestRenderRightPanel_NoMissions(t *testing.T) {
 	app.width = 120
 	app.height = 40
 	app.registry = newTestRegistry()
-	app.missions = nil
+	app.mission.History = nil
 
 	result := app.renderRightPanel(30, 30)
 	if result == "" {
@@ -1784,8 +1784,8 @@ func TestRenderComms_ContextFile(t *testing.T) {
 	app.height = 40
 	app.view = ViewComms
 	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.contextFile = true
-	app.contextInput.SetValue("/some/path")
+	app.ctxFile.Active = true
+	app.ctxFile.Input.SetValue("/some/path")
 
 	result := app.renderComms()
 	if result == "" {
@@ -1802,7 +1802,7 @@ func TestRenderComms_SnippetPicker(t *testing.T) {
 	app.height = 40
 	app.view = ViewComms
 	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.snippetPicker = true
+	app.snippetPick.Active = true
 
 	result := app.renderComms()
 	if result == "" {
@@ -1856,14 +1856,14 @@ func TestCommsKeys_ContextFile_EnterValid(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.contextFile = true
-	app.contextInput.Focus()
-	app.contextInput.SetValue(tmpFile)
+	app.ctxFile.Active = true
+	app.ctxFile.Input.Focus()
+	app.ctxFile.Input.SetValue(tmpFile)
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
-	if result.contextFile {
-		t.Error("expected contextFile=false after enter")
+	if result.ctxFile.Active {
+		t.Error("expected ctxFile.Active=false after enter")
 	}
 }
 
@@ -1874,14 +1874,14 @@ func TestCommsKeys_ContextFile_EnterInvalid(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.contextFile = true
-	app.contextInput.Focus()
-	app.contextInput.SetValue("/nonexistent/path/xyz.txt")
+	app.ctxFile.Active = true
+	app.ctxFile.Input.Focus()
+	app.ctxFile.Input.SetValue("/nonexistent/path/xyz.txt")
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
-	if result.contextFile {
-		t.Error("expected contextFile=false after enter")
+	if result.ctxFile.Active {
+		t.Error("expected ctxFile.Active=false after enter")
 	}
 }
 
@@ -2030,8 +2030,8 @@ func TestCommsKeys_CtrlS(t *testing.T) {
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
 	result := model.(App)
-	if !result.snippetPicker {
-		t.Error("expected snippetPicker=true after ctrl+s")
+	if !result.snippetPick.Active {
+		t.Error("expected snippetPick.Active=true after ctrl+s")
 	}
 }
 
@@ -2048,8 +2048,8 @@ func TestCommsKeys_CtrlF(t *testing.T) {
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyCtrlF})
 	result := model.(App)
-	if !result.contextFile {
-		t.Error("expected contextFile=true after ctrl+f")
+	if !result.ctxFile.Active {
+		t.Error("expected ctxFile.Active=true after ctrl+f")
 	}
 }
 
@@ -2062,13 +2062,13 @@ func TestCommsKeys_ContextFile_Esc(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.contextFile = true
-	app.contextInput.Focus()
+	app.ctxFile.Active = true
+	app.ctxFile.Input.Focus()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
 	result := model.(App)
-	if result.contextFile {
-		t.Error("expected contextFile=false after esc")
+	if result.ctxFile.Active {
+		t.Error("expected ctxFile.Active=false after esc")
 	}
 }
 
@@ -2081,13 +2081,13 @@ func TestCommsKeys_ContextFile_Typing(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.contextFile = true
-	app.contextInput.Focus()
+	app.ctxFile.Active = true
+	app.ctxFile.Input.Focus()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
 	result := model.(App)
-	if result.contextInput.Value() != "a" {
-		t.Errorf("expected 'a', got %q", result.contextInput.Value())
+	if result.ctxFile.Input.Value() != "a" {
+		t.Errorf("expected 'a', got %q", result.ctxFile.Input.Value())
 	}
 }
 
@@ -2596,10 +2596,10 @@ func TestCommsKeys_SnippetPicker_Enter(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.snippetPicker = true
-	app.snippetCursor = 0
+	app.snippetPick.Active = true
+	app.snippetPick.Cursor = 0
 	// Empty list — enter should not crash
-	app.snippetList = nil
+	app.snippetPick.List = nil
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
@@ -2613,12 +2613,12 @@ func TestCommsKeys_SnippetPicker_Esc(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.snippetPicker = true
+	app.snippetPick.Active = true
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
 	result := model.(App)
-	if result.snippetPicker {
-		t.Error("expected snippetPicker=false after esc")
+	if result.snippetPick.Active {
+		t.Error("expected snippetPick.Active=false after esc")
 	}
 }
 
@@ -2629,8 +2629,8 @@ func TestCommsKeys_SnippetPicker_Navigate(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.snippetPicker = true
-	app.snippetCursor = 0
+	app.snippetPick.Active = true
+	app.snippetPick.Cursor = 0
 
 	// Navigate down
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
@@ -2936,10 +2936,10 @@ func TestCommsKeys_SnippetPicker_EnterWithItems(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.snippetPicker = true
-	app.snippetCursor = 0
-	// snippetList is populated by ForAgent — just verify empty list path
-	app.snippetList = nil
+	app.snippetPick.Active = true
+	app.snippetPick.Cursor = 0
+	// snippetPick.List is populated by ForAgent — just verify empty list path
+	app.snippetPick.List = nil
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
@@ -3224,13 +3224,13 @@ func TestNewApp_WithHistoryData(t *testing.T) {
 	app := NewApp()
 
 	// The sidebar caps at 5 most-recent missions.
-	if len(app.missions) != 5 {
-		t.Errorf("expected sidebar capped at 5 missions, got %d", len(app.missions))
+	if len(app.mission.History) != 5 {
+		t.Errorf("expected sidebar capped at 5 missions, got %d", len(app.mission.History))
 	}
 
 	// All three status glyphs must be present among the loaded missions.
 	var hasComplete, hasAborted, hasInProgress bool
-	for _, m := range app.missions {
+	for _, m := range app.mission.History {
 		switch m.Status {
 		case "✅":
 			hasComplete = true

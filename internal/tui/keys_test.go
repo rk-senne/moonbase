@@ -167,7 +167,7 @@ func TestMissionKeys_Esc(t *testing.T) {
 	app := NewApp()
 	app.view = ViewMission
 	app.ready = true
-	app.missionInput.Focus()
+	app.mission.Input.Focus()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
 	result := model.(App)
@@ -180,8 +180,8 @@ func TestMissionKeys_EnterSubmit(t *testing.T) {
 	app := NewApp()
 	app.view = ViewMission
 	app.ready = true
-	app.missionInput.Focus()
-	app.missionInput.SetValue("deploy the fleet")
+	app.mission.Input.Focus()
+	app.mission.Input.SetValue("deploy the fleet")
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
@@ -200,8 +200,8 @@ func TestMissionKeys_EnterEmpty(t *testing.T) {
 	app := NewApp()
 	app.view = ViewMission
 	app.ready = true
-	app.missionInput.Focus()
-	app.missionInput.SetValue("")
+	app.mission.Input.Focus()
+	app.mission.Input.SetValue("")
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)

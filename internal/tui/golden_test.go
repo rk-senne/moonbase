@@ -120,7 +120,7 @@ func newGoldenApp(t *testing.T) App {
 		focus:         FocusSidebar,
 		blink:         false,
 		intel:         []IntelEntry{},
-		missions:      []MissionEntry{{Name: "init scaffold", Status: "✅"}, {Name: "tui views", Status: "✅"}, {Name: "pipeline+deploy", Status: "✅"}},
+		mission:       MissionModel{History: []MissionEntry{{Name: "init scaffold", Status: "✅"}, {Name: "tui views", Status: "✅"}, {Name: "pipeline+deploy", Status: "✅"}}},
 		toolCache:     toolCache,
 		toolCacheTime: time.Now(),
 		fileBrowser:   nil,      // avoid real FS reads

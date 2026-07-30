@@ -110,9 +110,9 @@ func (a App) renderComms() string {
 	inputPrefix := lipgloss.NewStyle().Foreground(a.themeData.Brand).Bold(true).Render(" > ")
 	var inputBar string
 
-	if a.contextFile {
-		inputBar = lipgloss.NewStyle().Foreground(a.themeData.Info).Render(" 📎 Attach: ") + a.contextInput.View()
-	} else if a.snippetPicker {
+	if a.ctxFile.Active {
+		inputBar = lipgloss.NewStyle().Foreground(a.themeData.Info).Render(" 📎 Attach: ") + a.ctxFile.Input.View()
+	} else if a.snippetPick.Active {
 		inputBar = a.renderSnippetPicker()
 	} else if a.comms.streaming {
 		typingAnim := lipgloss.NewStyle().Foreground(a.themeData.Active).Render(a.anim.RenderTyping())
@@ -130,11 +130,11 @@ func (a App) renderSnippetPicker() string {
 	labelStyle := lipgloss.NewStyle().Foreground(a.themeData.Info).Bold(true)
 	var b strings.Builder
 	b.WriteString(labelStyle.Render(" 📋 SNIPPETS: "))
-	if len(a.snippetList) == 0 {
+	if len(a.snippetPick.List) == 0 {
 		b.WriteString(lipgloss.NewStyle().Foreground(a.themeData.Dim).Render("(none saved — use: moonbase snippet save <name>)"))
 	} else {
-		for i, s := range a.snippetList {
-			if i == a.snippetCursor {
+		for i, s := range a.snippetPick.List {
+			if i == a.snippetPick.Cursor {
 				b.WriteString(lipgloss.NewStyle().Foreground(a.themeData.Active).Bold(true).Render(fmt.Sprintf(" [%s] ", s.Name)))
 			} else {
 				b.WriteString(lipgloss.NewStyle().Foreground(a.themeData.Dim).Render(fmt.Sprintf("  %s  ", s.Name)))

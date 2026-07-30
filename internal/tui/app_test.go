@@ -183,15 +183,15 @@ func TestApp_MissionInput(t *testing.T) {
 	app := NewApp()
 	app.view = ViewMission
 	app.ready = true
-	app.missionInput.Focus()
+	app.mission.Input.Focus()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'h'}})
 	result := model.(App)
 	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'i'}})
 	result = model.(App)
 
-	if result.missionInput.Value() != "hi" {
-		t.Errorf("expected mission input value='hi', got '%s'", result.missionInput.Value())
+	if result.mission.Input.Value() != "hi" {
+		t.Errorf("expected mission input value='hi', got '%s'", result.mission.Input.Value())
 	}
 }
 
@@ -199,7 +199,7 @@ func TestApp_MissionInput_EscReturns(t *testing.T) {
 	app := NewApp()
 	app.view = ViewMission
 	app.ready = true
-	app.missionInput.Focus()
+	app.mission.Input.Focus()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
 	result := model.(App)
@@ -212,8 +212,8 @@ func TestApp_MissionInput_Submit(t *testing.T) {
 	app := NewApp()
 	app.view = ViewMission
 	app.ready = true
-	app.missionInput.Focus()
-	app.missionInput.SetValue("add pagination")
+	app.mission.Input.Focus()
+	app.mission.Input.SetValue("add pagination")
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
@@ -396,21 +396,20 @@ func TestApp_CursorBoundsCheck(t *testing.T) {
 // is higher because several field groups have not yet been extracted into sub-models:
 //
 // Remaining groups that could be extracted in future phases:
-//   - Comms-related (comms, commsInput, snippetPicker, snippetList, snippetCursor, contextFile, contextInput) → CommsModel
-//   - Mission input (missionInput, missions) → MissionModel
+//   - Comms-related (comms, commsInput) → CommsModel
 //   - Boot state (bootStep, ready) → BootModel
 //   - Visual state (clock, startTime, focus, blink, anim) → part of rendering context
 //   - Infra (fileWatcher, toolCache, toolCacheTime, ctx) → infra/platform grouping
 //
 // Extracted so far: TerminalModel, DashboardModel, PipelineModel, SystemModel,
-// and SearchModel (git/docker/threat state, operative search/filter).
+// SearchModel, SnippetPickerModel, ContextFileModel, and MissionModel.
 // Each remaining extraction is its own task; this test
 // ratchets the count down so it can only shrink, never silently grow.
 func TestApp_FieldCountBounded(t *testing.T) {
 	count := reflect.TypeOf(App{}).NumField()
 	// Ratchet: lower this only when an extraction reduces the count. Never raise it
 	// to accommodate new loose fields — extract a sub-model instead.
-	const maxFields = 42
+	const maxFields = 38
 	if count > maxFields {
 		t.Errorf("App has %d fields, expected ≤ %d — did you add fields without extracting? See comment above.", count, maxFields)
 	}

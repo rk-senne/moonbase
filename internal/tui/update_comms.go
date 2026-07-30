@@ -14,46 +14,46 @@ import (
 // handleCommsKeys handles key messages when the view is ViewComms.
 func (a App) handleCommsKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Context file input mode
-	if a.contextFile {
+	if a.ctxFile.Active {
 		switch {
 		case key.Matches(msg, a.keys.ContextCancel):
-			a.contextFile = false
-			a.contextInput.Blur()
+			a.ctxFile.Active = false
+			a.ctxFile.Input.Blur()
 		case key.Matches(msg, a.keys.ContextConfirm):
-			path := a.contextInput.Value()
+			path := a.ctxFile.Input.Value()
 			if data, err := os.ReadFile(path); err == nil {
 				inject := fmt.Sprintf("[attached: %s]\n```\n%s\n```", path, string(data))
 				a.commsInput.SetValue(a.commsInput.Value() + inject)
 			} else {
 				a.addIntel("File not found: %s", path)
 			}
-			a.contextFile = false
-			a.contextInput.Reset()
-			a.contextInput.Blur()
+			a.ctxFile.Active = false
+			a.ctxFile.Input.Reset()
+			a.ctxFile.Input.Blur()
 		default:
 			var cmd tea.Cmd
-			a.contextInput, cmd = a.contextInput.Update(msg)
+			a.ctxFile.Input, cmd = a.ctxFile.Input.Update(msg)
 			return a, cmd
 		}
 		return a, nil
 	}
 	// Snippet picker mode
-	if a.snippetPicker {
+	if a.snippetPick.Active {
 		switch {
 		case key.Matches(msg, a.keys.SnippetCancel):
-			a.snippetPicker = false
+			a.snippetPick.Active = false
 		case key.Matches(msg, a.keys.SnippetUp):
-			if a.snippetCursor > 0 {
-				a.snippetCursor--
+			if a.snippetPick.Cursor > 0 {
+				a.snippetPick.Cursor--
 			}
 		case key.Matches(msg, a.keys.SnippetDown):
-			if a.snippetCursor < len(a.snippetList)-1 {
-				a.snippetCursor++
+			if a.snippetPick.Cursor < len(a.snippetPick.List)-1 {
+				a.snippetPick.Cursor++
 			}
 		case key.Matches(msg, a.keys.SnippetConfirm):
-			if len(a.snippetList) > 0 {
-				a.commsInput.SetValue(a.snippetList[a.snippetCursor].Content)
-				a.snippetPicker = false
+			if len(a.snippetPick.List) > 0 {
+				a.commsInput.SetValue(a.snippetPick.List[a.snippetPick.Cursor].Content)
+				a.snippetPick.Active = false
 			}
 		}
 		return a, nil
@@ -100,13 +100,13 @@ func (a App) handleCommsKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 	case key.Matches(msg, a.keys.AttachFile):
-		a.contextFile = true
-		a.contextInput.Focus()
+		a.ctxFile.Active = true
+		a.ctxFile.Input.Focus()
 		return a, textinput.Blink
 	case key.Matches(msg, a.keys.SnippetPicker):
-		a.snippetList = snippets.ForAgent(a.comms.agent)
-		a.snippetCursor = 0
-		a.snippetPicker = true
+		a.snippetPick.List = snippets.ForAgent(a.comms.agent)
+		a.snippetPick.Cursor = 0
+		a.snippetPick.Active = true
 	case key.Matches(msg, a.keys.CommsQuit):
 		return a, tea.Quit
 	default:

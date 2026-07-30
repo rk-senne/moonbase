@@ -164,32 +164,32 @@ func TestCommsKeys_SnippetPickerNav(t *testing.T) {
 	app.ready = true
 	app.comms = newCommsState("test", "prompt", 80, 40)
 	app.commsInput.Focus()
-	app.snippetPicker = true
-	app.snippetList = []snippets.Snippet{
+	app.snippetPick.Active = true
+	app.snippetPick.List = []snippets.Snippet{
 		{Name: "s1", Content: "content1"},
 		{Name: "s2", Content: "content2"},
 	}
-	app.snippetCursor = 0
+	app.snippetPick.Cursor = 0
 
 	// Navigate down
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
 	result := model.(App)
-	if result.snippetCursor != 1 {
-		t.Errorf("expected snippetCursor=1, got %d", result.snippetCursor)
+	if result.snippetPick.Cursor != 1 {
+		t.Errorf("expected snippetPick.Cursor=1, got %d", result.snippetPick.Cursor)
 	}
 
 	// Navigate up
 	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
 	result = model.(App)
-	if result.snippetCursor != 0 {
-		t.Errorf("expected snippetCursor=0, got %d", result.snippetCursor)
+	if result.snippetPick.Cursor != 0 {
+		t.Errorf("expected snippetPick.Cursor=0, got %d", result.snippetPick.Cursor)
 	}
 
 	// Select with enter
 	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result = model.(App)
-	if result.snippetPicker {
-		t.Error("expected snippetPicker=false after enter")
+	if result.snippetPick.Active {
+		t.Error("expected snippetPick.Active=false after enter")
 	}
 	if result.commsInput.Value() != "content1" {
 		t.Errorf("expected comms input set to snippet content, got '%s'", result.commsInput.Value())
@@ -237,8 +237,8 @@ func TestCommsKeys_CtrlS_SnippetPicker(t *testing.T) {
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
 	result := model.(App)
-	if !result.snippetPicker {
-		t.Error("expected snippetPicker=true after ctrl+s")
+	if !result.snippetPick.Active {
+		t.Error("expected snippetPick.Active=true after ctrl+s")
 	}
 }
 
@@ -251,7 +251,7 @@ func TestCommsKeys_CtrlF_ContextFile(t *testing.T) {
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyCtrlF})
 	result := model.(App)
-	if !result.contextFile {
-		t.Error("expected contextFile=true after ctrl+f")
+	if !result.ctxFile.Active {
+		t.Error("expected ctxFile.Active=true after ctrl+f")
 	}
 }
