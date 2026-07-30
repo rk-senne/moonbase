@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"sort"
 	"strings"
 	"testing"
 
@@ -13,6 +14,15 @@ import (
 // wheel builds a mouse-wheel event for the given button.
 func wheel(btn tea.MouseButton) tea.MouseMsg {
 	return tea.MouseMsg{Action: tea.MouseActionPress, Button: btn}
+}
+
+// firstRunes returns the first n runes of s (or all of s if shorter).
+func firstRunes(s string, n int) string {
+	r := []rune(s)
+	if len(r) < n {
+		return s
+	}
+	return string(r[:n])
 }
 
 func TestMouse_BootSkip(t *testing.T) {
@@ -136,5 +146,122 @@ func TestMouse_NilStatesNoPanic(t *testing.T) {
 		// Should not panic.
 		_, _ = app.Update(wheel(tea.MouseButtonWheelDown))
 		_, _ = app.Update(wheel(tea.MouseButtonWheelUp))
+	}
+}
+
+// TestSidebarRowToIndex_MatchesRender verifies the hit-map is in lock-step with the
+// rendered sidebar: for every mapped row, the corresponding rendered line contains
+// that operative's designation. This catches any drift between the hit-map's
+// group-walk and renderSidebar.
+func TestSidebarRowToIndex_MatchesRender(t *testing.T) {
+	reg := newTestRegistry()
+	app := NewApp()
+	app.boot.Ready = true
+	app.registry = reg
+
+	m := sidebarRowToIndex(reg)
+	if len(m) == 0 {
+		t.Fatal("expected non-empty sidebar row map")
+	}
+
+	lines := strings.Split(app.renderSidebar(sidebarWidth, 60), "\n")
+	all := reg.All()
+	// renderSidebar's Sidebar style has PaddingTop(1), so its output prepends one
+	// blank line: content row r appears at output line r+sidebarRenderPadTop. (The
+	// full-screen offset also adds the 1-line header — see sidebarContentTopY.)
+	const sidebarRenderPadTop = 1
+	for row, idx := range m {
+		line := row + sidebarRenderPadTop
+		if line >= len(lines) {
+			t.Errorf("row %d (line %d) beyond rendered sidebar (%d lines)", row, line, len(lines))
+			continue
+		}
+		if idx < 0 || idx >= len(all) {
+			t.Errorf("row %d -> out-of-range index %d", row, idx)
+			continue
+		}
+		want := all[idx].Designation
+		if want == "" {
+			want = all[idx].Name
+		}
+		prefix := firstRunes(want, 4)
+		if !strings.Contains(lines[line], prefix) {
+			t.Errorf("row %d: rendered line %q missing operative %d prefix %q", row, lines[line], idx, prefix)
+		}
+	}
+}
+
+// TestMouse_ClickSelectsOperative is the end-to-end proof: it computes the screen Y
+// of a roster row, validates that offset against the REAL full-screen render (the
+// line at that Y must contain the operative's designation), then clicks there and
+// asserts the operative is selected and its dossier opened.
+func TestMouse_ClickSelectsOperative(t *testing.T) {
+	app := NewApp()
+	app.boot.Ready = true
+	app.width = 160 // 3-col layout, sidebar visible
+	app.height = 50
+	app.view = ViewDashboard
+	app.registry = newTestRegistry()
+
+	m := sidebarRowToIndex(app.registry)
+	if len(m) < 2 {
+		t.Skip("need >=2 mapped operative rows")
+	}
+	rows := make([]int, 0, len(m))
+	for r := range m {
+		rows = append(rows, r)
+	}
+	sort.Ints(rows)
+	row := rows[1] // a stable, non-edge entry
+	idx := m[row]
+	clickY := sidebarContentTopY + row
+
+	all := app.registry.All()
+	want := all[idx].Designation
+	if want == "" {
+		want = all[idx].Name
+	}
+	prefix := firstRunes(want, 4)
+
+	// Offset validation against the actual render.
+	vlines := strings.Split(app.View(), "\n")
+	if clickY >= len(vlines) {
+		t.Fatalf("clickY %d beyond rendered view (%d lines)", clickY, len(vlines))
+	}
+	if !strings.Contains(vlines[clickY], prefix) {
+		t.Fatalf("offset check failed: full-view line %d = %q, expected to contain %q (operative %d)", clickY, vlines[clickY], prefix, idx)
+	}
+
+	// Click that roster row.
+	res, _ := app.Update(tea.MouseMsg{Action: tea.MouseActionPress, Button: tea.MouseButtonLeft, X: 3, Y: clickY})
+	got := res.(App)
+	if got.views.Dashboard.Selected != idx {
+		t.Errorf("expected Selected=%d after click, got %d", idx, got.views.Dashboard.Selected)
+	}
+	if got.view != ViewDossier {
+		t.Errorf("expected view=Dossier after click, got %v", got.view)
+	}
+}
+
+// TestMouse_ClickOutsideSidebarIgnored ensures clicks outside the sidebar column or
+// on non-operative rows don't select anything or change the view.
+func TestMouse_ClickOutsideSidebarIgnored(t *testing.T) {
+	app := NewApp()
+	app.boot.Ready = true
+	app.width = 160
+	app.height = 50
+	app.view = ViewDashboard
+	app.registry = newTestRegistry()
+
+	// Click far to the right, in the main panel.
+	res, _ := app.Update(tea.MouseMsg{Action: tea.MouseActionPress, Button: tea.MouseButtonLeft, X: 100, Y: 5})
+	if got := res.(App); got.view != ViewDashboard {
+		t.Errorf("click in main panel should not open dossier, got view %v", got.view)
+	}
+
+	// Click on the very top row (a group header, not an operative).
+	res2, _ := app.Update(tea.MouseMsg{Action: tea.MouseActionPress, Button: tea.MouseButtonLeft, X: 3, Y: sidebarContentTopY})
+	if got := res2.(App); got.view != ViewDashboard {
+		t.Errorf("click on group header should not open dossier, got view %v", got.view)
 	}
 }

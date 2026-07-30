@@ -1,9 +1,20 @@
 package tui
 
-import tea "github.com/charmbracelet/bubbletea"
+import (
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/rk-senne/moonbase/internal/agents"
+)
 
 // mouseWheelLines is how many lines a single mouse-wheel notch scrolls a viewport.
 const mouseWheelLines = 3
+
+// Sidebar hit-testing geometry. The dashboard renders header (1 line) then the body;
+// the sidebar panel has only a right border and PaddingTop(1), so its first content
+// row sits at absolute Y=2. The sidebar column width matches render2Col/render3Col.
+const (
+	sidebarContentTopY = 2
+	sidebarWidth       = 24
+)
 
 // handleMouse routes mouse events to the active view. Mouse support is strictly
 // additive: every action here has a keyboard equivalent, so the TUI remains fully
@@ -21,6 +32,10 @@ func (a App) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		return a.mouseScroll(-1), nil
 	case tea.MouseButtonWheelDown:
 		return a.mouseScroll(1), nil
+	case tea.MouseButtonLeft:
+		if msg.Action == tea.MouseActionPress {
+			return a.mouseClick(msg), nil
+		}
 	}
 	return a, nil
 }
@@ -67,4 +82,51 @@ func (a App) mouseScroll(dir int) App {
 		}
 	}
 	return a
+}
+
+// mouseClick handles a left-click. On the dashboard it selects the operative whose
+// roster row was clicked and opens its dossier — the mouse equivalent of arrowing to
+// an operative and pressing enter. The sidebar is only present in the 2-col and
+// 3-col layouts (width >= 80).
+func (a App) mouseClick(msg tea.MouseMsg) App {
+	if a.view != ViewDashboard || a.width < 80 || a.registry == nil {
+		return a
+	}
+	// Must be within the sidebar column.
+	if msg.X < 0 || msg.X > sidebarWidth+1 {
+		return a
+	}
+	relRow := msg.Y - sidebarContentTopY
+	if relRow < 0 {
+		return a
+	}
+	idx, ok := sidebarRowToIndex(a.registry)[relRow]
+	if !ok {
+		return a // clicked a header, blank line, or a non-operative section
+	}
+	a.views.Dashboard.Cursor = idx
+	a.views.Dashboard.Selected = idx
+	a.view = ViewDossier
+	return a
+}
+
+// sidebarRowToIndex maps a sidebar content row (0-based, relative to the sidebar's
+// first rendered content line) to the registry index of the operative on that row.
+// It walks the exact same group structure renderSidebar renders — each group emits a
+// header line, one line per entry, then a trailing blank line — so the hit-map and
+// the rendered sidebar cannot drift out of sync.
+func sidebarRowToIndex(reg *agents.Registry) map[int]int {
+	m := make(map[int]int)
+	row := 0
+	for _, group := range buildSidebarGroups(reg) {
+		row++ // group header line ("◆ TITLE")
+		for _, entry := range group.entries {
+			if entry.index >= 0 { // skip fallback placeholder entries
+				m[row] = entry.index
+			}
+			row++
+		}
+		row++ // trailing blank line after the group
+	}
+	return m
 }
