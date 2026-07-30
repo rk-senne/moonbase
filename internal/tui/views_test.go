@@ -94,7 +94,7 @@ func TestApp_ViewRendering_Pipeline_NoState(t *testing.T) {
 	app.view = ViewPipeline
 	app.width = 100
 	app.height = 40
-	app.pipeline.State = nil
+	app.views.Pipeline.State = nil
 
 	output := app.View()
 	if output == "" {
@@ -111,9 +111,9 @@ func TestApp_ViewRendering_Pipeline_WithState(t *testing.T) {
 	app.view = ViewPipeline
 	app.width = 100
 	app.height = 40
-	app.pipeline.State = pipeline.New("test task")
-	app.pipeline.State.Phases[0].Status = pipeline.StatusRunning
-	app.pipeline.Chat = []PipelineMsg{
+	app.views.Pipeline.State = pipeline.New("test task")
+	app.views.Pipeline.State.Phases[0].Status = pipeline.StatusRunning
+	app.views.Pipeline.Chat = []PipelineMsg{
 		{"", "━━━ MISSION: test task ━━━"},
 		{"Numbuh 1", "Starting analysis..."},
 	}
@@ -133,9 +133,9 @@ func TestApp_ViewRendering_Pipeline_RiskDisplay(t *testing.T) {
 	app.view = ViewPipeline
 	app.width = 100
 	app.height = 40
-	app.pipeline.State = pipeline.New("test task")
-	app.pipeline.State.Context.RiskLevel = "MEDIUM"
-	app.pipeline.State.Context.ReworkCount = 1
+	app.views.Pipeline.State = pipeline.New("test task")
+	app.views.Pipeline.State.Context.RiskLevel = "MEDIUM"
+	app.views.Pipeline.State.Context.ReworkCount = 1
 
 	output := app.View()
 	if !strings.Contains(output, "MEDIUM") {
@@ -150,7 +150,7 @@ func TestApp_ViewRendering_Dossier(t *testing.T) {
 	app.width = 120
 	app.height = 40
 	app.registry = newTestRegistry()
-	app.dashboard.Selected = 0
+	app.views.Dashboard.Selected = 0
 
 	output := app.View()
 	if output == "" {
@@ -247,16 +247,16 @@ func TestApp_PipelineAbortedMsg(t *testing.T) {
 	app := NewApp()
 	app.boot.Ready = true
 	app.view = ViewPipeline
-	app.pipeline.State = pipeline.New("abort test")
-	app.pipeline.State.Phases[0].Status = pipeline.StatusRunning
-	app.pipeline.Running = true
+	app.views.Pipeline.State = pipeline.New("abort test")
+	app.views.Pipeline.State.Phases[0].Status = pipeline.StatusRunning
+	app.views.Pipeline.Running = true
 
 	model, _ := app.Update(PipelineAbortedMsg{})
 	result := model.(App)
-	if result.pipeline.Running {
+	if result.views.Pipeline.Running {
 		t.Error("expected pipelineRunning=false after abort")
 	}
-	if result.pipeline.State.Active {
+	if result.views.Pipeline.State.Active {
 		t.Error("expected pipeline to be stopped after abort")
 	}
 }
@@ -268,8 +268,8 @@ func TestApp_TermOutputMsg(t *testing.T) {
 	model, _ := app.Update(termOutputMsg{cmd: "ls", output: "file1\nfile2"})
 	result := model.(App)
 
-	if len(result.terminal.Output) < 2 {
-		t.Errorf("expected at least 2 terminal output lines, got %d", len(result.terminal.Output))
+	if len(result.views.Terminal.Output) < 2 {
+		t.Errorf("expected at least 2 terminal output lines, got %d", len(result.views.Terminal.Output))
 	}
 }
 
@@ -283,8 +283,8 @@ func TestApp_TermOutputMsg_MaxLines(t *testing.T) {
 		app = model.(App)
 	}
 
-	if len(app.terminal.Output) > maxTerminalLines {
-		t.Errorf("expected termOutput <= %d, got %d", maxTerminalLines, len(app.terminal.Output))
+	if len(app.views.Terminal.Output) > maxTerminalLines {
+		t.Errorf("expected termOutput <= %d, got %d", maxTerminalLines, len(app.views.Terminal.Output))
 	}
 }
 
@@ -293,18 +293,18 @@ func TestPipelineKeys_Advance(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = false
-	app.pipeline.Running = false
-	app.pipeline.State = pipeline.New("test")
-	app.pipeline.State.Phases[0].Status = pipeline.StatusRunning
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
+	app.views.Pipeline.Running = false
+	app.views.Pipeline.State = pipeline.New("test")
+	app.views.Pipeline.State.Phases[0].Status = pipeline.StatusRunning
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
 	result := model.(App)
 
 	// Should advance to next phase
-	if result.pipeline.State.Current != 1 {
-		t.Errorf("expected pipeline to advance to index 1, got %d", result.pipeline.State.Current)
+	if result.views.Pipeline.State.Current != 1 {
+		t.Errorf("expected pipeline to advance to index 1, got %d", result.views.Pipeline.State.Current)
 	}
 }
 
@@ -315,8 +315,8 @@ func TestDashboardKeys_Protocol(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = false
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
 
 	// Directly set view to test rendering
 	app.view = ViewProtocol
@@ -330,8 +330,8 @@ func TestApp_HelpToggleFromDossier(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDossier
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = false
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
 	result := model.(App)

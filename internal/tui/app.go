@@ -68,25 +68,15 @@ type App struct {
 	view           View
 	registry       *agents.Registry
 	env            EnvModel
-	dashboard      DashboardModel
-	pipeline       PipelineModel
+	views          ViewsModel
 	width          int
 	height         int
 	boot           BootModel
 	spinner        spinner.Model
 	intel          []IntelEntry
-	mission        MissionModel
-	search         SearchModel
 	theme          ThemeModel
 	chrome         ChromeModel
-	comms          CommsModel
 	projectCtx     *discovery.ProjectContext
-	snippetPick    SnippetPickerModel
-	ctxFile        ContextFileModel
-	docs           *DocsState
-	projectNav     *ProjectsState
-	terminal       TerminalModel
-	browser        BrowserModel
 }
 
 type MissionEntry struct {
@@ -183,18 +173,20 @@ func NewApp() App {
 				ToolCacheTime: time.Now(),
 			},
 		},
-		mission:      MissionModel{Input: ti, History: missionEntries},
-		search:       SearchModel{Input: si},
-		comms:        CommsModel{Input: ci},
-		ctxFile:      ContextFileModel{Input: fi},
+		views: ViewsModel{
+			Mission:  MissionModel{Input: ti, History: missionEntries},
+			Search:   SearchModel{Input: si},
+			Comms:    CommsModel{Input: ci},
+			CtxFile:  ContextFileModel{Input: fi},
+			Terminal: term,
+			Browser:  BrowserModel{FileBrowser: newFileBrowser(), Active: true}, // start in file browser mode
+		},
 		theme:        ThemeModel{Name: "moonbase", Data: initialTheme, Styles: initialStyles},
 		chrome: ChromeModel{
 			Clock:     time.Now().Format("15:04:05"),
 			StartTime: time.Now(),
 			Focus:     FocusSidebar,
 		},
-		terminal:     term,
-		browser:      BrowserModel{FileBrowser: newFileBrowser(), Active: true}, // start in file browser mode
 	}
 }
 
@@ -300,14 +292,14 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a.handleTermOutput(msg)
 
 	case termCdMsg:
-		a.terminal = a.terminal.HandleCd(msg, a.theme.Data)
+		a.views.Terminal = a.views.Terminal.HandleCd(msg, a.theme.Data)
 		if msg.err == nil && msg.newCwd != "" {
 			a.addIntel("cd → %s", msg.newCwd)
 		}
 		return a, nil
 
 	case termClearMsg:
-		a.terminal = a.terminal.HandleClear()
+		a.views.Terminal = a.views.Terminal.HandleClear()
 		return a, nil
 
 	case tea.KeyMsg:
@@ -318,15 +310,15 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return a, nil
 		}
 		// Search mode
-		if a.search.Active {
+		if a.views.Search.Active {
 			return a.handleSearchKeys(msg)
 		}
 		// Embedded terminal
-		if a.terminal.Active && a.view == ViewDashboard {
+		if a.views.Terminal.Active && a.view == ViewDashboard {
 			return a.handleTerminalKeys(msg)
 		}
 		// File browser
-		if a.browser.Active && a.view == ViewDashboard && a.browser.FileBrowser != nil {
+		if a.views.Browser.Active && a.view == ViewDashboard && a.views.Browser.FileBrowser != nil {
 			return a.handleFileBrowserKeys(msg)
 		}
 		// View-specific key handlers

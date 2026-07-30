@@ -9,20 +9,20 @@ import (
 
 // handlePipelineAdvance handles the "n" key to advance the pipeline to the next phase.
 func (a App) handlePipelineAdvance() (tea.Model, tea.Cmd) {
-	if a.view == ViewPipeline && a.pipeline.State != nil && !a.pipeline.Running {
-		prev := a.pipeline.State.Phases[a.pipeline.State.Current]
-		a.pipeline.State.Advance()
-		if a.pipeline.State.Current < len(a.pipeline.State.Phases) {
-			phase := a.pipeline.State.Phases[a.pipeline.State.Current]
-			a.pipeline.Output = append(a.pipeline.Output, "",
+	if a.view == ViewPipeline && a.views.Pipeline.State != nil && !a.views.Pipeline.Running {
+		prev := a.views.Pipeline.State.Phases[a.views.Pipeline.State.Current]
+		a.views.Pipeline.State.Advance()
+		if a.views.Pipeline.State.Current < len(a.views.Pipeline.State.Phases) {
+			phase := a.views.Pipeline.State.Phases[a.views.Pipeline.State.Current]
+			a.views.Pipeline.Output = append(a.views.Pipeline.Output, "",
 				fmt.Sprintf("Phase %d: %s activated...", phase.Number, phase.Operative))
 			// Try real execution
 			if cmd := a.startNextPhase(); cmd != nil {
 				return a, cmd
 			}
 			// Fallback: manual/simulated advance
-			a.pipeline.State.Phases[a.pipeline.State.Current].Status = pipeline.StatusRunning
-			a.pipeline.Chat = append(a.pipeline.Chat,
+			a.views.Pipeline.State.Phases[a.views.Pipeline.State.Current].Status = pipeline.StatusRunning
+			a.views.Pipeline.Chat = append(a.views.Pipeline.Chat,
 				PipelineMsg{prev.Operative, fmt.Sprintf("Phase complete. Handing off to %s.", phase.Operative)},
 				PipelineMsg{"", "───────────────────────────────────"},
 				PipelineMsg{phase.Operative, fmt.Sprintf("Received handoff from %s. Starting %s phase.", prev.Operative, phase.Name)},
@@ -34,12 +34,12 @@ func (a App) handlePipelineAdvance() (tea.Model, tea.Cmd) {
 
 // handlePipelineRetry handles the "r" key to retry the current pipeline phase.
 func (a App) handlePipelineRetry() (tea.Model, tea.Cmd) {
-	if a.view == ViewPipeline && a.pipeline.State != nil && !a.pipeline.Running {
-		a.pipeline.State.Retry()
-		phase := a.pipeline.State.Phases[a.pipeline.State.Current]
-		a.pipeline.Output = append(a.pipeline.Output,
+	if a.view == ViewPipeline && a.views.Pipeline.State != nil && !a.views.Pipeline.Running {
+		a.views.Pipeline.State.Retry()
+		phase := a.views.Pipeline.State.Phases[a.views.Pipeline.State.Current]
+		a.views.Pipeline.Output = append(a.views.Pipeline.Output,
 			fmt.Sprintf("⚠️ RETRYING Phase %d: %s...", phase.Number, phase.Operative))
-		a.pipeline.Chat = append(a.pipeline.Chat,
+		a.views.Pipeline.Chat = append(a.views.Pipeline.Chat,
 			PipelineMsg{phase.Operative, "⚠️ Retrying... Let me take another look at this."},
 		)
 		// Try real execution on retry
@@ -52,19 +52,19 @@ func (a App) handlePipelineRetry() (tea.Model, tea.Cmd) {
 
 // handlePipelineSkip handles the "s" key to skip the current pipeline phase.
 func (a App) handlePipelineSkip() (tea.Model, tea.Cmd) {
-	if a.view == ViewPipeline && a.pipeline.State != nil {
-		phase := a.pipeline.State.Phases[a.pipeline.State.Current]
-		a.pipeline.Output = append(a.pipeline.Output,
+	if a.view == ViewPipeline && a.views.Pipeline.State != nil {
+		phase := a.views.Pipeline.State.Phases[a.views.Pipeline.State.Current]
+		a.views.Pipeline.Output = append(a.views.Pipeline.Output,
 			fmt.Sprintf("⊘ SKIPPED Phase %d: %s", phase.Number, phase.Operative))
-		a.pipeline.Chat = append(a.pipeline.Chat,
+		a.views.Pipeline.Chat = append(a.views.Pipeline.Chat,
 			PipelineMsg{phase.Operative, "⊘ Phase skipped by operator."},
 		)
-		a.pipeline.State.Skip()
-		if a.pipeline.State.Current < len(a.pipeline.State.Phases) {
-			next := a.pipeline.State.Phases[a.pipeline.State.Current]
-			a.pipeline.Output = append(a.pipeline.Output,
+		a.views.Pipeline.State.Skip()
+		if a.views.Pipeline.State.Current < len(a.views.Pipeline.State.Phases) {
+			next := a.views.Pipeline.State.Phases[a.views.Pipeline.State.Current]
+			a.views.Pipeline.Output = append(a.views.Pipeline.Output,
 				fmt.Sprintf("Phase %d: %s activated...", next.Number, next.Operative))
-			a.pipeline.Chat = append(a.pipeline.Chat,
+			a.views.Pipeline.Chat = append(a.views.Pipeline.Chat,
 				PipelineMsg{next.Operative, fmt.Sprintf("Stepping in. Previous phase was skipped. Starting %s.", next.Name)},
 			)
 		}

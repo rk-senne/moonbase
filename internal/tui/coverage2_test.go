@@ -19,7 +19,7 @@ func TestView_Comms(t *testing.T) {
 	app.width = 120
 	app.height = 40
 	app.view = ViewComms
-	app.comms.State = newCommsState("numbuh-1", "system prompt", 80, 40)
+	app.views.Comms.State = newCommsState("numbuh-1", "system prompt", 80, 40)
 
 	output := app.View()
 	if output == "" {
@@ -46,7 +46,7 @@ func TestView_Docs(t *testing.T) {
 	app.width = 120
 	app.height = 40
 	app.view = ViewDocs
-	app.docs = newDocsState(120, 40)
+	app.views.Docs = newDocsState(120, 40)
 
 	output := app.View()
 	if output == "" {
@@ -60,7 +60,7 @@ func TestView_Projects(t *testing.T) {
 	app.width = 120
 	app.height = 40
 	app.view = ViewProjects
-	app.projectNav = newProjectsState()
+	app.views.ProjectNav = newProjectsState()
 
 	output := app.View()
 	if output == "" {
@@ -87,7 +87,7 @@ func TestProjectsKeys_Navigation(t *testing.T) {
 	app := NewApp()
 	app.view = ViewProjects
 	app.boot.Ready = true
-	app.projectNav = &ProjectsState{
+	app.views.ProjectNav = &ProjectsState{
 		list:   make([]projects.Project, 3),
 		cursor: 0,
 	}
@@ -95,15 +95,15 @@ func TestProjectsKeys_Navigation(t *testing.T) {
 	// Down
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
 	result := model.(App)
-	if result.projectNav.cursor != 1 {
-		t.Errorf("expected cursor=1, got %d", result.projectNav.cursor)
+	if result.views.ProjectNav.cursor != 1 {
+		t.Errorf("expected cursor=1, got %d", result.views.ProjectNav.cursor)
 	}
 
 	// Up
 	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
 	result = model.(App)
-	if result.projectNav.cursor != 0 {
-		t.Errorf("expected cursor=0, got %d", result.projectNav.cursor)
+	if result.views.ProjectNav.cursor != 0 {
+		t.Errorf("expected cursor=0, got %d", result.views.ProjectNav.cursor)
 	}
 
 	// Esc
@@ -118,7 +118,7 @@ func TestProjectsKeys_NilState(t *testing.T) {
 	app := NewApp()
 	app.view = ViewProjects
 	app.boot.Ready = true
-	app.projectNav = nil
+	app.views.ProjectNav = nil
 
 	// Should not panic
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
@@ -131,17 +131,17 @@ func TestDocsKeys_Navigation(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDocs
 	app.boot.Ready = true
-	app.docs = newDocsState(120, 40)
+	app.views.Docs = newDocsState(120, 40)
 
-	if app.docs == nil || len(app.docs.files) == 0 {
+	if app.views.Docs == nil || len(app.views.Docs.files) == 0 {
 		t.Skip("no docs files available")
 	}
 
 	// Down
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
 	result := model.(App)
-	if result.docs.cursor != 1 && len(result.docs.files) > 1 {
-		t.Errorf("expected cursor=1, got %d", result.docs.cursor)
+	if result.views.Docs.cursor != 1 && len(result.views.Docs.files) > 1 {
+		t.Errorf("expected cursor=1, got %d", result.views.Docs.cursor)
 	}
 
 	// Esc
@@ -156,7 +156,7 @@ func TestDocsKeys_NilState(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDocs
 	app.boot.Ready = true
-	app.docs = nil
+	app.views.Docs = nil
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
 	_ = model.(App)
@@ -227,8 +227,8 @@ func TestHandleTermOutput(t *testing.T) {
 	msg := termOutputMsg{cmd: "ls", output: "file1.go\nfile2.go"}
 	model, _ := app.Update(msg)
 	result := model.(App)
-	if len(result.terminal.Output) < 2 {
-		t.Errorf("expected at least 2 term output lines, got %d", len(result.terminal.Output))
+	if len(result.views.Terminal.Output) < 2 {
+		t.Errorf("expected at least 2 term output lines, got %d", len(result.views.Terminal.Output))
 	}
 }
 
@@ -258,13 +258,13 @@ func TestHandleFileChange(t *testing.T) {
 func TestHandlePipelineAborted(t *testing.T) {
 	app := NewApp()
 	app.boot.Ready = true
-	app.pipeline.State = pipeline.New("test task")
-	app.pipeline.Running = true
+	app.views.Pipeline.State = pipeline.New("test task")
+	app.views.Pipeline.Running = true
 
 	msg := PipelineAbortedMsg{}
 	model, _ := app.Update(msg)
 	result := model.(App)
-	if result.pipeline.Running {
+	if result.views.Pipeline.Running {
 		t.Error("expected pipelineRunning=false after abort")
 	}
 }
@@ -275,8 +275,8 @@ func TestDashboardKeys_F1Protocol(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = false
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
 
 	// F1 in bubbletea - the key string is "F1" when using tea.KeyMsg with string matching
 	// The handler uses msg.String() == "F1"
@@ -285,8 +285,8 @@ func TestDashboardKeys_F1Protocol(t *testing.T) {
 	// Actually test via the correct approach - the handleDashboardKeys checks for "F1"
 	// which corresponds to tea.KeyF1 type
 	result.view = ViewDashboard
-	result.browser.Active = false
-	result.terminal.Active = false
+	result.views.Browser.Active = false
+	result.views.Terminal.Active = false
 	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyF1})
 	result = model.(App)
 	if result.view != ViewProtocol {
@@ -301,8 +301,8 @@ func TestDashboardKeys_P_Projects(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = false
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
 	result := model.(App)
@@ -317,8 +317,8 @@ func TestDashboardKeys_W_Docs(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = false
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'W'}})
 	result := model.(App)
@@ -333,16 +333,16 @@ func TestPipelineDoubleEsc_Abort(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = false
-	app.pipeline.Running = true
-	app.pipeline.State = pipeline.New("test")
-	app.pipeline.AbortPending = true
-	app.pipeline.AbortAt = time.Now() // within 3s window
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
+	app.views.Pipeline.Running = true
+	app.views.Pipeline.State = pipeline.New("test")
+	app.views.Pipeline.AbortPending = true
+	app.views.Pipeline.AbortAt = time.Now() // within 3s window
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
 	result := model.(App)
-	if result.pipeline.Running {
+	if result.views.Pipeline.Running {
 		t.Error("expected pipelineRunning=false after double-esc abort")
 	}
 }
@@ -351,12 +351,12 @@ func TestPipelineDoubleEsc_Abort(t *testing.T) {
 
 func TestAbortPendingTimedOut(t *testing.T) {
 	app := NewApp()
-	app.pipeline.AbortAt = time.Now()
+	app.views.Pipeline.AbortAt = time.Now()
 	if !app.abortPendingTimedOut() {
 		t.Error("expected true for recent abort pending")
 	}
 
-	app.pipeline.AbortAt = time.Now().Add(-5 * time.Second)
+	app.views.Pipeline.AbortAt = time.Now().Add(-5 * time.Second)
 	if app.abortPendingTimedOut() {
 		t.Error("expected false for expired abort pending")
 	}

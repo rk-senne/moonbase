@@ -20,9 +20,9 @@ func (a *App) addIntel(format string, args ...any) {
 }
 
 func (a *App) filterAgents() {
-	query := strings.ToLower(a.search.Input.Value())
+	query := strings.ToLower(a.views.Search.Input.Value())
 	if query == "" {
-		a.search.Filtered = nil
+		a.views.Search.Filtered = nil
 		return
 	}
 
@@ -53,9 +53,9 @@ func (a *App) filterAgents() {
 		return matches[i].score > matches[j].score
 	})
 
-	a.search.Filtered = nil
+	a.views.Search.Filtered = nil
 	for _, m := range matches {
-		a.search.Filtered = append(a.search.Filtered, m.index)
+		a.views.Search.Filtered = append(a.views.Search.Filtered, m.index)
 	}
 }
 

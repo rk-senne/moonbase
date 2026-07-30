@@ -11,8 +11,8 @@ func TestApp_FocusCycle(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = false
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
 
 	if app.chrome.Focus != FocusSidebar {
 		t.Fatalf("expected initial focus=FocusSidebar, got %d", app.chrome.Focus)
@@ -41,8 +41,8 @@ func TestApp_ThemeCycleAll(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = false
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
 
 	themes := []string{"treehouse", "classified", "nerv", "moonbase"}
 	result := app
@@ -59,8 +59,8 @@ func TestApp_SearchFilter(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = false
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
 	app.registry = newTestRegistry()
 
 	if app.registry.Count() == 0 {
@@ -70,28 +70,28 @@ func TestApp_SearchFilter(t *testing.T) {
 	// Enter search mode
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
 	result := model.(App)
-	if !result.search.Active {
+	if !result.views.Search.Active {
 		t.Fatal("expected searching=true")
 	}
 
 	// Simulate typing by setting the search input value and calling filterAgents.
 	// We use a query that matches the agent naming pattern "numbuh-"
-	result.search.Input.SetValue("numbuh")
+	result.views.Search.Input.SetValue("numbuh")
 	result.filterAgents()
 
 	// Should have filtered results
-	if result.search.Filtered == nil || len(result.search.Filtered) == 0 {
+	if result.views.Search.Filtered == nil || len(result.views.Search.Filtered) == 0 {
 		// Try with the searchInput value to confirm it's set
-		t.Skipf("no agents matched query 'numbuh' (searchInput.Value()=%q, registry count=%d)", result.search.Input.Value(), result.registry.Count())
+		t.Skipf("no agents matched query 'numbuh' (searchInput.Value()=%q, registry count=%d)", result.views.Search.Input.Value(), result.registry.Count())
 	}
 
 	// Exit search with esc
 	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyEscape})
 	result = model.(App)
-	if result.search.Active {
+	if result.views.Search.Active {
 		t.Error("expected searching=false after esc")
 	}
-	if result.search.Filtered != nil {
+	if result.views.Search.Filtered != nil {
 		t.Error("expected filtered=nil after esc")
 	}
 }
@@ -100,8 +100,8 @@ func TestApp_SearchEnter(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = false
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
 	app.registry = newTestRegistry()
 
 	// Enter search mode
@@ -109,10 +109,10 @@ func TestApp_SearchEnter(t *testing.T) {
 	result := model.(App)
 
 	// Simulate typing by setting the search input value directly
-	result.search.Input.SetValue("1")
+	result.views.Search.Input.SetValue("1")
 	result.filterAgents()
 
-	if result.search.Filtered == nil || len(result.search.Filtered) == 0 {
+	if result.views.Search.Filtered == nil || len(result.views.Search.Filtered) == 0 {
 		t.Skip("no agents matched search query '1'")
 	}
 
@@ -120,7 +120,7 @@ func TestApp_SearchEnter(t *testing.T) {
 	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result = model.(App)
 
-	if result.search.Active {
+	if result.views.Search.Active {
 		t.Error("expected searching=false after enter")
 	}
 	if result.view != ViewDossier {
@@ -132,11 +132,11 @@ func TestApp_CursorBounds(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = false
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
 	app.registry = newTestRegistry()
-	app.dashboard.Cursor = 0
-	app.dashboard.Selected = 0
+	app.views.Dashboard.Cursor = 0
+	app.views.Dashboard.Selected = 0
 
 	if app.registry.Count() < 2 {
 		t.Skip("need at least 2 agents in registry for cursor test")
@@ -145,25 +145,25 @@ func TestApp_CursorBounds(t *testing.T) {
 	// Try to go up past 0
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
 	result := model.(App)
-	if result.dashboard.Cursor != 0 {
-		t.Errorf("expected cursor to stay at 0 when going up, got %d", result.dashboard.Cursor)
+	if result.views.Dashboard.Cursor != 0 {
+		t.Errorf("expected cursor to stay at 0 when going up, got %d", result.views.Dashboard.Cursor)
 	}
 
 	// Go down
 	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
 	result = model.(App)
-	if result.dashboard.Cursor != 1 {
-		t.Errorf("expected cursor=1 after down, got %d", result.dashboard.Cursor)
+	if result.views.Dashboard.Cursor != 1 {
+		t.Errorf("expected cursor=1 after down, got %d", result.views.Dashboard.Cursor)
 	}
 
 	// Go to max and try to exceed
 	count := app.registry.Count()
-	result.dashboard.Cursor = count - 1
-	result.dashboard.Selected = count - 1
+	result.views.Dashboard.Cursor = count - 1
+	result.views.Dashboard.Selected = count - 1
 	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
 	result = model.(App)
-	if result.dashboard.Cursor != count-1 {
-		t.Errorf("expected cursor to stay at max (%d), got %d", count-1, result.dashboard.Cursor)
+	if result.views.Dashboard.Cursor != count-1 {
+		t.Errorf("expected cursor to stay at max (%d), got %d", count-1, result.views.Dashboard.Cursor)
 	}
 }
 

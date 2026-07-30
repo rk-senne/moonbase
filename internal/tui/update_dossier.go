@@ -7,19 +7,19 @@ import (
 
 // handleProjectsKeys handles key messages when the view is ViewProjects.
 func (a App) handleProjectsKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	if a.projectNav == nil {
+	if a.views.ProjectNav == nil {
 		return a, nil
 	}
 	switch {
 	case key.Matches(msg, a.keys.Back):
 		a.view = ViewDashboard
 	case key.Matches(msg, a.keys.Up):
-		if a.projectNav.cursor > 0 {
-			a.projectNav.cursor--
+		if a.views.ProjectNav.cursor > 0 {
+			a.views.ProjectNav.cursor--
 		}
 	case key.Matches(msg, a.keys.Down):
-		if a.projectNav.cursor < len(a.projectNav.list)-1 {
-			a.projectNav.cursor++
+		if a.views.ProjectNav.cursor < len(a.views.ProjectNav.list)-1 {
+			a.views.ProjectNav.cursor++
 		}
 	case key.Matches(msg, a.keys.Enter):
 		a.selectProject()
@@ -33,26 +33,26 @@ func (a App) handleProjectsKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 // handleDocsKeys handles key messages when the view is ViewDocs.
 func (a App) handleDocsKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	if a.docs == nil {
+	if a.views.Docs == nil {
 		return a, nil
 	}
 	switch {
 	case key.Matches(msg, a.keys.Back):
 		a.view = ViewDashboard
 	case key.Matches(msg, a.keys.Up):
-		if a.docs.cursor > 0 {
-			a.docs.cursor--
+		if a.views.Docs.cursor > 0 {
+			a.views.Docs.cursor--
 		}
 	case key.Matches(msg, a.keys.Down):
-		if a.docs.cursor < len(a.docs.files)-1 {
-			a.docs.cursor++
+		if a.views.Docs.cursor < len(a.views.Docs.files)-1 {
+			a.views.Docs.cursor++
 		}
 	case key.Matches(msg, a.keys.Enter):
-		a.docs.loadDoc(a.docs.cursor, a.width-30)
+		a.views.Docs.loadDoc(a.views.Docs.cursor, a.width-30)
 	case key.Matches(msg, a.keys.DocsPageDown):
-		a.docs.viewport.HalfViewDown()
+		a.views.Docs.viewport.HalfViewDown()
 	case key.Matches(msg, a.keys.DocsPageUp):
-		a.docs.viewport.HalfViewUp()
+		a.views.Docs.viewport.HalfViewUp()
 	}
 	return a, nil
 }

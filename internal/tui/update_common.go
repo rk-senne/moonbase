@@ -65,23 +65,23 @@ func (a App) handleSpinnerTick(msg spinner.TickMsg) (tea.Model, tea.Cmd) {
 func (a App) handleSearchKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, a.keys.SearchCancel):
-		a.search.Active = false
-		a.search.Input.Reset()
-		a.search.Input.Blur()
-		a.search.Filtered = nil
+		a.views.Search.Active = false
+		a.views.Search.Input.Reset()
+		a.views.Search.Input.Blur()
+		a.views.Search.Filtered = nil
 	case key.Matches(msg, a.keys.SearchConfirm):
-		a.search.Active = false
-		a.search.Input.Blur()
-		if len(a.search.Filtered) > 0 {
-			a.dashboard.Cursor = a.search.Filtered[0]
-			a.dashboard.Selected = a.dashboard.Cursor
+		a.views.Search.Active = false
+		a.views.Search.Input.Blur()
+		if len(a.views.Search.Filtered) > 0 {
+			a.views.Dashboard.Cursor = a.views.Search.Filtered[0]
+			a.views.Dashboard.Selected = a.views.Dashboard.Cursor
 			a.view = ViewDossier
 		}
-		a.search.Input.Reset()
-		a.search.Filtered = nil
+		a.views.Search.Input.Reset()
+		a.views.Search.Filtered = nil
 	default:
 		var cmd tea.Cmd
-		a.search.Input, cmd = a.search.Input.Update(msg)
+		a.views.Search.Input, cmd = a.views.Search.Input.Update(msg)
 		a.filterAgents()
 		return a, cmd
 	}
@@ -92,10 +92,10 @@ func (a App) handleSearchKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (a App) handleTerminalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	wasBrowserSwitch := key.Matches(msg, a.keys.TerminalToBrowser)
 	var cmd tea.Cmd
-	a.terminal, cmd = a.terminal.Update(msg, a.appContext())
+	a.views.Terminal, cmd = a.views.Terminal.Update(msg, a.appContext())
 	// If user pressed the browser-switch key, activate file browser mode
 	if wasBrowserSwitch {
-		a.browser.Active = true
+		a.views.Browser.Active = true
 	}
 	return a, cmd
 }
@@ -104,28 +104,28 @@ func (a App) handleTerminalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (a App) handleFileBrowserKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, a.keys.BrowserToTerminal):
-		a.browser.Active = false
-		a.terminal.Active = true
-		a.terminal.Input.Focus()
+		a.views.Browser.Active = false
+		a.views.Terminal.Active = true
+		a.views.Terminal.Input.Focus()
 		return a, textinput.Blink
 	case key.Matches(msg, a.keys.BrowserUp):
-		a.browser.FileBrowser.Up()
+		a.views.Browser.FileBrowser.Up()
 	case key.Matches(msg, a.keys.BrowserDown):
-		a.browser.FileBrowser.Down()
+		a.views.Browser.FileBrowser.Down()
 	case key.Matches(msg, a.keys.BrowserEnter):
-		a.browser.FileBrowser.Enter()
-		a.terminal.Cwd = a.browser.FileBrowser.dir
+		a.views.Browser.FileBrowser.Enter()
+		a.views.Terminal.Cwd = a.views.Browser.FileBrowser.dir
 	case key.Matches(msg, a.keys.BrowserBack):
-		a.browser.FileBrowser.Back()
-		a.terminal.Cwd = a.browser.FileBrowser.dir
+		a.views.Browser.FileBrowser.Back()
+		a.views.Terminal.Cwd = a.views.Browser.FileBrowser.dir
 	case key.Matches(msg, a.keys.BrowserEdit):
-		if a.browser.FileBrowser.SelectedIsFile() {
-			return a, a.editFile(a.browser.FileBrowser.SelectedPath())
+		if a.views.Browser.FileBrowser.SelectedIsFile() {
+			return a, a.editFile(a.views.Browser.FileBrowser.SelectedPath())
 		}
 	case key.Matches(msg, a.keys.BrowserRefresh):
-		a.browser.FileBrowser.refresh()
+		a.views.Browser.FileBrowser.refresh()
 	case key.Matches(msg, a.keys.BrowserEsc):
-		a.browser.Active = false
+		a.views.Browser.Active = false
 	}
 	return a, nil
 }
@@ -140,17 +140,17 @@ func (a App) handlePhaseResultUpdate(msg PhaseResultMsg) (tea.Model, tea.Cmd) {
 
 // handlePipelineAborted processes a pipeline abort message.
 func (a App) handlePipelineAborted() (tea.Model, tea.Cmd) {
-	if a.pipeline.Cancel != nil {
-		a.pipeline.Cancel()
+	if a.views.Pipeline.Cancel != nil {
+		a.views.Pipeline.Cancel()
 	}
-	if a.pipeline.State != nil {
-		a.pipeline.State.Stop("Aborted by human")
-		a.pipeline.Chat = append(a.pipeline.Chat,
+	if a.views.Pipeline.State != nil {
+		a.views.Pipeline.State.Stop("Aborted by human")
+		a.views.Pipeline.Chat = append(a.views.Pipeline.Chat,
 			PipelineMsg{"", "🛑 Mission aborted by human."},
 		)
-		a.addIntel("Mission aborted: %s", a.pipeline.State.Task)
+		a.addIntel("Mission aborted: %s", a.views.Pipeline.State.Task)
 	}
-	a.pipeline.Running = false
+	a.views.Pipeline.Running = false
 	return a, nil
 }
 
@@ -177,7 +177,7 @@ func (a App) handleFileChange(msg fileChangeMsg) (tea.Model, tea.Cmd) {
 
 // handleTermOutput processes embedded terminal command output.
 func (a App) handleTermOutput(msg termOutputMsg) (tea.Model, tea.Cmd) {
-	a.terminal = a.terminal.HandleOutput(msg, a.theme.Data)
+	a.views.Terminal = a.views.Terminal.HandleOutput(msg, a.theme.Data)
 	return a, nil
 }
 
@@ -189,7 +189,7 @@ func (a App) ringBell() {
 
 // abortPendingTimedOut checks if the abort pending is within the 3s window.
 func (a App) abortPendingTimedOut() bool {
-	return time.Since(a.pipeline.AbortAt) < 3*time.Second
+	return time.Since(a.views.Pipeline.AbortAt) < 3*time.Second
 }
 
 // --- Init helper commands and message types ---

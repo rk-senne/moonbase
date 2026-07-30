@@ -26,14 +26,14 @@ func TestRenderDocs_WithLoadedContent(t *testing.T) {
 	app.width = 120
 	app.height = 40
 	app.view = ViewDocs
-	app.docs = &DocsState{
+	app.views.Docs = &DocsState{
 		files:    []docs.Doc{{Name: "readme.md", Path: "/tmp/test.md"}, {Name: "guide.md", Path: "/tmp/guide.md"}},
 		cursor:   1,
 		viewport: viewport.New(70, 30),
 		loaded:   true,
 		content:  "# Hello World\n\nThis is documentation content.",
 	}
-	app.docs.viewport.SetContent(app.docs.content)
+	app.views.Docs.viewport.SetContent(app.views.Docs.content)
 
 	result := app.renderDocs()
 	if result == "" {
@@ -47,7 +47,7 @@ func TestRenderDocs_CursorAtZero(t *testing.T) {
 	app.width = 80
 	app.height = 30
 	app.view = ViewDocs
-	app.docs = &DocsState{
+	app.views.Docs = &DocsState{
 		files:    []docs.Doc{{Name: "a-very-long-filename-that-exceeds-sidebar-width.md", Path: "/tmp/long.md"}},
 		cursor:   0,
 		viewport: viewport.New(50, 20),
@@ -85,9 +85,9 @@ func TestRenderPipeline_AllPhaseStatuses(t *testing.T) {
 	ps.Context = pipeline.NewPipelineContext("comprehensive test")
 	ps.Context.RiskLevel = "MEDIUM"
 	ps.Context.ReworkCount = 1
-	app.pipeline.State = ps
+	app.views.Pipeline.State = ps
 
-	app.pipeline.Chat = []PipelineMsg{
+	app.views.Pipeline.Chat = []PipelineMsg{
 		{"", "━━━ MISSION: comprehensive test ━━━"},
 		{"Numbuh 1", "Analysis complete. Requirements identified."},
 		{"", "────────────────────────────────"},
@@ -115,7 +115,7 @@ func TestRenderPipeline_RiskCritical(t *testing.T) {
 	ps := pipeline.New("critical test")
 	ps.Context = pipeline.NewPipelineContext("critical test")
 	ps.Context.RiskLevel = "CRITICAL"
-	app.pipeline.State = ps
+	app.views.Pipeline.State = ps
 
 	result := app.renderPipeline()
 	if result == "" {
@@ -133,7 +133,7 @@ func TestRenderPipeline_RiskLow(t *testing.T) {
 	ps := pipeline.New("low risk test")
 	ps.Context = pipeline.NewPipelineContext("low risk test")
 	ps.Context.RiskLevel = "LOW"
-	app.pipeline.State = ps
+	app.views.Pipeline.State = ps
 
 	result := app.renderPipeline()
 	if result == "" {
@@ -152,7 +152,7 @@ func TestRenderPipeline_RiskHigh(t *testing.T) {
 	ps.Context = pipeline.NewPipelineContext("high risk test")
 	ps.Context.RiskLevel = "HIGH"
 	ps.Context.ReworkCount = 2
-	app.pipeline.State = ps
+	app.views.Pipeline.State = ps
 
 	result := app.renderPipeline()
 	if result == "" {
@@ -166,11 +166,11 @@ func TestRenderPipeline_ManyMessages(t *testing.T) {
 	app.width = 100
 	app.height = 20 // small height to trigger scroll
 	app.view = ViewPipeline
-	app.pipeline.State = pipeline.New("scroll test")
+	app.views.Pipeline.State = pipeline.New("scroll test")
 
 	// Add many messages to trigger the maxLines scroll
 	for i := 0; i < 50; i++ {
-		app.pipeline.Chat = append(app.pipeline.Chat, PipelineMsg{"Numbuh 1", "Line of output"})
+		app.views.Pipeline.Chat = append(app.views.Pipeline.Chat, PipelineMsg{"Numbuh 1", "Line of output"})
 	}
 
 	result := app.renderPipeline()
@@ -220,8 +220,8 @@ func TestRenderHeader_PipelineRunning(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.pipeline.Running = true
-	app.pipeline.State = pipeline.New("running task")
+	app.views.Pipeline.Running = true
+	app.views.Pipeline.State = pipeline.New("running task")
 
 	result := app.renderHeader("Pipeline")
 	if result == "" {
@@ -252,8 +252,8 @@ func TestRenderSidebar_DossierView(t *testing.T) {
 	app.height = 40
 	app.registry = newTestRegistry()
 	app.view = ViewDossier
-	app.dashboard.Cursor = 2
-	app.dashboard.Selected = 2
+	app.views.Dashboard.Cursor = 2
+	app.views.Dashboard.Selected = 2
 
 	result := app.renderSidebar(24, 30)
 	if result == "" {
@@ -268,7 +268,7 @@ func TestRenderSidebar_WithMissions(t *testing.T) {
 	app.height = 40
 	app.registry = newTestRegistry()
 	app.view = ViewDashboard
-	app.mission.History = []MissionEntry{
+	app.views.Mission.History = []MissionEntry{
 		{Name: "add pagination", Status: "✅"},
 		{Name: "fix auth bug", Status: "❌"},
 		{Name: "refactor db", Status: "🔄"},
@@ -287,8 +287,8 @@ func TestRenderMainPanel_BrowsingMode(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 120
 	app.height = 40
-	app.browser.Active = true
-	app.browser.FileBrowser = newFileBrowser()
+	app.views.Browser.Active = true
+	app.views.Browser.FileBrowser = newFileBrowser()
 
 	result := app.renderMainPanel(80, 30)
 	if result == "" {
@@ -301,14 +301,14 @@ func TestRenderMainPanel_TermActive(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.browser.Active = false
-	app.terminal.Active = true
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = true
 	app.chrome.Focus = FocusMain
 	app.intel = []IntelEntry{
 		{Time: "14:00", Message: "System online"},
 		{Time: "14:01", Message: "Agent deployed"},
 	}
-	app.terminal.Output = []string{"$ ls", "file1.go", "file2.go"}
+	app.views.Terminal.Output = []string{"$ ls", "file1.go", "file2.go"}
 
 	result := app.renderMainPanel(70, 30)
 	if result == "" {
@@ -321,10 +321,10 @@ func TestRenderMainPanel_EmptyIntel(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.browser.Active = false
-	app.terminal.Active = false
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
 	app.intel = nil
-	app.terminal.Output = nil
+	app.views.Terminal.Output = nil
 
 	result := app.renderMainPanel(70, 30)
 	if result == "" {
@@ -337,8 +337,8 @@ func TestRenderMainPanel_ManyLines(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 20
-	app.browser.Active = false
-	app.terminal.Active = false
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
 
 	// Many intel entries to trigger scrolling
 	for i := 0; i < 50; i++ {
@@ -364,7 +364,7 @@ func TestRenderRightPanel_FocusRight(t *testing.T) {
 	app.env.System.Clean = false
 	app.env.System.Docker = 3
 	app.env.System.ChangedLines = 75
-	app.mission.History = []MissionEntry{
+	app.views.Mission.History = []MissionEntry{
 		{Name: "test mission 1", Status: "✅"},
 		{Name: "test mission 2", Status: "❌"},
 		{Name: "test mission 3", Status: "✅"},
@@ -427,7 +427,7 @@ func TestRenderRightPanel_NoMissions(t *testing.T) {
 	app.width = 120
 	app.height = 40
 	app.registry = newTestRegistry()
-	app.mission.History = nil
+	app.views.Mission.History = nil
 
 	result := app.renderRightPanel(30, 30)
 	if result == "" {
@@ -492,8 +492,8 @@ func TestRender3Col_WideWidth(t *testing.T) {
 	app.width = 160
 	app.height = 40
 	app.registry = newTestRegistry()
-	app.browser.Active = false
-	app.terminal.Active = false
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
 
 	result := app.render3Col(30)
 	if result == "" {
@@ -520,7 +520,7 @@ func TestRender2Col_WideWidth(t *testing.T) {
 	app.width = 120
 	app.height = 40
 	app.registry = newTestRegistry()
-	app.browser.Active = false
+	app.views.Browser.Active = false
 
 	result := app.render2Col(30)
 	if result == "" {
@@ -542,8 +542,8 @@ func TestRenderDossier_AgentWithHooks(t *testing.T) {
 	for i := 0; i < app.registry.Count(); i++ {
 		agent := app.registry.Get(i)
 		if agent.Hooks != nil && len(agent.Hooks.OnActivate) > 0 {
-			app.dashboard.Selected = i
-			app.dashboard.Cursor = i
+			app.views.Dashboard.Selected = i
+			app.views.Dashboard.Cursor = i
 			break
 		}
 	}
@@ -566,8 +566,8 @@ func TestRenderDossier_AgentWithShortcut(t *testing.T) {
 	for i := 0; i < app.registry.Count(); i++ {
 		agent := app.registry.Get(i)
 		if agent.Shortcut != "" {
-			app.dashboard.Selected = i
-			app.dashboard.Cursor = i
+			app.views.Dashboard.Selected = i
+			app.views.Dashboard.Cursor = i
 			break
 		}
 	}
@@ -585,7 +585,7 @@ func TestRenderDossier_NarrowWidth(t *testing.T) {
 	app.height = 30
 	app.view = ViewDossier
 	app.registry = newTestRegistry()
-	app.dashboard.Selected = 0
+	app.views.Dashboard.Selected = 0
 
 	result := app.renderDossier()
 	if result == "" {
@@ -610,16 +610,16 @@ func TestRelayToAgent_DirectCall_TargetFound(t *testing.T) {
 	// Use names from the actual registry
 	firstAgent := app.registry.Get(0)
 	secondAgent := app.registry.Get(1)
-	app.comms.State = newCommsState(firstAgent.Name, firstAgent.Prompt, 80, 40)
+	app.views.Comms.State = newCommsState(firstAgent.Name, firstAgent.Prompt, 80, 40)
 	// Add an assistant message to relay
-	app.comms.State.conv.Add(chat.RoleAssistant, "Here is my analysis of the code.")
+	app.views.Comms.State.conv.Add(chat.RoleAssistant, "Here is my analysis of the code.")
 
 	cmd := app.relayToAgent(secondAgent.Name, "")
 	if cmd == nil {
 		t.Error("expected non-nil cmd when relaying last response")
 	}
-	if app.comms.State.agent != secondAgent.Name {
-		t.Errorf("expected comms agent switched to %s, got %s", secondAgent.Name, app.comms.State.agent)
+	if app.views.Comms.State.agent != secondAgent.Name {
+		t.Errorf("expected comms agent switched to %s, got %s", secondAgent.Name, app.views.Comms.State.agent)
 	}
 }
 
@@ -636,16 +636,16 @@ func TestRelayToAgent_DirectCall_WithExplicitMsg(t *testing.T) {
 	app.height = 40
 	firstAgent := app.registry.Get(0)
 	thirdAgent := app.registry.Get(2)
-	app.comms.State = newCommsState(firstAgent.Name, firstAgent.Prompt, 80, 40)
+	app.views.Comms.State = newCommsState(firstAgent.Name, firstAgent.Prompt, 80, 40)
 
 	cmd := app.relayToAgent(thirdAgent.Name, "please implement this feature")
 	if cmd == nil {
 		t.Error("expected non-nil cmd from relay with explicit message")
 	}
-	if app.comms.State.agent != thirdAgent.Name {
-		t.Errorf("expected comms switched to %s, got %s", thirdAgent.Name, app.comms.State.agent)
+	if app.views.Comms.State.agent != thirdAgent.Name {
+		t.Errorf("expected comms switched to %s, got %s", thirdAgent.Name, app.views.Comms.State.agent)
 	}
-	if !app.comms.State.streaming {
+	if !app.views.Comms.State.streaming {
 		t.Error("expected streaming=true after relay")
 	}
 }
@@ -663,7 +663,7 @@ func TestRelayToAgent_DirectCall_NoAssistantMsg(t *testing.T) {
 	app.height = 40
 	firstAgent := app.registry.Get(0)
 	secondAgent := app.registry.Get(1)
-	app.comms.State = newCommsState(firstAgent.Name, firstAgent.Prompt, 80, 40)
+	app.views.Comms.State = newCommsState(firstAgent.Name, firstAgent.Prompt, 80, 40)
 	// No assistant messages — relay with empty msg should fail
 
 	cmd := app.relayToAgent(secondAgent.Name, "")
@@ -682,12 +682,12 @@ func TestFilterAgents_ByDescription(t *testing.T) {
 	}
 
 	// Search by a description keyword (agents should have descriptions)
-	app.search.Input.SetValue("security")
+	app.views.Search.Input.SetValue("security")
 	app.filterAgents()
 	// Should find at least numbuh-274 (security agent)
-	if len(app.search.Filtered) == 0 {
+	if len(app.views.Search.Filtered) == 0 {
 		// Try another keyword
-		app.search.Input.SetValue("qa")
+		app.views.Search.Input.SetValue("qa")
 		app.filterAgents()
 	}
 	// At minimum, no crash
@@ -696,11 +696,11 @@ func TestFilterAgents_ByDescription(t *testing.T) {
 func TestFilterAgents_EmptyQuery(t *testing.T) {
 	app := NewApp()
 	app.registry = newTestRegistry()
-	app.search.Filtered = []int{1, 2, 3}
+	app.views.Search.Filtered = []int{1, 2, 3}
 
-	app.search.Input.SetValue("")
+	app.views.Search.Input.SetValue("")
 	app.filterAgents()
-	if app.search.Filtered != nil {
+	if app.views.Search.Filtered != nil {
 		t.Error("expected nil filtered for empty query")
 	}
 }
@@ -709,10 +709,10 @@ func TestFilterAgents_NoMatch(t *testing.T) {
 	app := NewApp()
 	app.registry = newTestRegistry()
 
-	app.search.Input.SetValue("zzzznonexistentzzzz")
+	app.views.Search.Input.SetValue("zzzznonexistentzzzz")
 	app.filterAgents()
-	if len(app.search.Filtered) != 0 {
-		t.Errorf("expected no matches, got %d", len(app.search.Filtered))
+	if len(app.views.Search.Filtered) != 0 {
+		t.Errorf("expected no matches, got %d", len(app.views.Search.Filtered))
 	}
 }
 
@@ -728,7 +728,7 @@ func TestSelectProject_WithProjects(t *testing.T) {
 
 	// Create a temp dir to use as a project
 	tmpDir := t.TempDir()
-	app.projectNav = &ProjectsState{
+	app.views.ProjectNav = &ProjectsState{
 		list:   []projects.Project{{Name: "test-proj", Path: tmpDir, Type: "go"}},
 		cursor: 0,
 	}
@@ -737,7 +737,7 @@ func TestSelectProject_WithProjects(t *testing.T) {
 	if app.view != ViewDocs {
 		t.Errorf("expected ViewDocs after selectProject, got %d", app.view)
 	}
-	if app.docs == nil {
+	if app.views.Docs == nil {
 		t.Error("expected docs to be initialized")
 	}
 }
@@ -746,7 +746,7 @@ func TestSelectProject_EmptyListNoOp(t *testing.T) {
 	app := NewApp()
 	app.width = 100
 	app.height = 40
-	app.projectNav = &ProjectsState{list: nil, cursor: 0}
+	app.views.ProjectNav = &ProjectsState{list: nil, cursor: 0}
 
 	app.selectProject() // should not panic
 }
@@ -784,7 +784,7 @@ func TestRunSpawnHook_WithHookAgent(t *testing.T) {
 	for i := 0; i < app.registry.Count(); i++ {
 		agent := app.registry.Get(i)
 		if agent.Hooks != nil && len(agent.Hooks.OnActivate) > 0 {
-			app.dashboard.Selected = i
+			app.views.Dashboard.Selected = i
 			foundHook = true
 			break
 		}
@@ -816,7 +816,7 @@ func TestRunSpawnHook_WithHookAgent(t *testing.T) {
 func TestLaunchNvim_ProjectsView(t *testing.T) {
 	app := NewApp()
 	app.view = ViewProjects
-	app.projectNav = &ProjectsState{
+	app.views.ProjectNav = &ProjectsState{
 		list:   []projects.Project{{Name: "proj", Path: "/tmp/proj", Type: "go"}},
 		cursor: 0,
 	}
@@ -830,14 +830,14 @@ func TestLaunchNvim_ProjectsView(t *testing.T) {
 func TestLaunchNvim_BrowsingFile(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.browser.Active = true
-	app.browser.FileBrowser = newFileBrowser()
+	app.views.Browser.Active = true
+	app.views.Browser.FileBrowser = newFileBrowser()
 	// Ensure there's at least one file entry
-	if len(app.browser.FileBrowser.entries) > 0 {
+	if len(app.views.Browser.FileBrowser.entries) > 0 {
 		// Find a non-dir entry
-		for i, e := range app.browser.FileBrowser.entries {
+		for i, e := range app.views.Browser.FileBrowser.entries {
 			if !e.IsDir {
-				app.browser.FileBrowser.cursor = i
+				app.views.Browser.FileBrowser.cursor = i
 				break
 			}
 		}
@@ -867,7 +867,7 @@ func TestDeployAgent_FallbackPath(t *testing.T) {
 	if app.registry.Count() == 0 {
 		t.Skip("no agents loaded")
 	}
-	app.dashboard.Selected = 0
+	app.views.Dashboard.Selected = 0
 
 	cmd := app.deployAgent()
 	if cmd == nil {
@@ -894,18 +894,18 @@ func TestOpenComms_NewConversation(t *testing.T) {
 	}
 	app.width = 100
 	app.height = 40
-	app.dashboard.Selected = 0
+	app.views.Dashboard.Selected = 0
 
 	app.openComms()
 	if app.view != ViewComms {
 		t.Errorf("expected ViewComms after openComms, got %d", app.view)
 	}
-	if app.comms.State == nil {
+	if app.views.Comms.State == nil {
 		t.Fatal("expected comms to be initialized")
 	}
 	agent := app.registry.Get(0)
-	if app.comms.State.agent != agent.Name {
-		t.Errorf("expected comms.agent=%s, got %s", agent.Name, app.comms.State.agent)
+	if app.views.Comms.State.agent != agent.Name {
+		t.Errorf("expected comms.agent=%s, got %s", agent.Name, app.views.Comms.State.agent)
 	}
 }
 
@@ -920,7 +920,7 @@ func TestOpenComms_ExistingConversation(t *testing.T) {
 	}
 	app.width = 100
 	app.height = 40
-	app.dashboard.Selected = 0
+	app.views.Dashboard.Selected = 0
 
 	// Save a conversation first
 	agent := app.registry.Get(0)
@@ -930,11 +930,11 @@ func TestOpenComms_ExistingConversation(t *testing.T) {
 	chat.Save(conv)
 
 	app.openComms()
-	if app.comms.State == nil {
+	if app.views.Comms.State == nil {
 		t.Fatal("expected comms to be initialized")
 	}
 	// Should have loaded the existing conversation with messages
-	if len(app.comms.State.conv.Messages) == 0 {
+	if len(app.views.Comms.State.conv.Messages) == 0 {
 		t.Error("expected existing messages to be loaded")
 	}
 }
@@ -967,12 +967,12 @@ func TestHandlePhaseResult_RiskMedium(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
 	app.boot.Ready = true
-	app.pipeline.State = pipeline.New("medium risk test")
+	app.views.Pipeline.State = pipeline.New("medium risk test")
 	for i := 0; i < 3; i++ {
-		app.pipeline.State.Advance()
+		app.views.Pipeline.State.Advance()
 	}
-	app.pipeline.State.Phases[3].Status = pipeline.StatusRunning
-	app.pipeline.Running = true
+	app.views.Pipeline.State.Phases[3].Status = pipeline.StatusRunning
+	app.views.Pipeline.Running = true
 	app.env.Backend.Active = nil
 
 	msg := PhaseResultMsg{
@@ -984,8 +984,8 @@ func TestHandlePhaseResult_RiskMedium(t *testing.T) {
 
 	cmd := app.handlePhaseResult(msg)
 	_ = cmd
-	if app.pipeline.State.Context.RiskLevel != "MEDIUM" {
-		t.Errorf("expected risk level MEDIUM, got %s", app.pipeline.State.Context.RiskLevel)
+	if app.views.Pipeline.State.Context.RiskLevel != "MEDIUM" {
+		t.Errorf("expected risk level MEDIUM, got %s", app.views.Pipeline.State.Context.RiskLevel)
 	}
 }
 
@@ -995,17 +995,17 @@ func TestHandlePipelineAdvance_WithState(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = false
-	app.pipeline.State = pipeline.New("advance test")
-	app.pipeline.State.Phases[0].Status = pipeline.StatusComplete
-	app.pipeline.Running = false
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
+	app.views.Pipeline.State = pipeline.New("advance test")
+	app.views.Pipeline.State.Phases[0].Status = pipeline.StatusComplete
+	app.views.Pipeline.Running = false
 	app.env.Backend.Active = nil
 	app.registry = newTestRegistry()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
 	result := model.(App)
-	if result.pipeline.State.Current == 0 {
+	if result.views.Pipeline.State.Current == 0 {
 		t.Error("expected pipeline to advance past phase 0")
 	}
 }
@@ -1022,7 +1022,7 @@ func TestHandleProjectsKeys_Enter(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.projectNav = &ProjectsState{
+	app.views.ProjectNav = &ProjectsState{
 		list:   []projects.Project{{Name: "test", Path: tmpDir, Type: "go"}},
 		cursor: 0,
 	}
@@ -1038,7 +1038,7 @@ func TestHandleProjectsKeys_M(t *testing.T) {
 	app := NewApp()
 	app.view = ViewProjects
 	app.boot.Ready = true
-	app.projectNav = &ProjectsState{
+	app.views.ProjectNav = &ProjectsState{
 		list:   []projects.Project{{Name: "test", Path: "/tmp", Type: "go"}},
 		cursor: 0,
 	}
@@ -1053,7 +1053,7 @@ func TestHandleProjectsKeys_F(t *testing.T) {
 	app := NewApp()
 	app.view = ViewProjects
 	app.boot.Ready = true
-	app.projectNav = &ProjectsState{
+	app.views.ProjectNav = &ProjectsState{
 		list:   []projects.Project{{Name: "test", Path: "/tmp", Type: "go"}},
 		cursor: 0,
 	}
@@ -1072,14 +1072,14 @@ func TestHandleDocsKeys_PgDown(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.docs = &DocsState{
+	app.views.Docs = &DocsState{
 		files:    []docs.Doc{{Name: "test.md", Path: "/tmp/t.md"}},
 		cursor:   0,
 		viewport: viewport.New(70, 30),
 		loaded:   true,
 		content:  "line1\nline2\nline3\nline4\nline5",
 	}
-	app.docs.viewport.SetContent(app.docs.content)
+	app.views.Docs.viewport.SetContent(app.views.Docs.content)
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyPgDown})
 	result := model.(App)
@@ -1092,14 +1092,14 @@ func TestHandleDocsKeys_PgUp(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.docs = &DocsState{
+	app.views.Docs = &DocsState{
 		files:    []docs.Doc{{Name: "test.md", Path: "/tmp/t.md"}},
 		cursor:   0,
 		viewport: viewport.New(70, 30),
 		loaded:   true,
 		content:  "content here",
 	}
-	app.docs.viewport.SetContent(app.docs.content)
+	app.views.Docs.viewport.SetContent(app.views.Docs.content)
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyPgUp})
 	result := model.(App)
@@ -1112,8 +1112,8 @@ func TestDashboardKeys_W_FileWatcher(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = false
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
 	app.env.Infra.Watcher = nil // nil watcher, should not panic
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'w'}})
@@ -1125,8 +1125,8 @@ func TestDashboardKeys_P_NotPersonal(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = false
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
 	app.env.Infra.Ctx = platform.Context(1) // Work context
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'P'}})
@@ -1147,8 +1147,8 @@ func TestDashboardKeys_P_Personal(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = false
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
 	app.env.Infra.Ctx = platform.Context(0) // Personal context
 
 	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'P'}})
@@ -1161,14 +1161,14 @@ func TestDashboardKeys_NumberKeys(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = false
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
 	app.registry = newTestRegistry()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'3'}})
 	result := model.(App)
-	if result.dashboard.Cursor != 3 {
-		t.Errorf("expected cursor=3 after '3', got %d", result.dashboard.Cursor)
+	if result.views.Dashboard.Cursor != 3 {
+		t.Errorf("expected cursor=3 after '3', got %d", result.views.Dashboard.Cursor)
 	}
 	if result.view != ViewDossier {
 		t.Errorf("expected ViewDossier after number key, got %d", result.view)
@@ -1179,8 +1179,8 @@ func TestDashboardKeys_G_GitStatusCmd(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = false
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
 
 	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}})
 	if cmd == nil {
@@ -1192,8 +1192,8 @@ func TestDashboardKeys_D_GitDiffCmd(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = false
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
 
 	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
 	if cmd == nil {
@@ -1205,8 +1205,8 @@ func TestDashboardKeys_F1_Protocol(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = false
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
 
 	// The handler checks msg.String() == "F1" — send as Runes
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("F1")})
@@ -1330,8 +1330,8 @@ func TestRenderDashboard_WideLayout(t *testing.T) {
 	app.height = 40
 	app.view = ViewDashboard
 	app.registry = newTestRegistry()
-	app.browser.Active = false
-	app.terminal.Active = false
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
 
 	result := app.renderDashboard()
 	if result == "" {
@@ -1346,7 +1346,7 @@ func TestRenderDashboard_MediumLayout(t *testing.T) {
 	app.height = 40
 	app.view = ViewDashboard
 	app.registry = newTestRegistry()
-	app.browser.Active = false
+	app.views.Browser.Active = false
 
 	result := app.renderDashboard()
 	if result == "" {
@@ -1361,7 +1361,7 @@ func TestRenderDashboard_NarrowLayout(t *testing.T) {
 	app.height = 40
 	app.view = ViewDashboard
 	app.registry = newTestRegistry()
-	app.browser.Active = false
+	app.views.Browser.Active = false
 
 	result := app.renderDashboard()
 	if result == "" {
@@ -1376,8 +1376,8 @@ func TestRenderDashboard_Searching(t *testing.T) {
 	app.height = 40
 	app.view = ViewDashboard
 	app.registry = newTestRegistry()
-	app.search.Active = true
-	app.browser.Active = false
+	app.views.Search.Active = true
+	app.views.Browser.Active = false
 
 	result := app.renderDashboard()
 	if result == "" {
@@ -1392,8 +1392,8 @@ func TestRenderDashboard_Browsing(t *testing.T) {
 	app.height = 40
 	app.view = ViewDashboard
 	app.registry = newTestRegistry()
-	app.browser.Active = true
-	app.browser.FileBrowser = newFileBrowser()
+	app.views.Browser.Active = true
+	app.views.Browser.FileBrowser = newFileBrowser()
 
 	result := app.renderDashboard()
 	if result == "" {
@@ -1408,8 +1408,8 @@ func TestRenderDashboard_TermActive(t *testing.T) {
 	app.height = 40
 	app.view = ViewDashboard
 	app.registry = newTestRegistry()
-	app.browser.Active = false
-	app.terminal.Active = true
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = true
 
 	result := app.renderDashboard()
 	if result == "" {
@@ -1425,23 +1425,23 @@ func TestSwitchCommsAgent_Found(t *testing.T) {
 	if app.registry.Count() == 0 {
 		t.Skip("no agents loaded")
 	}
-	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.views.Comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
 
 	app.switchCommsAgent("numbuh-4")
-	if app.comms.State.agent != "numbuh-4" {
-		t.Errorf("expected comms agent=numbuh-4, got %s", app.comms.State.agent)
+	if app.views.Comms.State.agent != "numbuh-4" {
+		t.Errorf("expected comms agent=numbuh-4, got %s", app.views.Comms.State.agent)
 	}
 }
 
 func TestSwitchCommsAgent_NotFoundAgent(t *testing.T) {
 	app := NewApp()
 	app.registry = newTestRegistry()
-	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.views.Comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
 
 	app.switchCommsAgent("nonexistent-xyz-999")
 	// Should stay as numbuh-1
-	if app.comms.State.agent != "numbuh-1" {
-		t.Errorf("expected comms agent unchanged, got %s", app.comms.State.agent)
+	if app.views.Comms.State.agent != "numbuh-1" {
+		t.Errorf("expected comms agent unchanged, got %s", app.views.Comms.State.agent)
 	}
 }
 
@@ -1465,9 +1465,9 @@ func TestRenderComms_StreamingMode(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.view = ViewComms
-	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.comms.State.streaming = true
-	app.comms.State.buffer = "streaming response..."
+	app.views.Comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.views.Comms.State.streaming = true
+	app.views.Comms.State.buffer = "streaming response..."
 
 	result := app.renderComms()
 	if result == "" {
@@ -1480,7 +1480,7 @@ func TestRenderComms_StreamingMode(t *testing.T) {
 func TestHandleStreamChunk_NilComms(t *testing.T) {
 	app := NewApp()
 	app.boot.Ready = true
-	app.comms.State = nil
+	app.views.Comms.State = nil
 
 	model, _ := app.Update(streamChunkMsg{text: "hello"})
 	result := model.(App)
@@ -1490,12 +1490,12 @@ func TestHandleStreamChunk_NilComms(t *testing.T) {
 func TestHandleStreamChunk_Error(t *testing.T) {
 	app := NewApp()
 	app.boot.Ready = true
-	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.comms.State.streaming = true
+	app.views.Comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.views.Comms.State.streaming = true
 
 	model, _ := app.Update(streamChunkMsg{err: os.ErrNotExist})
 	result := model.(App)
-	if result.comms.State.streaming {
+	if result.views.Comms.State.streaming {
 		t.Error("expected streaming=false after error")
 	}
 }
@@ -1503,13 +1503,13 @@ func TestHandleStreamChunk_Error(t *testing.T) {
 func TestHandleStreamChunk_Done(t *testing.T) {
 	app := NewApp()
 	app.boot.Ready = true
-	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.comms.State.streaming = true
-	app.comms.State.buffer = "completed response"
+	app.views.Comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.views.Comms.State.streaming = true
+	app.views.Comms.State.buffer = "completed response"
 
 	model, _ := app.Update(streamChunkMsg{done: true})
 	result := model.(App)
-	if result.comms.State.streaming {
+	if result.views.Comms.State.streaming {
 		t.Error("expected streaming=false after done")
 	}
 }
@@ -1534,7 +1534,7 @@ func TestRenderProjects_WithList(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.view = ViewProjects
-	app.projectNav = &ProjectsState{
+	app.views.ProjectNav = &ProjectsState{
 		list: []projects.Project{
 			{Name: "moonbase", Path: "/tmp/moonbase", Type: "go"},
 			{Name: "webapp", Path: "/tmp/webapp", Type: "node"},
@@ -1557,7 +1557,7 @@ func TestRenderProjects_NilNav(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.view = ViewProjects
-	app.projectNav = nil
+	app.views.ProjectNav = nil
 
 	result := app.renderProjects()
 	if result == "" {
@@ -1596,18 +1596,18 @@ func TestHandleSearchKeys_Esc(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.search.Active = true
-	app.search.Input.Focus()
-	app.search.Input.SetValue("test")
-	app.search.Filtered = []int{1, 2}
+	app.views.Search.Active = true
+	app.views.Search.Input.Focus()
+	app.views.Search.Input.SetValue("test")
+	app.views.Search.Filtered = []int{1, 2}
 	app.registry = newTestRegistry()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
 	result := model.(App)
-	if result.search.Active {
+	if result.views.Search.Active {
 		t.Error("expected searching=false after esc")
 	}
-	if result.search.Filtered != nil {
+	if result.views.Search.Filtered != nil {
 		t.Error("expected filtered=nil after esc")
 	}
 }
@@ -1616,19 +1616,19 @@ func TestHandleSearchKeys_EnterWithResults(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.search.Active = true
-	app.search.Input.Focus()
-	app.search.Input.SetValue("numbuh")
+	app.views.Search.Active = true
+	app.views.Search.Input.Focus()
+	app.views.Search.Input.SetValue("numbuh")
 	app.registry = newTestRegistry()
-	app.search.Filtered = []int{2, 3, 5}
+	app.views.Search.Filtered = []int{2, 3, 5}
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
-	if result.search.Active {
+	if result.views.Search.Active {
 		t.Error("expected searching=false after enter")
 	}
-	if result.dashboard.Cursor != 2 {
-		t.Errorf("expected cursor=2 (first filtered), got %d", result.dashboard.Cursor)
+	if result.views.Dashboard.Cursor != 2 {
+		t.Errorf("expected cursor=2 (first filtered), got %d", result.views.Dashboard.Cursor)
 	}
 	if result.view != ViewDossier {
 		t.Errorf("expected ViewDossier after search enter, got %d", result.view)
@@ -1639,14 +1639,14 @@ func TestHandleSearchKeys_EnterNoResults(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.search.Active = true
-	app.search.Input.Focus()
-	app.search.Filtered = nil
+	app.views.Search.Active = true
+	app.views.Search.Input.Focus()
+	app.views.Search.Filtered = nil
 	app.registry = newTestRegistry()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
-	if result.search.Active {
+	if result.views.Search.Active {
 		t.Error("expected searching=false")
 	}
 }
@@ -1655,14 +1655,14 @@ func TestHandleSearchKeys_Typing(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.search.Active = true
-	app.search.Input.Focus()
+	app.views.Search.Active = true
+	app.views.Search.Input.Focus()
 	app.registry = newTestRegistry()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
 	result := model.(App)
-	if result.search.Input.Value() != "n" {
-		t.Errorf("expected search input='n', got %q", result.search.Input.Value())
+	if result.views.Search.Input.Value() != "n" {
+		t.Errorf("expected search input='n', got %q", result.views.Search.Input.Value())
 	}
 }
 
@@ -1783,9 +1783,9 @@ func TestRenderComms_ContextFile(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.view = ViewComms
-	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.ctxFile.Active = true
-	app.ctxFile.Input.SetValue("/some/path")
+	app.views.Comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.views.CtxFile.Active = true
+	app.views.CtxFile.Input.SetValue("/some/path")
 
 	result := app.renderComms()
 	if result == "" {
@@ -1801,8 +1801,8 @@ func TestRenderComms_SnippetPicker(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.view = ViewComms
-	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.snippetPick.Active = true
+	app.views.Comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.views.SnippetPick.Active = true
 
 	result := app.renderComms()
 	if result == "" {
@@ -1838,8 +1838,8 @@ func TestExecTermCmd_CdTildePath(t *testing.T) {
 	if cmd != nil {
 		t.Error("expected nil cmd for cd")
 	}
-	if app.terminal.Cwd != home {
-		t.Logf("cwd after cd ~/: %s (expected %s)", app.terminal.Cwd, home)
+	if app.views.Terminal.Cwd != home {
+		t.Logf("cwd after cd ~/: %s (expected %s)", app.views.Terminal.Cwd, home)
 	}
 }
 
@@ -1855,14 +1855,14 @@ func TestCommsKeys_ContextFile_EnterValid(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.ctxFile.Active = true
-	app.ctxFile.Input.Focus()
-	app.ctxFile.Input.SetValue(tmpFile)
+	app.views.Comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.views.CtxFile.Active = true
+	app.views.CtxFile.Input.Focus()
+	app.views.CtxFile.Input.SetValue(tmpFile)
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
-	if result.ctxFile.Active {
+	if result.views.CtxFile.Active {
 		t.Error("expected ctxFile.Active=false after enter")
 	}
 }
@@ -1873,14 +1873,14 @@ func TestCommsKeys_ContextFile_EnterInvalid(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.ctxFile.Active = true
-	app.ctxFile.Input.Focus()
-	app.ctxFile.Input.SetValue("/nonexistent/path/xyz.txt")
+	app.views.Comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.views.CtxFile.Active = true
+	app.views.CtxFile.Input.Focus()
+	app.views.CtxFile.Input.SetValue("/nonexistent/path/xyz.txt")
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
-	if result.ctxFile.Active {
+	if result.views.CtxFile.Active {
 		t.Error("expected ctxFile.Active=false after enter")
 	}
 }
@@ -1902,14 +1902,14 @@ func TestCommsKeys_AtAgent(t *testing.T) {
 	}
 	// Use the second agent's actual name
 	targetAgent := app.registry.Get(1)
-	app.comms.State = newCommsState(app.registry.Get(0).Name, "prompt", 80, 40)
-	app.comms.Input.Focus()
-	app.comms.Input.SetValue("@" + targetAgent.Name)
+	app.views.Comms.State = newCommsState(app.registry.Get(0).Name, "prompt", 80, 40)
+	app.views.Comms.Input.Focus()
+	app.views.Comms.Input.SetValue("@" + targetAgent.Name)
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
-	if result.comms.State.agent != targetAgent.Name {
-		t.Errorf("expected agent switch to %s, got %s", targetAgent.Name, result.comms.State.agent)
+	if result.views.Comms.State.agent != targetAgent.Name {
+		t.Errorf("expected agent switch to %s, got %s", targetAgent.Name, result.views.Comms.State.agent)
 	}
 }
 
@@ -1930,16 +1930,16 @@ func TestTerminalKeys_BacktickToFB(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = true
-	app.terminal.Input.Focus()
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = true
+	app.views.Terminal.Input.Focus()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'`'}})
 	result := model.(App)
-	if result.terminal.Active {
+	if result.views.Terminal.Active {
 		t.Error("expected termActive=false after backtick")
 	}
-	if !result.browser.Active {
+	if !result.views.Browser.Active {
 		t.Error("expected browsing=true after backtick")
 	}
 }
@@ -1950,14 +1950,14 @@ func TestTerminalKeys_DefaultChar(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = true
-	app.terminal.Input.Focus()
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = true
+	app.views.Terminal.Input.Focus()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
 	result := model.(App)
-	if result.terminal.Input.Value() != "x" {
-		t.Errorf("expected 'x' in termInput, got %q", result.terminal.Input.Value())
+	if result.views.Terminal.Input.Value() != "x" {
+		t.Errorf("expected 'x' in termInput, got %q", result.views.Terminal.Input.Value())
 	}
 }
 
@@ -1967,16 +1967,16 @@ func TestFileBrowserKeys_BacktickToTerm(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = true
-	app.terminal.Active = false
-	app.browser.FileBrowser = newFileBrowser()
+	app.views.Browser.Active = true
+	app.views.Terminal.Active = false
+	app.views.Browser.FileBrowser = newFileBrowser()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'`'}})
 	result := model.(App)
-	if result.browser.Active {
+	if result.views.Browser.Active {
 		t.Error("expected browsing=false after backtick")
 	}
-	if !result.terminal.Active {
+	if !result.views.Terminal.Active {
 		t.Error("expected termActive=true after backtick")
 	}
 }
@@ -1987,13 +1987,13 @@ func TestFileBrowserKeys_Edit(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = true
-	app.browser.FileBrowser = newFileBrowser()
+	app.views.Browser.Active = true
+	app.views.Browser.FileBrowser = newFileBrowser()
 
 	// Find a file entry
-	for i, e := range app.browser.FileBrowser.entries {
+	for i, e := range app.views.Browser.FileBrowser.entries {
 		if !e.IsDir {
-			app.browser.FileBrowser.cursor = i
+			app.views.Browser.FileBrowser.cursor = i
 			break
 		}
 	}
@@ -2009,8 +2009,8 @@ func TestFileBrowserKeys_DotRefresh(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = true
-	app.browser.FileBrowser = newFileBrowser()
+	app.views.Browser.Active = true
+	app.views.Browser.FileBrowser = newFileBrowser()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'.'}})
 	result := model.(App)
@@ -2025,12 +2025,12 @@ func TestCommsKeys_CtrlS(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.comms.Input.Focus()
+	app.views.Comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.views.Comms.Input.Focus()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
 	result := model.(App)
-	if !result.snippetPick.Active {
+	if !result.views.SnippetPick.Active {
 		t.Error("expected snippetPick.Active=true after ctrl+s")
 	}
 }
@@ -2043,12 +2043,12 @@ func TestCommsKeys_CtrlF(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.comms.Input.Focus()
+	app.views.Comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.views.Comms.Input.Focus()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyCtrlF})
 	result := model.(App)
-	if !result.ctxFile.Active {
+	if !result.views.CtxFile.Active {
 		t.Error("expected ctxFile.Active=true after ctrl+f")
 	}
 }
@@ -2061,13 +2061,13 @@ func TestCommsKeys_ContextFile_Esc(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.ctxFile.Active = true
-	app.ctxFile.Input.Focus()
+	app.views.Comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.views.CtxFile.Active = true
+	app.views.CtxFile.Input.Focus()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
 	result := model.(App)
-	if result.ctxFile.Active {
+	if result.views.CtxFile.Active {
 		t.Error("expected ctxFile.Active=false after esc")
 	}
 }
@@ -2080,14 +2080,14 @@ func TestCommsKeys_ContextFile_Typing(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.ctxFile.Active = true
-	app.ctxFile.Input.Focus()
+	app.views.Comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.views.CtxFile.Active = true
+	app.views.CtxFile.Input.Focus()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
 	result := model.(App)
-	if result.ctxFile.Input.Value() != "a" {
-		t.Errorf("expected 'a', got %q", result.ctxFile.Input.Value())
+	if result.views.CtxFile.Input.Value() != "a" {
+		t.Errorf("expected 'a', got %q", result.views.CtxFile.Input.Value())
 	}
 }
 
@@ -2099,8 +2099,8 @@ func TestCommsKeys_EscBack(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.comms.Input.Focus()
+	app.views.Comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.views.Comms.Input.Focus()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
 	result := model.(App)
@@ -2117,8 +2117,8 @@ func TestCommsKeys_CtrlC(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.comms.Input.Focus()
+	app.views.Comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.views.Comms.Input.Focus()
 
 	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
 	if cmd == nil {
@@ -2134,13 +2134,13 @@ func TestCommsKeys_Typing(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.comms.Input.Focus()
+	app.views.Comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.views.Comms.Input.Focus()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'h'}})
 	result := model.(App)
-	if result.comms.Input.Value() != "h" {
-		t.Errorf("expected 'h', got %q", result.comms.Input.Value())
+	if result.views.Comms.Input.Value() != "h" {
+		t.Errorf("expected 'h', got %q", result.views.Comms.Input.Value())
 	}
 }
 
@@ -2152,10 +2152,10 @@ func TestCommsKeys_StreamingBlocked(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.comms.State.streaming = true
-	app.comms.Input.Focus()
-	app.comms.Input.SetValue("")
+	app.views.Comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.views.Comms.State.streaming = true
+	app.views.Comms.Input.Focus()
+	app.views.Comms.Input.SetValue("")
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
@@ -2168,9 +2168,9 @@ func TestCommsKeys_StreamingBlocked(t *testing.T) {
 func TestHandlePhaseResult_SuccessAdvance(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
-	app.pipeline.State = pipeline.New("test")
-	app.pipeline.State.Phases[0].Status = pipeline.StatusRunning
-	app.pipeline.Running = true
+	app.views.Pipeline.State = pipeline.New("test")
+	app.views.Pipeline.State.Phases[0].Status = pipeline.StatusRunning
+	app.views.Pipeline.Running = true
 	app.env.Backend.Active = nil
 
 	msg := PhaseResultMsg{
@@ -2183,7 +2183,7 @@ func TestHandlePhaseResult_SuccessAdvance(t *testing.T) {
 	cmd := app.handlePhaseResult(msg)
 	// Should advance the pipeline
 	_ = cmd
-	if app.pipeline.Running {
+	if app.views.Pipeline.Running {
 		t.Error("expected pipelineRunning=false after phase result")
 	}
 }
@@ -2193,12 +2193,12 @@ func TestHandlePhaseResult_SuccessAdvance(t *testing.T) {
 func TestHandlePhaseResult_RiskCritical(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
-	app.pipeline.State = pipeline.New("critical test")
+	app.views.Pipeline.State = pipeline.New("critical test")
 	for i := 0; i < 3; i++ {
-		app.pipeline.State.Advance()
+		app.views.Pipeline.State.Advance()
 	}
-	app.pipeline.State.Phases[3].Status = pipeline.StatusRunning
-	app.pipeline.Running = true
+	app.views.Pipeline.State.Phases[3].Status = pipeline.StatusRunning
+	app.views.Pipeline.Running = true
 	app.env.Backend.Active = nil
 
 	msg := PhaseResultMsg{
@@ -2378,8 +2378,8 @@ func TestRelayToAgent_InlineRegistry(t *testing.T) {
 	agent1 := reg.Get(1)
 	t.Logf("Testing relay from %s to %s (registry has %d agents)", agent0.Name, agent1.Name, reg.Count())
 
-	app.comms.State = newCommsState(agent0.Name, agent0.Prompt, 80, 40)
-	app.comms.State.conv.Add(chat.RoleAssistant, "Here is my detailed analysis.")
+	app.views.Comms.State = newCommsState(agent0.Name, agent0.Prompt, 80, 40)
+	app.views.Comms.State.conv.Add(chat.RoleAssistant, "Here is my detailed analysis.")
 
 	// Relay with empty msg (should use last assistant message)
 	cmd := app.relayToAgent(agent1.Name, "")
@@ -2413,9 +2413,9 @@ func TestFilterAgents_ByDescriptionMatch(t *testing.T) {
 	words := []rune(agent.Description)
 	query := string(words[:min(6, len(words))])
 
-	app.search.Input.SetValue(query)
+	app.views.Search.Input.SetValue(query)
 	app.filterAgents()
-	if len(app.search.Filtered) == 0 {
+	if len(app.views.Search.Filtered) == 0 {
 		t.Logf("no match for description query %q (desc: %q)", query, agent.Description)
 	}
 }
@@ -2432,11 +2432,11 @@ func TestSwitchCommsAgent_FoundReal(t *testing.T) {
 		t.Skip("need at least 2 agents")
 	}
 	agent1 := app.registry.Get(1)
-	app.comms.State = newCommsState(app.registry.Get(0).Name, "prompt", 80, 40)
+	app.views.Comms.State = newCommsState(app.registry.Get(0).Name, "prompt", 80, 40)
 
 	app.switchCommsAgent(agent1.Name)
-	if app.comms.State.agent != agent1.Name {
-		t.Errorf("expected comms.agent=%s, got %s", agent1.Name, app.comms.State.agent)
+	if app.views.Comms.State.agent != agent1.Name {
+		t.Errorf("expected comms.agent=%s, got %s", agent1.Name, app.views.Comms.State.agent)
 	}
 }
 
@@ -2485,7 +2485,7 @@ func TestRender1Col(t *testing.T) {
 	app.width = 60
 	app.height = 40
 	app.registry = newTestRegistry()
-	app.browser.Active = false
+	app.views.Browser.Active = false
 
 	result := app.render1Col(30)
 	if result == "" {
@@ -2501,8 +2501,8 @@ func TestRenderPipeline_SmallHeight(t *testing.T) {
 	app.width = 100
 	app.height = 14 // maxLines = height-12 = 2 < 5, so maxLines becomes 5
 	app.view = ViewPipeline
-	app.pipeline.State = pipeline.New("small height test")
-	app.pipeline.Chat = []PipelineMsg{
+	app.views.Pipeline.State = pipeline.New("small height test")
+	app.views.Pipeline.Chat = []PipelineMsg{
 		{"", "🎯 Risk Gate: LOW — proceed"},
 		{"", "└── ✅ Phase complete"},
 		{"", "└── ❌ Phase failed"},
@@ -2527,8 +2527,8 @@ func TestRenderPipeline_RiskGateMessages(t *testing.T) {
 	app.width = 100
 	app.height = 50
 	app.view = ViewPipeline
-	app.pipeline.State = pipeline.New("risk messages test")
-	app.pipeline.Chat = []PipelineMsg{
+	app.views.Pipeline.State = pipeline.New("risk messages test")
+	app.views.Pipeline.Chat = []PipelineMsg{
 		{"", "━━━ MISSION: risk messages test ━━━"},
 		{"", "────────────────────────────────"},
 		{"", "🎯 Risk Gate: LOW — proceed"},
@@ -2578,7 +2578,7 @@ func TestRenderDossier_LongHookCommand(t *testing.T) {
 	app.height = 40
 	app.view = ViewDossier
 	app.registry = newTestRegistry()
-	app.dashboard.Selected = 0
+	app.views.Dashboard.Selected = 0
 
 	// We test render regardless of hook presence
 	result := app.renderDossier()
@@ -2595,11 +2595,11 @@ func TestCommsKeys_SnippetPicker_Enter(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.snippetPick.Active = true
-	app.snippetPick.Cursor = 0
+	app.views.Comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.views.SnippetPick.Active = true
+	app.views.SnippetPick.Cursor = 0
 	// Empty list — enter should not crash
-	app.snippetPick.List = nil
+	app.views.SnippetPick.List = nil
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
@@ -2612,12 +2612,12 @@ func TestCommsKeys_SnippetPicker_Esc(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.snippetPick.Active = true
+	app.views.Comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.views.SnippetPick.Active = true
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
 	result := model.(App)
-	if result.snippetPick.Active {
+	if result.views.SnippetPick.Active {
 		t.Error("expected snippetPick.Active=false after esc")
 	}
 }
@@ -2628,9 +2628,9 @@ func TestCommsKeys_SnippetPicker_Navigate(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.snippetPick.Active = true
-	app.snippetPick.Cursor = 0
+	app.views.Comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.views.SnippetPick.Active = true
+	app.views.SnippetPick.Cursor = 0
 
 	// Navigate down
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
@@ -2652,9 +2652,9 @@ func TestCommsKeys_DoubleArrow_NoSpace(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.registry = newTestRegistry()
-	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.comms.Input.Focus()
-	app.comms.Input.SetValue(">>numbuh-2") // no space = only 1 part
+	app.views.Comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.views.Comms.Input.Focus()
+	app.views.Comms.Input.SetValue(">>numbuh-2") // no space = only 1 part
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
@@ -2685,7 +2685,7 @@ func TestRenderProjects_EmptyList(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.view = ViewProjects
-	app.projectNav = &ProjectsState{list: nil}
+	app.views.ProjectNav = &ProjectsState{list: nil}
 
 	result := app.renderProjects()
 	if result == "" {
@@ -2697,9 +2697,9 @@ func TestRenderProjects_EmptyList(t *testing.T) {
 
 func TestHandlePhaseResult_SuccessWithLongOutput(t *testing.T) {
 	app := NewApp()
-	app.pipeline.State = pipeline.New("long output test")
-	app.pipeline.State.Phases[0].Status = pipeline.StatusRunning
-	app.pipeline.Running = true
+	app.views.Pipeline.State = pipeline.New("long output test")
+	app.views.Pipeline.State.Phases[0].Status = pipeline.StatusRunning
+	app.views.Pipeline.Running = true
 	app.env.Backend.Active = nil
 
 	// Create output longer than maxSummaryChars
@@ -2718,12 +2718,12 @@ func TestHandlePhaseResult_SuccessWithLongOutput(t *testing.T) {
 	app.handlePhaseResult(msg)
 	// Check that pipelineChat has truncated output
 	found := false
-	for _, m := range app.pipeline.Chat {
+	for _, m := range app.views.Pipeline.Chat {
 		if len(m.Content) > 0 && len(m.Content) <= maxSummaryChars+5 {
 			found = true
 		}
 	}
-	if !found && len(app.pipeline.Chat) == 0 {
+	if !found && len(app.views.Pipeline.Chat) == 0 {
 		t.Error("expected pipeline chat to have entries")
 	}
 }
@@ -2818,14 +2818,14 @@ func TestRenderFileBrowser_ManyEntries(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 20
-	app.browser.Active = true
+	app.views.Browser.Active = true
 
 	// Create file browser with many entries
 	entries := make([]FileEntry, 50)
 	for i := range entries {
 		entries[i] = FileEntry{Name: "file" + string(rune('a'+i%26)) + ".go", IsDir: false, Size: 100}
 	}
-	app.browser.FileBrowser = &FileBrowser{
+	app.views.Browser.FileBrowser = &FileBrowser{
 		dir:     "/tmp",
 		entries: entries,
 		cursor:  45, // near the end — tests the scroll start calculation
@@ -2873,26 +2873,26 @@ func TestRenderDashboard_AllStatusModes(t *testing.T) {
 	app.registry = newTestRegistry()
 
 	// Test searching mode status bar
-	app.search.Active = true
-	app.browser.Active = false
-	app.terminal.Active = false
+	app.views.Search.Active = true
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
 	result := app.renderDashboard()
 	if result == "" {
 		t.Error("expected non-empty dashboard in search mode")
 	}
 
 	// Test browsing mode
-	app.search.Active = false
-	app.browser.Active = true
-	app.browser.FileBrowser = newFileBrowser()
+	app.views.Search.Active = false
+	app.views.Browser.Active = true
+	app.views.Browser.FileBrowser = newFileBrowser()
 	result = app.renderDashboard()
 	if result == "" {
 		t.Error("expected non-empty dashboard in browsing mode")
 	}
 
 	// Test termActive mode
-	app.browser.Active = false
-	app.terminal.Active = true
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = true
 	result = app.renderDashboard()
 	if result == "" {
 		t.Error("expected non-empty dashboard in termActive mode")
@@ -2935,11 +2935,11 @@ func TestCommsKeys_SnippetPicker_EnterWithItems(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.snippetPick.Active = true
-	app.snippetPick.Cursor = 0
+	app.views.Comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.views.SnippetPick.Active = true
+	app.views.SnippetPick.Cursor = 0
 	// snippetPick.List is populated by ForAgent — just verify empty list path
-	app.snippetPick.List = nil
+	app.views.SnippetPick.List = nil
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
@@ -2958,10 +2958,10 @@ func TestRenderFileBrowser_WithDirs(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 30
-	app.browser.Active = true
-	app.browser.FileBrowser = &FileBrowser{dir: tmpDir}
-	app.browser.FileBrowser.refresh()
-	app.browser.FileBrowser.cursor = 0
+	app.views.Browser.Active = true
+	app.views.Browser.FileBrowser = &FileBrowser{dir: tmpDir}
+	app.views.Browser.FileBrowser.refresh()
+	app.views.Browser.FileBrowser.cursor = 0
 
 	result := app.renderFileBrowser(80, 25)
 	if result == "" {
@@ -2978,14 +2978,14 @@ func TestFileBrowserKeys_EditFile(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = true
-	app.browser.FileBrowser = &FileBrowser{dir: tmpDir}
-	app.browser.FileBrowser.refresh()
+	app.views.Browser.Active = true
+	app.views.Browser.FileBrowser = &FileBrowser{dir: tmpDir}
+	app.views.Browser.FileBrowser.refresh()
 
 	// Find the file entry
-	for i, e := range app.browser.FileBrowser.entries {
+	for i, e := range app.views.Browser.FileBrowser.entries {
 		if !e.IsDir {
-			app.browser.FileBrowser.cursor = i
+			app.views.Browser.FileBrowser.cursor = i
 			break
 		}
 	}
@@ -3001,13 +3001,13 @@ func TestFileBrowserKeys_EditFile(t *testing.T) {
 func TestHandlePhaseResult_MediumRework(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
-	app.pipeline.State = pipeline.New("rework test")
+	app.views.Pipeline.State = pipeline.New("rework test")
 	// Advance to QA phase (phase 4, index 3)
 	for i := 0; i < 3; i++ {
-		app.pipeline.State.Advance()
+		app.views.Pipeline.State.Advance()
 	}
-	app.pipeline.State.Phases[3].Status = pipeline.StatusRunning
-	app.pipeline.Running = true
+	app.views.Pipeline.State.Phases[3].Status = pipeline.StatusRunning
+	app.views.Pipeline.Running = true
 	app.env.Backend.Active = nil // no backend to execute rework
 
 	msg := PhaseResultMsg{
@@ -3020,8 +3020,8 @@ func TestHandlePhaseResult_MediumRework(t *testing.T) {
 	cmd := app.handlePhaseResult(msg)
 	// Should try to start rework phase but fail (no backend)
 	_ = cmd
-	if app.pipeline.State.Context.RiskLevel != "MEDIUM" {
-		t.Errorf("expected MEDIUM risk, got %s", app.pipeline.State.Context.RiskLevel)
+	if app.views.Pipeline.State.Context.RiskLevel != "MEDIUM" {
+		t.Errorf("expected MEDIUM risk, got %s", app.views.Pipeline.State.Context.RiskLevel)
 	}
 }
 
@@ -3101,9 +3101,9 @@ func TestRenderFileBrowser_TinyHeight(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 80
 	app.height = 10
-	app.browser.Active = true
-	app.browser.FileBrowser = &FileBrowser{dir: tmpDir}
-	app.browser.FileBrowser.refresh()
+	app.views.Browser.Active = true
+	app.views.Browser.FileBrowser = &FileBrowser{dir: tmpDir}
+	app.views.Browser.FileBrowser.refresh()
 
 	result := app.renderFileBrowser(60, 5) // maxH=5, maxFiles=5-4=1 < 3
 	if result == "" {
@@ -3130,14 +3130,14 @@ func TestRenderFileBrowser_LongPreview(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 60
 	app.height = 10
-	app.browser.Active = true
-	app.browser.FileBrowser = &FileBrowser{dir: tmpDir}
-	app.browser.FileBrowser.refresh()
+	app.views.Browser.Active = true
+	app.views.Browser.FileBrowser = &FileBrowser{dir: tmpDir}
+	app.views.Browser.FileBrowser.refresh()
 	// Select the file
-	for i, e := range app.browser.FileBrowser.entries {
+	for i, e := range app.views.Browser.FileBrowser.entries {
 		if e.Name == "long.txt" {
-			app.browser.FileBrowser.cursor = i
-			app.browser.FileBrowser.updatePreview()
+			app.views.Browser.FileBrowser.cursor = i
+			app.views.Browser.FileBrowser.updatePreview()
 			break
 		}
 	}
@@ -3159,9 +3159,9 @@ func TestRenderFileBrowser_LongFileName(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 60
 	app.height = 20
-	app.browser.Active = true
-	app.browser.FileBrowser = &FileBrowser{dir: tmpDir}
-	app.browser.FileBrowser.refresh()
+	app.views.Browser.Active = true
+	app.views.Browser.FileBrowser = &FileBrowser{dir: tmpDir}
+	app.views.Browser.FileBrowser.refresh()
 
 	result := app.renderFileBrowser(40, 15) // narrow width to trigger name truncation
 	if result == "" {
@@ -3181,7 +3181,7 @@ func TestDocsView_EnterLoadsDoc(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.docs = &DocsState{
+	app.views.Docs = &DocsState{
 		files:    []docs.Doc{{Name: "test.md", Path: tmpFile}},
 		cursor:   0,
 		viewport: viewport.New(70, 30),
@@ -3189,10 +3189,10 @@ func TestDocsView_EnterLoadsDoc(t *testing.T) {
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
-	if !result.docs.loaded {
+	if !result.views.Docs.loaded {
 		t.Error("expected loaded=true after enter on doc")
 	}
-	if result.docs.content == "" {
+	if result.views.Docs.content == "" {
 		t.Error("expected non-empty content after enter")
 	}
 }
@@ -3224,13 +3224,13 @@ func TestNewApp_WithHistoryData(t *testing.T) {
 	app := NewApp()
 
 	// The sidebar caps at 5 most-recent missions.
-	if len(app.mission.History) != 5 {
-		t.Errorf("expected sidebar capped at 5 missions, got %d", len(app.mission.History))
+	if len(app.views.Mission.History) != 5 {
+		t.Errorf("expected sidebar capped at 5 missions, got %d", len(app.views.Mission.History))
 	}
 
 	// All three status glyphs must be present among the loaded missions.
 	var hasComplete, hasAborted, hasInProgress bool
-	for _, m := range app.mission.History {
+	for _, m := range app.views.Mission.History {
 		switch m.Status {
 		case "✅":
 			hasComplete = true
@@ -3257,12 +3257,12 @@ func TestDashboardKeys_QuitWithPipeline(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = false
-	app.pipeline.State = pipeline.New("test")
-	app.pipeline.Running = true
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
+	app.views.Pipeline.State = pipeline.New("test")
+	app.views.Pipeline.Running = true
 	cancelled := false
-	app.pipeline.Cancel = func() { cancelled = true }
+	app.views.Pipeline.Cancel = func() { cancelled = true }
 
 	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
 	if cmd == nil {
@@ -3279,24 +3279,24 @@ func TestDashboardKeys_DoubleEscAbort(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = false
-	app.pipeline.State = pipeline.New("abort test")
-	app.pipeline.Running = true
-	app.pipeline.AbortPending = true
-	app.pipeline.AbortAt = time.Now() // within 3s window
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
+	app.views.Pipeline.State = pipeline.New("abort test")
+	app.views.Pipeline.Running = true
+	app.views.Pipeline.AbortPending = true
+	app.views.Pipeline.AbortAt = time.Now() // within 3s window
 	cancelled := false
-	app.pipeline.Cancel = func() { cancelled = true }
+	app.views.Pipeline.Cancel = func() { cancelled = true }
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
 	result := model.(App)
-	if result.pipeline.Running {
+	if result.views.Pipeline.Running {
 		t.Error("expected pipelineRunning=false after double esc")
 	}
 	if !cancelled {
 		t.Error("expected cancelPipeline called on double esc")
 	}
-	if result.pipeline.AbortPending {
+	if result.views.Pipeline.AbortPending {
 		t.Error("expected abortPending=false after abort")
 	}
 }
@@ -3307,10 +3307,10 @@ func TestDashboardKeys_C_CopyInDossier(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDossier
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = false
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
 	app.registry = newTestRegistry()
-	app.dashboard.Selected = 0
+	app.views.Dashboard.Selected = 0
 
 	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'c'}})
 	if cmd == nil {
@@ -3329,7 +3329,7 @@ func TestRenderProjects_EmptyNav(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.view = ViewProjects
-	app.projectNav = &ProjectsState{
+	app.views.ProjectNav = &ProjectsState{
 		list:   []projects.Project{},
 		cursor: 0,
 	}
@@ -3353,22 +3353,22 @@ func TestFileBrowserKeys_EnterDir(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = true
-	app.browser.FileBrowser = &FileBrowser{dir: tmpDir}
-	app.browser.FileBrowser.refresh()
+	app.views.Browser.Active = true
+	app.views.Browser.FileBrowser = &FileBrowser{dir: tmpDir}
+	app.views.Browser.FileBrowser.refresh()
 
 	// Find the dir entry
-	for i, e := range app.browser.FileBrowser.entries {
+	for i, e := range app.views.Browser.FileBrowser.entries {
 		if e.IsDir && e.Name == "subdir" {
-			app.browser.FileBrowser.cursor = i
+			app.views.Browser.FileBrowser.cursor = i
 			break
 		}
 	}
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
-	if result.browser.FileBrowser.dir != subDir {
-		t.Logf("expected dir=%s, got %s", subDir, result.browser.FileBrowser.dir)
+	if result.views.Browser.FileBrowser.dir != subDir {
+		t.Logf("expected dir=%s, got %s", subDir, result.views.Browser.FileBrowser.dir)
 	}
 }
 
@@ -3393,7 +3393,7 @@ func TestDocsKeys_NavigateMultiFile(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.docs = &DocsState{
+	app.views.Docs = &DocsState{
 		files: []docs.Doc{
 			{Name: "a.md", Path: "/tmp/a.md"},
 			{Name: "b.md", Path: "/tmp/b.md"},
@@ -3408,15 +3408,15 @@ func TestDocsKeys_NavigateMultiFile(t *testing.T) {
 	// Navigate up from cursor=1 to cursor=0
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
 	result := model.(App)
-	if result.docs.cursor != 0 {
-		t.Errorf("expected cursor=0 after k, got %d", result.docs.cursor)
+	if result.views.Docs.cursor != 0 {
+		t.Errorf("expected cursor=0 after k, got %d", result.views.Docs.cursor)
 	}
 
 	// Navigate down from cursor=0 to cursor=1
 	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
 	result = model.(App)
-	if result.docs.cursor != 1 {
-		t.Errorf("expected cursor=1 after j, got %d", result.docs.cursor)
+	if result.views.Docs.cursor != 1 {
+		t.Errorf("expected cursor=1 after j, got %d", result.views.Docs.cursor)
 	}
 }
 
@@ -3426,7 +3426,7 @@ func TestProjectsKeys_NavigateDown(t *testing.T) {
 	app := NewApp()
 	app.view = ViewProjects
 	app.boot.Ready = true
-	app.projectNav = &ProjectsState{
+	app.views.ProjectNav = &ProjectsState{
 		list: []projects.Project{
 			{Name: "a", Path: "/tmp/a", Type: "go"},
 			{Name: "b", Path: "/tmp/b", Type: "node"},
@@ -3436,8 +3436,8 @@ func TestProjectsKeys_NavigateDown(t *testing.T) {
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
 	result := model.(App)
-	if result.projectNav.cursor != 1 {
-		t.Errorf("expected cursor=1 after j in projects, got %d", result.projectNav.cursor)
+	if result.views.ProjectNav.cursor != 1 {
+		t.Errorf("expected cursor=1 after j in projects, got %d", result.views.ProjectNav.cursor)
 	}
 }
 
@@ -3447,10 +3447,10 @@ func TestDashboardKeys_C_OpensComms(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = false
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
 	app.registry = newTestRegistry()
-	app.dashboard.Selected = 0
+	app.views.Dashboard.Selected = 0
 	app.width = 100
 	app.height = 40
 
@@ -3469,9 +3469,9 @@ func TestCommsKeys_DefaultTyping(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.comms.State.streaming = false
-	app.comms.Input.Focus()
+	app.views.Comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.views.Comms.State.streaming = false
+	app.views.Comms.Input.Focus()
 
 	// Type a backspace (non-rune key that goes to default)
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyBackspace})
@@ -3487,14 +3487,14 @@ func TestHandleStreamChunk_TextContent(t *testing.T) {
 
 	app := NewApp()
 	app.boot.Ready = true
-	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.comms.State.streaming = true
-	app.pipeline.StreamCh = ch
+	app.views.Comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.views.Comms.State.streaming = true
+	app.views.Pipeline.StreamCh = ch
 
 	model, cmd := app.Update(streamChunkMsg{text: "hello world"})
 	result := model.(App)
-	if result.comms.State.buffer != "hello world" {
-		t.Errorf("expected buffer='hello world', got %q", result.comms.State.buffer)
+	if result.views.Comms.State.buffer != "hello world" {
+		t.Errorf("expected buffer='hello world', got %q", result.views.Comms.State.buffer)
 	}
 	if cmd == nil {
 		t.Error("expected non-nil cmd (pollStream continuation)")
@@ -3512,23 +3512,23 @@ func TestFileBrowserKeys_UpDown(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = true
-	app.terminal.Active = false
-	app.browser.FileBrowser = &FileBrowser{dir: tmpDir}
-	app.browser.FileBrowser.refresh()
-	app.browser.FileBrowser.cursor = 0
+	app.views.Browser.Active = true
+	app.views.Terminal.Active = false
+	app.views.Browser.FileBrowser = &FileBrowser{dir: tmpDir}
+	app.views.Browser.FileBrowser.refresh()
+	app.views.Browser.FileBrowser.cursor = 0
 
 	// Move down
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
 	result := model.(App)
-	if result.browser.FileBrowser.cursor != 1 {
-		t.Errorf("expected cursor=1 after j, got %d", result.browser.FileBrowser.cursor)
+	if result.views.Browser.FileBrowser.cursor != 1 {
+		t.Errorf("expected cursor=1 after j, got %d", result.views.Browser.FileBrowser.cursor)
 	}
 
 	// Move up
 	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
 	result = model.(App)
-	if result.browser.FileBrowser.cursor != 0 {
-		t.Errorf("expected cursor=0 after k, got %d", result.browser.FileBrowser.cursor)
+	if result.views.Browser.FileBrowser.cursor != 0 {
+		t.Errorf("expected cursor=0 after k, got %d", result.views.Browser.FileBrowser.cursor)
 	}
 }

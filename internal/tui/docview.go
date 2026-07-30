@@ -53,7 +53,7 @@ func (d *DocsState) loadDoc(idx int, width int) {
 func (a App) renderDocs() string {
 	header := a.renderHeader("Documentation")
 
-	if a.docs == nil || len(a.docs.files) == 0 {
+	if a.views.Docs == nil || len(a.views.Docs.files) == 0 {
 		body := a.theme.Styles.Panel.Width(a.width - 4).Render(
 			lipgloss.NewStyle().Foreground(a.theme.Data.Dim).Render("\n  No documentation found.\n\n  Place .md files in: docs/, wiki/, spec/, or project root.\n"))
 		statusBar := a.renderContextualStatusBar()
@@ -68,12 +68,12 @@ func (a App) renderDocs() string {
 	s.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Brand).Bold(true).Render("◆ DOCS") + "\n")
 	s.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Dim).Render("──────────────────") + "\n")
 
-	for i, f := range a.docs.files {
+	for i, f := range a.views.Docs.files {
 		name := f.Name
 		if len(name) > sideW-4 {
 			name = name[:sideW-4]
 		}
-		if i == a.docs.cursor {
+		if i == a.views.Docs.cursor {
 			s.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Active).Bold(true).Render(fmt.Sprintf(" ▸ %s", name)) + "\n")
 		} else {
 			s.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Dim).Render(fmt.Sprintf("   %s", name)) + "\n")
@@ -94,7 +94,7 @@ func (a App) renderDocs() string {
 		BorderForeground(a.theme.Data.Info).
 		Width(mainW).
 		Height(a.height - 3).
-		Render(a.docs.viewport.View())
+		Render(a.views.Docs.viewport.View())
 
 	body := lipgloss.JoinHorizontal(lipgloss.Top, sidebar, " ", mainPanel)
 	statusBar := a.renderContextualStatusBar()

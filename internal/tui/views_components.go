@@ -68,7 +68,7 @@ func (a App) renderSidebar(width int, maxH int) string {
 		s.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Brand).Bold(true).Render("◆ "+group.title) + "\n")
 
 		for _, entry := range group.entries {
-			isSelected := entry.index == a.dashboard.Cursor
+			isSelected := entry.index == a.views.Dashboard.Cursor
 
 			// Build the line
 			prefix := " "
@@ -172,7 +172,7 @@ func (a App) renderSidebar(width int, maxH int) string {
 
 func (a App) renderMainPanel(width int, maxH int) string {
 	// KND file browser mode
-	if a.browser.Active && a.browser.FileBrowser != nil {
+	if a.views.Browser.Active && a.views.Browser.FileBrowser != nil {
 		return a.renderFileBrowser(width, maxH)
 	}
 
@@ -184,7 +184,7 @@ func (a App) renderMainPanel(width int, maxH int) string {
 
 	var s strings.Builder
 
-	cwdShort := a.terminal.Cwd
+	cwdShort := a.views.Terminal.Cwd
 	home, _ := os.UserHomeDir()
 	if strings.HasPrefix(cwdShort, home) {
 		cwdShort = "~" + cwdShort[len(home):]
@@ -215,7 +215,7 @@ func (a App) renderMainPanel(width int, maxH int) string {
 		}
 		lines = append(lines, fmt.Sprintf(" %s  %s", timeStyle.Render(entry.Time), msg))
 	}
-	for _, line := range a.terminal.Output {
+	for _, line := range a.views.Terminal.Output {
 		lines = append(lines, " "+line)
 	}
 
@@ -239,9 +239,9 @@ func (a App) renderMainPanel(width int, maxH int) string {
 		s.WriteString(line + "\n")
 	}
 
-	if a.terminal.Active {
+	if a.views.Terminal.Active {
 		prompt := lipgloss.NewStyle().Foreground(a.theme.Data.Active).Bold(true).Render(" $ ")
-		s.WriteString(prompt + a.terminal.Input.View())
+		s.WriteString(prompt + a.views.Terminal.Input.View())
 	}
 
 	return lipgloss.NewStyle().
@@ -293,7 +293,7 @@ func (a App) renderRightPanel(width int, maxH int) string {
 	// Mission History
 	missionLabel := labelStyle.Render("─ MISSION HISTORY ")
 	s.WriteString(missionLabel + strings.Repeat("─", max(1, width-lipgloss.Width(missionLabel))) + "\n")
-	for i, m := range a.mission.History {
+	for i, m := range a.views.Mission.History {
 		if i >= 5 {
 			break
 		}
@@ -309,9 +309,9 @@ func (a App) renderRightPanel(width int, maxH int) string {
 			}
 			name = string(runes)
 		}
-		s.WriteString(fmt.Sprintf(" %s #%d %s\n", m.Status, len(a.mission.History)-i, name))
+		s.WriteString(fmt.Sprintf(" %s #%d %s\n", m.Status, len(a.views.Mission.History)-i, name))
 	}
-	if len(a.mission.History) == 0 {
+	if len(a.views.Mission.History) == 0 {
 		s.WriteString(dimStyle.Render(" No missions yet.") + "\n")
 	}
 
@@ -402,7 +402,7 @@ func (a App) renderStatusBar(keys string) string {
 // renderContextualStatusBar renders a footer with only the keys valid for the current
 // view and sub-mode, generated from the KeyMap (never hand-duplicated).
 func (a App) renderContextualStatusBar() string {
-	bindings := a.keys.keysFor(a.view, a.search.Active, a.terminal.Active, a.browser.Active)
+	bindings := a.keys.keysFor(a.view, a.views.Search.Active, a.views.Terminal.Active, a.views.Browser.Active)
 	h := newHelpModel(a.width-4, a.theme.Data)
 	footer := h.ShortHelpView(bindings)
 	return a.renderStatusBar(footer)

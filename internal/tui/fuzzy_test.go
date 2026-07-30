@@ -140,10 +140,10 @@ func TestFilterAgents_FuzzyN4(t *testing.T) {
 		t.Skip("no agents loaded")
 	}
 
-	app.search.Input.SetValue("n4")
+	app.views.Search.Input.SetValue("n4")
 	app.filterAgents()
 
-	if len(app.search.Filtered) == 0 {
+	if len(app.views.Search.Filtered) == 0 {
 		t.Fatal("expected 'n4' to match at least one agent")
 	}
 
@@ -163,7 +163,7 @@ func TestFilterAgents_FuzzyN4(t *testing.T) {
 
 	// numbuh-4 should be in filtered results
 	inFiltered := false
-	for _, idx := range app.search.Filtered {
+	for _, idx := range app.views.Search.Filtered {
 		if idx == numbuh4Idx {
 			inFiltered = true
 			break
@@ -174,22 +174,22 @@ func TestFilterAgents_FuzzyN4(t *testing.T) {
 	}
 
 	// numbuh-4 should be ranked first (best match for 'n4')
-	if app.search.Filtered[0] != numbuh4Idx {
+	if app.views.Search.Filtered[0] != numbuh4Idx {
 		// It's acceptable if numbuh-4 isn't exactly first due to description matches,
 		// but it should be near the top. Check it's in top 3.
 		topN := 3
-		if len(app.search.Filtered) < topN {
-			topN = len(app.search.Filtered)
+		if len(app.views.Search.Filtered) < topN {
+			topN = len(app.views.Search.Filtered)
 		}
 		foundInTop := false
-		for _, idx := range app.search.Filtered[:topN] {
+		for _, idx := range app.views.Search.Filtered[:topN] {
 			if idx == numbuh4Idx {
 				foundInTop = true
 				break
 			}
 		}
 		if !foundInTop {
-			t.Errorf("expected numbuh-4 in top %d results for 'n4', filtered=%v", topN, app.search.Filtered)
+			t.Errorf("expected numbuh-4 in top %d results for 'n4', filtered=%v", topN, app.views.Search.Filtered)
 		}
 	}
 }
@@ -201,11 +201,11 @@ func TestFilterAgents_FuzzyArch(t *testing.T) {
 		t.Skip("no agents loaded")
 	}
 
-	app.search.Input.SetValue("arch")
+	app.views.Search.Input.SetValue("arch")
 	app.filterAgents()
 
 	// "arch" should match numbuh-2 (architect) either by name or description
-	if len(app.search.Filtered) == 0 {
+	if len(app.views.Search.Filtered) == 0 {
 		t.Fatal("expected 'arch' to match at least one agent")
 	}
 }
@@ -213,12 +213,12 @@ func TestFilterAgents_FuzzyArch(t *testing.T) {
 func TestFilterAgents_EmptyQueryNilFiltered(t *testing.T) {
 	app := NewApp()
 	app.registry = newTestRegistry()
-	app.search.Filtered = []int{1, 2, 3}
+	app.views.Search.Filtered = []int{1, 2, 3}
 
-	app.search.Input.SetValue("")
+	app.views.Search.Input.SetValue("")
 	app.filterAgents()
 
-	if app.search.Filtered != nil {
+	if app.views.Search.Filtered != nil {
 		t.Error("expected nil filtered for empty query")
 	}
 }
@@ -227,11 +227,11 @@ func TestFilterAgents_FuzzyNoMatch(t *testing.T) {
 	app := NewApp()
 	app.registry = newTestRegistry()
 
-	app.search.Input.SetValue("zzzznonexistentzzzz")
+	app.views.Search.Input.SetValue("zzzznonexistentzzzz")
 	app.filterAgents()
 
-	if len(app.search.Filtered) != 0 {
-		t.Errorf("expected 0 matches, got %d", len(app.search.Filtered))
+	if len(app.views.Search.Filtered) != 0 {
+		t.Errorf("expected 0 matches, got %d", len(app.views.Search.Filtered))
 	}
 }
 
@@ -244,15 +244,15 @@ func TestFilterAgents_SubstringStillWorks(t *testing.T) {
 		t.Skip("no agents loaded")
 	}
 
-	app.search.Input.SetValue("numbuh")
+	app.views.Search.Input.SetValue("numbuh")
 	app.filterAgents()
 
-	if len(app.search.Filtered) == 0 {
+	if len(app.views.Search.Filtered) == 0 {
 		t.Skipf("no agents matched 'numbuh' (registry count=%d)", app.registry.Count())
 	}
 
 	// All results should contain "numbuh" in name (substring is a subsequence)
-	for _, idx := range app.search.Filtered {
+	for _, idx := range app.views.Search.Filtered {
 		agent := app.registry.Get(idx)
 		if agent.Name == "unknown" {
 			t.Errorf("filtered index %d returned unknown agent", idx)
@@ -274,10 +274,10 @@ func TestFilterAgents_SortedByScore(t *testing.T) {
 	}
 
 	// "council" should rank knd-council highest
-	app.search.Input.SetValue("council")
+	app.views.Search.Input.SetValue("council")
 	app.filterAgents()
 
-	if len(app.search.Filtered) == 0 {
+	if len(app.views.Search.Filtered) == 0 {
 		t.Skip("no agents matched 'council'")
 	}
 
@@ -295,8 +295,8 @@ func TestFilterAgents_SortedByScore(t *testing.T) {
 		t.Skip("knd-council not in registry")
 	}
 
-	if app.search.Filtered[0] != councilIdx {
-		t.Errorf("expected knd-council (idx %d) first for query 'council', got idx %d", councilIdx, app.search.Filtered[0])
+	if app.views.Search.Filtered[0] != councilIdx {
+		t.Errorf("expected knd-council (idx %d) first for query 'council', got idx %d", councilIdx, app.views.Search.Filtered[0])
 	}
 
 	_ = reg // suppress unused

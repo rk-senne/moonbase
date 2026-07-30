@@ -21,11 +21,11 @@ func (a App) renderDashboard() string {
 	}
 
 	var statusBar string
-	if a.search.Active {
-		bindings := a.keys.keysFor(a.view, a.search.Active, a.terminal.Active, a.browser.Active)
+	if a.views.Search.Active {
+		bindings := a.keys.keysFor(a.view, a.views.Search.Active, a.views.Terminal.Active, a.views.Browser.Active)
 		h := newHelpModel(a.width-4, a.theme.Data)
 		keyHints := h.ShortHelpView(bindings)
-		statusBar = a.renderStatusBar("/ " + a.search.Input.View() + "  " + keyHints)
+		statusBar = a.renderStatusBar("/ " + a.views.Search.Input.View() + "  " + keyHints)
 	} else {
 		statusBar = a.renderContextualStatusBar()
 	}

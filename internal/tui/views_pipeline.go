@@ -18,19 +18,19 @@ func (a App) renderPipeline() string {
 	phases.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Brand).Bold(true).Render("◆ PIPELINE") + "\n")
 	phases.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Dim).Render("──────────────") + "\n\n")
 
-	if a.pipeline.State == nil {
+	if a.views.Pipeline.State == nil {
 		phases.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Dim).Render(" No active mission") + "\n")
 	} else {
 		// Show TraceID subtly at the top
-		if a.pipeline.State.TraceID != "" {
+		if a.views.Pipeline.State.TraceID != "" {
 			traceStyle := lipgloss.NewStyle().Foreground(a.theme.Data.Dim)
-			phases.WriteString(traceStyle.Render(fmt.Sprintf(" trace: %s", a.pipeline.State.TraceID)) + "\n\n")
+			phases.WriteString(traceStyle.Render(fmt.Sprintf(" trace: %s", a.views.Pipeline.State.TraceID)) + "\n\n")
 		}
 
 		// Show phase progress indicator (X/Y for mandatory phases)
 		mandatoryCount := 0
 		completedMandatory := 0
-		for _, ph := range a.pipeline.State.Phases {
+		for _, ph := range a.views.Pipeline.State.Phases {
 			if !ph.Conditional {
 				mandatoryCount++
 				if ph.Status == pipeline.StatusComplete || ph.Status == pipeline.StatusSkipped {
@@ -41,7 +41,7 @@ func (a App) renderPipeline() string {
 		progressStyle := lipgloss.NewStyle().Foreground(a.theme.Data.Info)
 		phases.WriteString(progressStyle.Render(fmt.Sprintf(" Phase %d/%d", completedMandatory, mandatoryCount)) + "\n\n")
 
-		for _, phase := range a.pipeline.State.Phases {
+		for _, phase := range a.views.Pipeline.State.Phases {
 			badge := BadgeWaiting
 			style := a.theme.Styles.Inactive
 			timing := ""
@@ -78,11 +78,11 @@ func (a App) renderPipeline() string {
 		}
 
 		// Risk gate status
-		if a.pipeline.State.Context != nil && a.pipeline.State.Context.RiskLevel != "" {
+		if a.views.Pipeline.State.Context != nil && a.views.Pipeline.State.Context.RiskLevel != "" {
 			phases.WriteString("\n")
 			phases.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Dim).Render("──────────────") + "\n")
 			riskStyle := lipgloss.NewStyle().Bold(true)
-			switch a.pipeline.State.Context.RiskLevel {
+			switch a.views.Pipeline.State.Context.RiskLevel {
 			case "LOW":
 				riskStyle = riskStyle.Foreground(a.theme.Data.Active)
 			case "MEDIUM":
@@ -90,10 +90,10 @@ func (a App) renderPipeline() string {
 			case "HIGH", "CRITICAL":
 				riskStyle = riskStyle.Foreground(a.theme.Data.Error)
 			}
-			phases.WriteString(riskStyle.Render(fmt.Sprintf(" Risk: %s", a.pipeline.State.Context.RiskLevel)) + "\n")
-			if a.pipeline.State.Context.ReworkCount > 0 {
+			phases.WriteString(riskStyle.Render(fmt.Sprintf(" Risk: %s", a.views.Pipeline.State.Context.RiskLevel)) + "\n")
+			if a.views.Pipeline.State.Context.ReworkCount > 0 {
 				phases.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Warning).Render(
-					fmt.Sprintf(" Rework: %d/%d", a.pipeline.State.Context.ReworkCount, a.pipeline.State.MaxRework)) + "\n")
+					fmt.Sprintf(" Rework: %d/%d", a.views.Pipeline.State.Context.ReworkCount, a.views.Pipeline.State.MaxRework)) + "\n")
 			}
 		}
 	}
@@ -105,8 +105,8 @@ func (a App) renderPipeline() string {
 	dimStyle := lipgloss.NewStyle().Foreground(a.theme.Data.Dim)
 	pipeStyle := lipgloss.NewStyle().Foreground(a.theme.Data.Muted)
 
-	if a.pipeline.State != nil && a.pipeline.State.Task != "" {
-		main.WriteString(titleStyle.Render(fmt.Sprintf("━━━ MISSION: %s ━━━", a.pipeline.State.Task)) + "\n\n")
+	if a.views.Pipeline.State != nil && a.views.Pipeline.State.Task != "" {
+		main.WriteString(titleStyle.Render(fmt.Sprintf("━━━ MISSION: %s ━━━", a.views.Pipeline.State.Task)) + "\n\n")
 	} else {
 		main.WriteString(dimStyle.Render("━━━ AWAITING MISSION ━━━") + "\n\n")
 	}
@@ -117,11 +117,11 @@ func (a App) renderPipeline() string {
 		maxLines = 5
 	}
 	start := 0
-	if len(a.pipeline.Chat) > maxLines {
-		start = len(a.pipeline.Chat) - maxLines
+	if len(a.views.Pipeline.Chat) > maxLines {
+		start = len(a.views.Pipeline.Chat) - maxLines
 	}
-	for i := start; i < len(a.pipeline.Chat); i++ {
-		msg := a.pipeline.Chat[i]
+	for i := start; i < len(a.views.Pipeline.Chat); i++ {
+		msg := a.views.Pipeline.Chat[i]
 		if msg.Agent == "" {
 			// System message — phase headers, risk gates, dividers
 			content := msg.Content
@@ -168,7 +168,7 @@ func (a App) renderPipeline() string {
 	body := lipgloss.JoinHorizontal(lipgloss.Top, phaseSidebar, " ", mainPanel)
 
 	var statusBar string
-	if a.pipeline.AbortPending && time.Since(a.pipeline.AbortAt) < 3*time.Second {
+	if a.views.Pipeline.AbortPending && time.Since(a.views.Pipeline.AbortAt) < 3*time.Second {
 		statusBar = a.renderStatusBar("⚠️ Press [esc] again to abort mission. Any other key to cancel.")
 	} else {
 		statusBar = a.renderContextualStatusBar()

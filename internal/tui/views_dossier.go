@@ -11,7 +11,7 @@ func (a App) renderDossier() string {
 	sidebarWidth := 24
 	bodyH := a.height - 3
 
-	agent := a.registry.Get(a.dashboard.Selected)
+	agent := a.registry.Get(a.views.Dashboard.Selected)
 
 	header := a.renderHeader("Dossier › " + agent.Designation)
 	sidebar := a.renderSidebar(sidebarWidth, bodyH)

@@ -14,8 +14,8 @@ func TestRenderSnippetPicker_Empty(t *testing.T) {
 	app := NewApp()
 	app.width = 100
 	app.height = 40
-	app.snippetPick.List = nil
-	app.snippetPick.Cursor = 0
+	app.views.SnippetPick.List = nil
+	app.views.SnippetPick.Cursor = 0
 
 	result := app.renderSnippetPicker()
 	if result == "" {
@@ -27,11 +27,11 @@ func TestRenderSnippetPicker_WithSnippets(t *testing.T) {
 	app := NewApp()
 	app.width = 100
 	app.height = 40
-	app.snippetPick.List = []snippets.Snippet{
+	app.views.SnippetPick.List = []snippets.Snippet{
 		{Name: "greeting", Content: "hello"},
 		{Name: "farewell", Content: "bye"},
 	}
-	app.snippetPick.Cursor = 0
+	app.views.SnippetPick.Cursor = 0
 
 	result := app.renderSnippetPicker()
 	if result == "" {
@@ -77,7 +77,7 @@ func TestFileIcon(t *testing.T) {
 func TestOpenComms(t *testing.T) {
 	app := NewApp()
 	app.registry = newTestRegistry()
-	app.dashboard.Selected = 0
+	app.views.Dashboard.Selected = 0
 	app.width = 100
 	app.height = 40
 
@@ -85,7 +85,7 @@ func TestOpenComms(t *testing.T) {
 	if app.view != ViewComms {
 		t.Errorf("expected ViewComms after openComms, got %d", app.view)
 	}
-	if app.comms.State == nil {
+	if app.views.Comms.State == nil {
 		t.Error("expected comms state to be initialized")
 	}
 }
@@ -97,12 +97,12 @@ func TestSwitchCommsAgent(t *testing.T) {
 	app.registry = newTestRegistry()
 	app.width = 100
 	app.height = 40
-	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.views.Comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
 
 	app.switchCommsAgent("numbuh-2")
 	// Should switch to new agent
-	if app.comms.State.agent != "numbuh-2" {
-		t.Errorf("expected agent numbuh-2, got %s", app.comms.State.agent)
+	if app.views.Comms.State.agent != "numbuh-2" {
+		t.Errorf("expected agent numbuh-2, got %s", app.views.Comms.State.agent)
 	}
 }
 
@@ -111,7 +111,7 @@ func TestSwitchCommsAgent_NotFound(t *testing.T) {
 	app.registry = newTestRegistry()
 	app.width = 100
 	app.height = 40
-	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.views.Comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
 
 	app.switchCommsAgent("nonexistent-agent")
 	// Should not crash, agent stays the same or gets an error message
@@ -125,7 +125,7 @@ func TestRenderComms(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.view = ViewComms
-	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.views.Comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
 
 	result := app.renderComms()
 	if result == "" {
@@ -139,9 +139,9 @@ func TestRenderComms_Streaming(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.view = ViewComms
-	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.comms.State.streaming = true
-	app.comms.State.buffer = "partial response..."
+	app.views.Comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.views.Comms.State.streaming = true
+	app.views.Comms.State.buffer = "partial response..."
 
 	result := app.renderComms()
 	if result == "" {
@@ -169,14 +169,14 @@ func TestTerminalKeys_EnterWithCommand(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = true
-	app.terminal.Input.Focus()
-	app.terminal.Input.SetValue("echo hello")
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = true
+	app.views.Terminal.Input.Focus()
+	app.views.Terminal.Input.SetValue("echo hello")
 
 	model, cmd := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
-	if result.terminal.Input.Value() != "" {
+	if result.views.Terminal.Input.Value() != "" {
 		t.Error("expected term input reset after enter")
 	}
 	if cmd == nil {
@@ -193,8 +193,8 @@ func TestFileBrowserKeys_Enter(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = true
-	app.terminal.Active = false
+	app.views.Browser.Active = true
+	app.views.Terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	_ = model.(App)
@@ -207,8 +207,8 @@ func TestFileBrowserKeys_Backspace(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = true
-	app.terminal.Active = false
+	app.views.Browser.Active = true
+	app.views.Terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyBackspace})
 	_ = model.(App)
@@ -218,8 +218,8 @@ func TestFileBrowserKeys_Dot(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = true
-	app.terminal.Active = false
+	app.views.Browser.Active = true
+	app.views.Terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'.'}})
 	_ = model.(App)
@@ -229,8 +229,8 @@ func TestFileBrowserKeys_E(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = true
-	app.terminal.Active = false
+	app.views.Browser.Active = true
+	app.views.Terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
 	_ = model.(App)
@@ -240,7 +240,7 @@ func TestFileBrowserKeys_E(t *testing.T) {
 
 func TestSelectProject_EmptyList(t *testing.T) {
 	app := NewApp()
-	app.projectNav = &ProjectsState{list: nil}
+	app.views.ProjectNav = &ProjectsState{list: nil}
 	app.selectProject() // should not panic
 }
 
@@ -248,7 +248,7 @@ func TestSelectProject_ValidProject(t *testing.T) {
 	app := NewApp()
 	app.width = 100
 	app.height = 40
-	app.projectNav = newProjectsState()
+	app.views.ProjectNav = newProjectsState()
 	// selectProject changes CWD which can affect other tests
 	// Just test that it doesn't panic with no projects
 }
@@ -259,8 +259,8 @@ func TestDashboardKeys_D_GitDiff(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = false
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
 
 	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
 	if cmd == nil {
@@ -272,8 +272,8 @@ func TestDashboardKeys_G_GitStatus(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = false
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
 
 	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}})
 	if cmd == nil {
@@ -287,8 +287,8 @@ func TestDossierKeys_C_Comms(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDossier
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = false
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
 	app.registry = newTestRegistry()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'C'}})
@@ -306,7 +306,7 @@ func TestView_MainPanel_FileBrowser(t *testing.T) {
 	app.width = 120
 	app.height = 40
 	app.view = ViewDashboard
-	app.browser.Active = true
+	app.views.Browser.Active = true
 	app.registry = newTestRegistry()
 
 	output := app.View()
@@ -321,8 +321,8 @@ func TestView_MainPanel_Terminal(t *testing.T) {
 	app.width = 120
 	app.height = 40
 	app.view = ViewDashboard
-	app.browser.Active = false
-	app.terminal.Active = true
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = true
 	app.registry = newTestRegistry()
 
 	output := app.View()

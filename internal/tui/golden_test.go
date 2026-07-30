@@ -108,7 +108,12 @@ func newGoldenApp(t *testing.T) App {
 		keys:          DefaultKeyMap(),
 		view:          ViewDashboard,
 		registry:      reg,
-		dashboard:     DashboardModel{Cursor: 0, Selected: 0},
+		views: ViewsModel{
+			Dashboard: DashboardModel{Cursor: 0, Selected: 0},
+			Mission:   MissionModel{History: []MissionEntry{{Name: "init scaffold", Status: "✅"}, {Name: "tui views", Status: "✅"}, {Name: "pipeline+deploy", Status: "✅"}}},
+			Browser:   BrowserModel{FileBrowser: nil, Active: false}, // avoid real FS reads, show terminal panel
+			Terminal:  TerminalModel{Cwd: "/home/operative/moonbase"}, // fixed path for stable header
+		},
 		width:         100,
 		height:        30,
 		boot:          BootModel{Ready: true},
@@ -120,7 +125,6 @@ func newGoldenApp(t *testing.T) App {
 			Blink:     false,
 		},
 		intel:         []IntelEntry{},
-		mission:       MissionModel{History: []MissionEntry{{Name: "init scaffold", Status: "✅"}, {Name: "tui views", Status: "✅"}, {Name: "pipeline+deploy", Status: "✅"}}},
 		env: EnvModel{
 			Infra: InfraModel{
 				ToolCache:     toolCache,
@@ -128,8 +132,6 @@ func newGoldenApp(t *testing.T) App {
 			},
 			System: SystemModel{Branch: "main", Clean: true},
 		},
-		browser:       BrowserModel{FileBrowser: nil, Active: false}, // avoid real FS reads, show terminal panel
-		terminal:      TerminalModel{Cwd: "/home/operative/moonbase"}, // fixed path for stable header
 	}
 
 	return app
@@ -177,8 +179,8 @@ func TestGolden_Pipeline(t *testing.T) {
 		},
 	}
 
-	app.pipeline.State = ps
-	app.pipeline.Chat = []PipelineMsg{
+	app.views.Pipeline.State = ps
+	app.views.Pipeline.Chat = []PipelineMsg{
 		{Agent: "", Content: "━━━ Phase 1: Analysis ━━━"},
 		{Agent: "numbuh-1", Content: "Requirements gathered. 3 ACs defined."},
 		{Agent: "", Content: "└── ✅ Analysis complete (3.0s)"},
@@ -198,7 +200,7 @@ func TestGolden_Dossier(t *testing.T) {
 
 	app := newGoldenApp(t)
 	app.view = ViewDossier
-	app.dashboard.Selected = 0
+	app.views.Dashboard.Selected = 0
 
 	got := app.View()
 	goldenAssert(t, "dossier", got)

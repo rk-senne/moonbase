@@ -23,7 +23,7 @@ func newProjectsState() *ProjectsState {
 func (a App) renderProjects() string {
 	header := a.renderHeader("Projects")
 
-	if a.projectNav == nil || len(a.projectNav.list) == 0 {
+	if a.views.ProjectNav == nil || len(a.views.ProjectNav.list) == 0 {
 		body := a.theme.Styles.Panel.Width(a.width - 4).Render(
 			lipgloss.NewStyle().Foreground(a.theme.Data.Dim).Render("\n  No projects found in ~/Workspace/Personal or ~/Workspace/Projects.\n"))
 		statusBar := a.renderContextualStatusBar()
@@ -46,7 +46,7 @@ func (a App) renderProjects() string {
 		"git":  "📁",
 	}
 
-	for i, p := range a.projectNav.list {
+	for i, p := range a.views.ProjectNav.list {
 		icon := typeIcons[p.Type]
 		if icon == "" {
 			icon = "📁"
@@ -54,7 +54,7 @@ func (a App) renderProjects() string {
 		name := p.Name
 		path := dimStyle.Render(p.Path)
 
-		if i == a.projectNav.cursor {
+		if i == a.views.ProjectNav.cursor {
 			s.WriteString(activeStyle.Render(fmt.Sprintf("  ▸ %s %s", icon, name)) + "\n")
 			s.WriteString(fmt.Sprintf("      %s\n", path))
 		} else {
@@ -63,7 +63,7 @@ func (a App) renderProjects() string {
 	}
 
 	s.WriteString("\n")
-	s.WriteString(dimStyle.Render(fmt.Sprintf("  %d projects found", len(a.projectNav.list))) + "\n")
+	s.WriteString(dimStyle.Render(fmt.Sprintf("  %d projects found", len(a.views.ProjectNav.list))) + "\n")
 
 	body := a.theme.Styles.Panel.Width(a.width - 4).Height(a.height - 3).Render(s.String())
 	statusBar := a.renderContextualStatusBar()
@@ -73,13 +73,13 @@ func (a App) renderProjects() string {
 
 // selectProject cds into the project and opens its docs
 func (a *App) selectProject() {
-	if a.projectNav == nil || len(a.projectNav.list) == 0 {
+	if a.views.ProjectNav == nil || len(a.views.ProjectNav.list) == 0 {
 		return
 	}
-	p := a.projectNav.list[a.projectNav.cursor]
+	p := a.views.ProjectNav.list[a.views.ProjectNav.cursor]
 	os.Chdir(p.Path)
 	a.addIntel("Navigated to: %s", p.Name)
 	// Refresh docs for this project
-	a.docs = newDocsState(a.width, a.height)
+	a.views.Docs = newDocsState(a.width, a.height)
 	a.view = ViewDocs
 }

@@ -17,8 +17,8 @@ import (
 func (a App) handleDashboardKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, a.keys.Quit):
-		if a.pipeline.Cancel != nil {
-			a.pipeline.Cancel()
+		if a.views.Pipeline.Cancel != nil {
+			a.views.Pipeline.Cancel()
 		}
 		return a, tea.Quit
 	case key.Matches(msg, a.keys.Help):
@@ -31,31 +31,31 @@ func (a App) handleDashboardKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		a.view = ViewProtocol
 	case key.Matches(msg, a.keys.Back):
 		if a.view == ViewPipeline {
-			if a.pipeline.Running {
-				if a.pipeline.AbortPending && time.Since(a.pipeline.AbortAt) < 3*time.Second {
+			if a.views.Pipeline.Running {
+				if a.views.Pipeline.AbortPending && time.Since(a.views.Pipeline.AbortAt) < 3*time.Second {
 					// Second esc within 3s — actually abort
-					if a.pipeline.Cancel != nil {
-						a.pipeline.Cancel()
+					if a.views.Pipeline.Cancel != nil {
+						a.views.Pipeline.Cancel()
 					}
-					a.pipeline.State.Stop("Aborted by human")
-					a.pipeline.Chat = append(a.pipeline.Chat,
+					a.views.Pipeline.State.Stop("Aborted by human")
+					a.views.Pipeline.Chat = append(a.views.Pipeline.Chat,
 						PipelineMsg{"", "🛑 Mission aborted by human."},
 					)
-					a.addIntel("Mission aborted: %s", a.pipeline.State.Task)
-					a.pipeline.Running = false
-					a.pipeline.AbortPending = false
+					a.addIntel("Mission aborted: %s", a.views.Pipeline.State.Task)
+					a.views.Pipeline.Running = false
+					a.views.Pipeline.AbortPending = false
 				} else {
 					// First esc — show warning
-					a.pipeline.AbortPending = true
-					a.pipeline.AbortAt = time.Now()
+					a.views.Pipeline.AbortPending = true
+					a.views.Pipeline.AbortAt = time.Now()
 				}
 			} else {
 				a.view = ViewDashboard
-				a.pipeline.AbortPending = false
+				a.views.Pipeline.AbortPending = false
 			}
 		} else {
 			a.view = ViewDashboard
-			a.pipeline.AbortPending = false
+			a.views.Pipeline.AbortPending = false
 		}
 	case key.Matches(msg, a.keys.NextPhase):
 		return a.handlePipelineAdvance()
@@ -65,18 +65,18 @@ func (a App) handleDashboardKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return a.handlePipelineSkip()
 	case key.Matches(msg, a.keys.Up):
 		if a.view == ViewDashboard || a.view == ViewDossier {
-			if a.dashboard.Cursor > 0 {
-				a.dashboard.Cursor--
+			if a.views.Dashboard.Cursor > 0 {
+				a.views.Dashboard.Cursor--
 			}
-			a.dashboard.Selected = a.dashboard.Cursor
+			a.views.Dashboard.Selected = a.views.Dashboard.Cursor
 			a.chrome.Anim.TriggerSelectPulse()
 		}
 	case key.Matches(msg, a.keys.Down):
 		if a.view == ViewDashboard || a.view == ViewDossier {
-			if a.dashboard.Cursor < a.registry.Count()-1 {
-				a.dashboard.Cursor++
+			if a.views.Dashboard.Cursor < a.registry.Count()-1 {
+				a.views.Dashboard.Cursor++
 			}
-			a.dashboard.Selected = a.dashboard.Cursor
+			a.views.Dashboard.Selected = a.views.Dashboard.Cursor
 			a.chrome.Anim.TriggerSelectPulse()
 		}
 	case key.Matches(msg, a.keys.Enter):
@@ -97,14 +97,14 @@ func (a App) handleDashboardKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case key.Matches(msg, a.keys.NewMission):
 		a.view = ViewMission
-		a.mission.Input.Focus()
+		a.views.Mission.Input.Focus()
 		return a, textinput.Blink
 	case key.Matches(msg, a.keys.CycleTheme):
 		a.cycleTheme()
 		a.addIntel("Theme: %s", a.theme.Name)
 	case key.Matches(msg, a.keys.Search):
-		a.search.Active = true
-		a.search.Input.Focus()
+		a.views.Search.Active = true
+		a.views.Search.Input.Focus()
 		return a, textinput.Blink
 	case key.Matches(msg, a.keys.GitDiff):
 		return a, a.runGitCmd("git diff --stat")
@@ -145,11 +145,11 @@ func (a App) handleDashboardKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, a.keys.History):
 		a.view = ViewHistory
 	case key.Matches(msg, a.keys.Docs):
-		a.docs = newDocsState(a.width, a.height)
+		a.views.Docs = newDocsState(a.width, a.height)
 		a.view = ViewDocs
 	case key.Matches(msg, a.keys.Projects):
 		if a.view == ViewDashboard {
-			a.projectNav = newProjectsState()
+			a.views.ProjectNav = newProjectsState()
 			a.view = ViewProjects
 		}
 	case key.Matches(msg, a.keys.SpawnHook):
@@ -158,8 +158,8 @@ func (a App) handleDashboardKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case key.Matches(msg, a.keys.JumpToAgent):
 		idx := int(msg.String()[0] - '0')
-		a.dashboard.Cursor = idx
-		a.dashboard.Selected = a.dashboard.Cursor
+		a.views.Dashboard.Cursor = idx
+		a.views.Dashboard.Selected = a.views.Dashboard.Cursor
 		a.view = ViewDossier
 	}
 

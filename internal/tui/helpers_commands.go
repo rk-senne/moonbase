@@ -26,7 +26,7 @@ func (a App) runGitCmd(command string) tea.Cmd {
 }
 
 func (a App) runSpawnHook() tea.Cmd {
-	agent := a.registry.Get(a.dashboard.Selected)
+	agent := a.registry.Get(a.views.Dashboard.Selected)
 	if agent.Hooks == nil || len(agent.Hooks.OnActivate) == 0 {
 		return func() tea.Msg {
 			return spawnHookMsg{agent: agent.Name, output: "(no spawn hook configured)"}
@@ -205,7 +205,7 @@ found:
 }
 
 func (a App) copyPrompt() tea.Cmd {
-	agent := a.registry.Get(a.dashboard.Selected)
+	agent := a.registry.Get(a.views.Dashboard.Selected)
 	return func() tea.Msg {
 		cmd := exec.Command("pbcopy")
 		cmd.Stdin = strings.NewReader(agent.Prompt)
@@ -215,7 +215,7 @@ func (a App) copyPrompt() tea.Cmd {
 }
 
 func (a App) deployAgent() tea.Cmd {
-	agent := a.registry.Get(a.dashboard.Selected)
+	agent := a.registry.Get(a.views.Dashboard.Selected)
 	return func() tea.Msg {
 		// Try kiro-cli first
 		if _, err := exec.LookPath("kiro-cli"); err == nil {
@@ -249,12 +249,12 @@ func (a App) launchNvim() tea.Cmd {
 		return func() tea.Msg { return toolExitMsg{tool: "nvim (not found)"} }
 	}
 	var args []string
-	if a.view == ViewProjects && a.projectNav != nil && len(a.projectNav.list) > 0 {
-		args = append(args, a.projectNav.list[a.projectNav.cursor].Path)
-	} else if a.browser.Active && a.browser.FileBrowser != nil && len(a.browser.FileBrowser.entries) > 0 {
-		entry := a.browser.FileBrowser.entries[a.browser.FileBrowser.cursor]
+	if a.view == ViewProjects && a.views.ProjectNav != nil && len(a.views.ProjectNav.list) > 0 {
+		args = append(args, a.views.ProjectNav.list[a.views.ProjectNav.cursor].Path)
+	} else if a.views.Browser.Active && a.views.Browser.FileBrowser != nil && len(a.views.Browser.FileBrowser.entries) > 0 {
+		entry := a.views.Browser.FileBrowser.entries[a.views.Browser.FileBrowser.cursor]
 		if !entry.IsDir {
-			args = append(args, filepath.Join(a.browser.FileBrowser.dir, entry.Name))
+			args = append(args, filepath.Join(a.views.Browser.FileBrowser.dir, entry.Name))
 		}
 	}
 	c := exec.Command(bin, args...)

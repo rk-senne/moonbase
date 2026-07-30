@@ -33,8 +33,8 @@ func TestNewApp_Initializes(t *testing.T) {
 	if app.boot.Step != 0 {
 		t.Errorf("expected bootStep=0, got %d", app.boot.Step)
 	}
-	if app.dashboard.Cursor != 0 {
-		t.Errorf("expected cursor=0, got %d", app.dashboard.Cursor)
+	if app.views.Dashboard.Cursor != 0 {
+		t.Errorf("expected cursor=0, got %d", app.views.Dashboard.Cursor)
 	}
 	if app.theme.Name != "moonbase" {
 		t.Errorf("expected theme=moonbase, got %s", app.theme.Name)
@@ -97,8 +97,8 @@ func TestApp_KeyNavigation_MissionView(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = false
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'m'}})
 	result := model.(App)
@@ -111,8 +111,8 @@ func TestApp_KeyNavigation_HelpToggle(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = false
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
 	result := model.(App)
@@ -131,23 +131,23 @@ func TestApp_KeyNavigation_CursorUpDown(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = false
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
 	app.registry = newTestRegistry()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
 	result := model.(App)
-	if result.dashboard.Cursor != 1 {
-		t.Errorf("expected cursor=1 after 'j', got %d", result.dashboard.Cursor)
+	if result.views.Dashboard.Cursor != 1 {
+		t.Errorf("expected cursor=1 after 'j', got %d", result.views.Dashboard.Cursor)
 	}
-	if result.dashboard.Selected != 1 {
-		t.Errorf("expected selected=1 after 'j', got %d", result.dashboard.Selected)
+	if result.views.Dashboard.Selected != 1 {
+		t.Errorf("expected selected=1 after 'j', got %d", result.views.Dashboard.Selected)
 	}
 
 	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
 	result = model.(App)
-	if result.dashboard.Cursor != 0 {
-		t.Errorf("expected cursor=0 after 'k', got %d", result.dashboard.Cursor)
+	if result.views.Dashboard.Cursor != 0 {
+		t.Errorf("expected cursor=0 after 'k', got %d", result.views.Dashboard.Cursor)
 	}
 }
 
@@ -155,8 +155,8 @@ func TestApp_KeyNavigation_DossierView(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = false
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
@@ -169,8 +169,8 @@ func TestApp_KeyNavigation_HistoryView(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = false
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'H'}})
 	result := model.(App)
@@ -183,15 +183,15 @@ func TestApp_MissionInput(t *testing.T) {
 	app := NewApp()
 	app.view = ViewMission
 	app.boot.Ready = true
-	app.mission.Input.Focus()
+	app.views.Mission.Input.Focus()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'h'}})
 	result := model.(App)
 	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'i'}})
 	result = model.(App)
 
-	if result.mission.Input.Value() != "hi" {
-		t.Errorf("expected mission input value='hi', got '%s'", result.mission.Input.Value())
+	if result.views.Mission.Input.Value() != "hi" {
+		t.Errorf("expected mission input value='hi', got '%s'", result.views.Mission.Input.Value())
 	}
 }
 
@@ -199,7 +199,7 @@ func TestApp_MissionInput_EscReturns(t *testing.T) {
 	app := NewApp()
 	app.view = ViewMission
 	app.boot.Ready = true
-	app.mission.Input.Focus()
+	app.views.Mission.Input.Focus()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
 	result := model.(App)
@@ -212,19 +212,19 @@ func TestApp_MissionInput_Submit(t *testing.T) {
 	app := NewApp()
 	app.view = ViewMission
 	app.boot.Ready = true
-	app.mission.Input.Focus()
-	app.mission.Input.SetValue("add pagination")
+	app.views.Mission.Input.Focus()
+	app.views.Mission.Input.SetValue("add pagination")
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
 	if result.view != ViewPipeline {
 		t.Errorf("expected ViewPipeline after mission submit, got %d", result.view)
 	}
-	if result.pipeline.State == nil {
+	if result.views.Pipeline.State == nil {
 		t.Fatal("expected pipelineState to be set after mission submit")
 	}
-	if result.pipeline.State.Task != "add pagination" {
-		t.Errorf("expected pipeline task='add pagination', got '%s'", result.pipeline.State.Task)
+	if result.views.Pipeline.State.Task != "add pagination" {
+		t.Errorf("expected pipeline task='add pagination', got '%s'", result.views.Pipeline.State.Task)
 	}
 }
 
@@ -232,8 +232,8 @@ func TestApp_QuitKey(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = false
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
 
 	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
 	if cmd == nil {
@@ -249,8 +249,8 @@ func TestApp_CtrlC_Quit(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = false
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
 
 	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
 	if cmd == nil {
@@ -283,8 +283,8 @@ func TestApp_TabCyclesFocus(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = false
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyTab})
 	result := model.(App)
@@ -309,8 +309,8 @@ func TestApp_ThemeCycle(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = false
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'T'}})
 	result := model.(App)
@@ -341,13 +341,13 @@ func TestApp_PipelineEscAbort(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = false
-	app.pipeline.Running = true
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
+	app.views.Pipeline.Running = true
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
 	result := model.(App)
-	if !result.pipeline.AbortPending {
+	if !result.views.Pipeline.AbortPending {
 		t.Error("expected abortPending=true after first esc during running pipeline")
 	}
 
@@ -355,9 +355,9 @@ func TestApp_PipelineEscAbort(t *testing.T) {
 	app2 := NewApp()
 	app2.view = ViewPipeline
 	app2.boot.Ready = true
-	app2.browser.Active = false
-	app2.terminal.Active = false
-	app2.pipeline.Running = false
+	app2.views.Browser.Active = false
+	app2.views.Terminal.Active = false
+	app2.views.Pipeline.Running = false
 
 	model, _ = app2.Update(tea.KeyMsg{Type: tea.KeyEscape})
 	result = model.(App)
@@ -380,36 +380,27 @@ func TestApp_CursorBoundsCheck(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = false
-	app.dashboard.Cursor = 0
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = false
+	app.views.Dashboard.Cursor = 0
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
 	result := model.(App)
-	if result.dashboard.Cursor != 0 {
-		t.Errorf("expected cursor stays at 0, got %d", result.dashboard.Cursor)
+	if result.views.Dashboard.Cursor != 0 {
+		t.Errorf("expected cursor stays at 0, got %d", result.views.Dashboard.Cursor)
 	}
 }
 
 // TestApp_FieldCountBounded ratchets the top-level App struct field budget so it
-// can only shrink, never silently grow. App has been reduced from 47 fields to the
-// current count by extracting 15 cohesive sub-models:
-//   TerminalModel, DashboardModel, PipelineModel, SystemModel, SearchModel,
-//   SnippetPickerModel, ContextFileModel, MissionModel, ChromeModel, BootModel,
-//   InfraModel, BrowserModel, BackendModel, and CommsModel.
+// can only shrink, never silently grow. App is now an aggregate root with three
+// cohesive sub-models (env: EnvModel, theme: ThemeModel, views: ViewsModel) that
+// group related state, reducing the original 47 fields to an aggregate root with
+// 13 top-level fields.
 //
-// The remaining fields are either legitimately top-level (keys, view, registry,
-// width, height, spinner, intel, projectCtx), the two lazily-initialized secondary
-// view-state pointers (docs, projectNav), or the theme triple (theme, themeData,
-// styles). The theme triple is DELIBERATELY not extracted: themeData/styles are read
-// on hundreds of hot-path render lines, so wrapping them buys ≈2 fields for very large
-// churn and no real cohesion gain.
-//
-// The original ≤15 aspiration would now require either that hot-path theme churn or an
-// artificial aggregate-parent layer (e.g. App.views.Dashboard) that trades one
-// indirection for another. That is a deliberate architecture decision, not a mechanical
-// field move, and is intentionally left as a separate spec'd effort. This struct is no
-// longer a god-struct — it is a well-organised aggregate root.
+// The views aggregate (ViewsModel) groups all per-view / panel / overlay state:
+//   DashboardModel, PipelineModel, TerminalModel, BrowserModel, CommsModel,
+//   MissionModel, SearchModel, SnippetPickerModel, ContextFileModel, DocsState,
+//   ProjectsState.
 //
 // To LOWER this bound: extract another cohesive sub-model and decrement maxFields.
 // Never RAISE it to accommodate a new loose field — extract a sub-model instead.
@@ -417,7 +408,7 @@ func TestApp_FieldCountBounded(t *testing.T) {
 	count := reflect.TypeOf(App{}).NumField()
 	// Ratchet: lower this only when an extraction reduces the count. Never raise it
 	// to accommodate new loose fields — extract a sub-model instead.
-	const maxFields = 23
+	const maxFields = 13
 	if count > maxFields {
 		t.Errorf("App has %d fields, expected ≤ %d — did you add fields without extracting? See comment above.", count, maxFields)
 	}

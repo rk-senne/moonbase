@@ -16,7 +16,7 @@ import (
 // The trust model is identical to the user opening a terminal: the operator IS
 // the user. This is NOT exposed to network input, AI-generated commands, or
 // untrusted sources. Input comes only from the local keyboard via the TUI
-// text input widget (a.terminal.Input). No remote or programmatic callers exist.
+// text input widget (a.views.Terminal.Input). No remote or programmatic callers exist.
 
 func (a *App) execTermCmd(input string) tea.Cmd {
 	// Handle built-in cd
@@ -30,20 +30,20 @@ func (a *App) execTermCmd(input string) tea.Cmd {
 			dir = home + dir[1:]
 		}
 		if err := os.Chdir(dir); err != nil {
-			a.terminal.Output = append(a.terminal.Output,
+			a.views.Terminal.Output = append(a.views.Terminal.Output,
 				lipgloss.NewStyle().Foreground(a.theme.Data.Active).Render("$ "+input),
 				lipgloss.NewStyle().Foreground(a.theme.Data.Error).Render(err.Error()))
 		} else {
-			a.terminal.Cwd, _ = os.Getwd()
-			a.terminal.Output = append(a.terminal.Output,
+			a.views.Terminal.Cwd, _ = os.Getwd()
+			a.views.Terminal.Output = append(a.views.Terminal.Output,
 				lipgloss.NewStyle().Foreground(a.theme.Data.Active).Render("$ "+input))
-			a.addIntel("cd → %s", a.terminal.Cwd)
+			a.addIntel("cd → %s", a.views.Terminal.Cwd)
 		}
 		return nil
 	}
 	// Handle clear
 	if input == "clear" {
-		a.terminal.Output = nil
+		a.views.Terminal.Output = nil
 		return nil
 	}
 

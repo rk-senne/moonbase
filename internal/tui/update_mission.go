@@ -15,28 +15,28 @@ func (a App) handleMissionKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, a.keys.Back):
 		a.view = ViewDashboard
-		a.mission.Input.Reset()
-		a.mission.Input.Blur()
+		a.views.Mission.Input.Reset()
+		a.views.Mission.Input.Blur()
 	case key.Matches(msg, a.keys.Enter):
-		task := a.mission.Input.Value()
+		task := a.views.Mission.Input.Value()
 		if task != "" {
 			a.addIntel("Mission briefed: %s", task)
-			a.pipeline.State = pipeline.New(task)
-			a.pipeline.Output = []string{
+			a.views.Pipeline.State = pipeline.New(task)
+			a.views.Pipeline.Output = []string{
 				fmt.Sprintf("━━━ MISSION: %s ━━━", task),
 			}
-			a.pipeline.Chat = []PipelineMsg{
+			a.views.Pipeline.Chat = []PipelineMsg{
 				{"", fmt.Sprintf("━━━ MISSION: %s ━━━", task)},
 			}
-			a.mission.Input.Reset()
-			a.mission.Input.Blur()
+			a.views.Mission.Input.Reset()
+			a.views.Mission.Input.Blur()
 			a.view = ViewPipeline
-			a.pipeline.MissionStart = time.Now()
+			a.views.Pipeline.MissionStart = time.Now()
 
 			// Create pipeline context for graceful shutdown
 			ctx, cancel := context.WithCancel(context.Background())
-			a.pipeline.Ctx = ctx
-			a.pipeline.Cancel = cancel
+			a.views.Pipeline.Ctx = ctx
+			a.views.Pipeline.Cancel = cancel
 
 			// Start real pipeline execution if backend available
 			if cmd := a.startNextPhase(); cmd != nil {
@@ -45,17 +45,17 @@ func (a App) handleMissionKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 			// No backend — show simulated mode
 			a.addIntel("No AI backend — simulated pipeline mode")
-			a.pipeline.Chat = append(a.pipeline.Chat,
+			a.views.Pipeline.Chat = append(a.views.Pipeline.Chat,
 				PipelineMsg{"", "⚠️ No AI backend available. Showing pipeline simulation."},
 				PipelineMsg{"", "Install kiro-cli for real execution, or use [n] to advance manually."},
 				PipelineMsg{"", ""},
 				PipelineMsg{"Numbuh 1", "Receiving mission brief... Analyzing requirements."},
 			)
-			a.pipeline.State.Phases[0].Status = pipeline.StatusRunning
+			a.views.Pipeline.State.Phases[0].Status = pipeline.StatusRunning
 		}
 	default:
 		var cmd tea.Cmd
-		a.mission.Input, cmd = a.mission.Input.Update(msg)
+		a.views.Mission.Input, cmd = a.views.Mission.Input.Update(msg)
 		return a, cmd
 	}
 	return a, nil

@@ -11,10 +11,10 @@ func TestCommsKeys_SnippetPicker(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
 	app.boot.Ready = true
-	app.comms.State = newCommsState("test-agent", "system prompt", 80, 40)
-	app.comms.Input.Focus()
-	app.snippetPick.Active = true
-	app.snippetPick.List = nil
+	app.views.Comms.State = newCommsState("test-agent", "system prompt", 80, 40)
+	app.views.Comms.Input.Focus()
+	app.views.SnippetPick.Active = true
+	app.views.SnippetPick.List = nil
 
 	// Navigate in snippet picker
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
@@ -24,7 +24,7 @@ func TestCommsKeys_SnippetPicker(t *testing.T) {
 	// Esc exits snippet picker
 	model, _ = app.Update(tea.KeyMsg{Type: tea.KeyEscape})
 	result = model.(App)
-	if result.snippetPick.Active {
+	if result.views.SnippetPick.Active {
 		t.Error("expected snippetPick.Active=false after esc")
 	}
 }
@@ -33,15 +33,15 @@ func TestCommsKeys_ContextFile(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
 	app.boot.Ready = true
-	app.comms.State = newCommsState("test-agent", "system prompt", 80, 40)
-	app.comms.Input.Focus()
-	app.ctxFile.Active = true
-	app.ctxFile.Input.Focus()
+	app.views.Comms.State = newCommsState("test-agent", "system prompt", 80, 40)
+	app.views.Comms.Input.Focus()
+	app.views.CtxFile.Active = true
+	app.views.CtxFile.Input.Focus()
 
 	// Esc exits context file mode
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
 	result := model.(App)
-	if result.ctxFile.Active {
+	if result.views.CtxFile.Active {
 		t.Error("expected ctxFile.Active=false after esc")
 	}
 }
@@ -50,16 +50,16 @@ func TestCommsKeys_ContextFileEnter(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
 	app.boot.Ready = true
-	app.comms.State = newCommsState("test-agent", "system prompt", 80, 40)
-	app.comms.Input.Focus()
-	app.ctxFile.Active = true
-	app.ctxFile.Input.Focus()
-	app.ctxFile.Input.SetValue("/nonexistent/path")
+	app.views.Comms.State = newCommsState("test-agent", "system prompt", 80, 40)
+	app.views.Comms.Input.Focus()
+	app.views.CtxFile.Active = true
+	app.views.CtxFile.Input.Focus()
+	app.views.CtxFile.Input.SetValue("/nonexistent/path")
 
 	// Enter with invalid path should exit context file mode
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
-	if result.ctxFile.Active {
+	if result.views.CtxFile.Active {
 		t.Error("expected ctxFile.Active=false after enter")
 	}
 }
@@ -68,15 +68,15 @@ func TestCommsKeys_AtSwitch(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
 	app.boot.Ready = true
-	app.comms.State = newCommsState("test-agent", "system prompt", 80, 40)
-	app.comms.Input.Focus()
-	app.comms.Input.SetValue("@numbuh-1")
+	app.views.Comms.State = newCommsState("test-agent", "system prompt", 80, 40)
+	app.views.Comms.Input.Focus()
+	app.views.Comms.Input.SetValue("@numbuh-1")
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
 	// Should have reset input after @ command
-	if result.comms.Input.Value() != "" {
-		t.Errorf("expected comms input reset after @ command, got '%s'", result.comms.Input.Value())
+	if result.views.Comms.Input.Value() != "" {
+		t.Errorf("expected comms input reset after @ command, got '%s'", result.views.Comms.Input.Value())
 	}
 }
 
@@ -84,12 +84,12 @@ func TestFileBrowserKeys_Esc(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = true
-	app.terminal.Active = false
+	app.views.Browser.Active = true
+	app.views.Terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
 	result := model.(App)
-	if result.browser.Active {
+	if result.views.Browser.Active {
 		t.Error("expected browsing=false after esc in file browser")
 	}
 }
@@ -98,8 +98,8 @@ func TestFileBrowserKeys_Navigate(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = true
-	app.terminal.Active = false
+	app.views.Browser.Active = true
+	app.views.Terminal.Active = false
 
 	// Navigate down
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
@@ -111,13 +111,13 @@ func TestTerminalKeys_Esc(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = true
-	app.terminal.Input.Focus()
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = true
+	app.views.Terminal.Input.Focus()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
 	result := model.(App)
-	if result.terminal.Active {
+	if result.views.Terminal.Active {
 		t.Error("expected termActive=false after esc in terminal")
 	}
 }
@@ -126,16 +126,16 @@ func TestTerminalKeys_Backtick(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = false
-	app.terminal.Active = true
-	app.terminal.Input.Focus()
+	app.views.Browser.Active = false
+	app.views.Terminal.Active = true
+	app.views.Terminal.Input.Focus()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'`'}})
 	result := model.(App)
-	if result.terminal.Active {
+	if result.views.Terminal.Active {
 		t.Error("expected termActive=false after backtick")
 	}
-	if !result.browser.Active {
+	if !result.views.Browser.Active {
 		t.Error("expected browsing=true after backtick from terminal")
 	}
 }
@@ -144,15 +144,15 @@ func TestFileBrowserKeys_Backtick(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browser.Active = true
-	app.terminal.Active = false
+	app.views.Browser.Active = true
+	app.views.Terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'`'}})
 	result := model.(App)
-	if result.browser.Active {
+	if result.views.Browser.Active {
 		t.Error("expected browsing=false after backtick from browser")
 	}
-	if !result.terminal.Active {
+	if !result.views.Terminal.Active {
 		t.Error("expected termActive=true after backtick from browser")
 	}
 }
@@ -160,7 +160,7 @@ func TestFileBrowserKeys_Backtick(t *testing.T) {
 func TestApp_StreamChunkMsg_NilComms(t *testing.T) {
 	app := NewApp()
 	app.boot.Ready = true
-	app.comms.State = nil
+	app.views.Comms.State = nil
 
 	msg := streamChunkMsg{text: "hello", done: false}
 	model, _ := app.Update(msg)
@@ -172,13 +172,13 @@ func TestApp_StreamChunkMsg_NilComms(t *testing.T) {
 func TestApp_StreamChunkMsg_Done(t *testing.T) {
 	app := NewApp()
 	app.boot.Ready = true
-	app.comms.State = newCommsState("test-agent", "system prompt", 80, 40)
-	app.comms.State.streaming = true
+	app.views.Comms.State = newCommsState("test-agent", "system prompt", 80, 40)
+	app.views.Comms.State.streaming = true
 
 	msg := streamChunkMsg{done: true}
 	model, _ := app.Update(msg)
 	result := model.(App)
-	if result.comms.State.streaming {
+	if result.views.Comms.State.streaming {
 		t.Error("expected streaming=false after done message")
 	}
 }
@@ -186,13 +186,13 @@ func TestApp_StreamChunkMsg_Done(t *testing.T) {
 func TestApp_StreamChunkMsg_Error(t *testing.T) {
 	app := NewApp()
 	app.boot.Ready = true
-	app.comms.State = newCommsState("test-agent", "system prompt", 80, 40)
-	app.comms.State.streaming = true
+	app.views.Comms.State = newCommsState("test-agent", "system prompt", 80, 40)
+	app.views.Comms.State.streaming = true
 
 	msg := streamChunkMsg{err: errTestDummy}
 	model, _ := app.Update(msg)
 	result := model.(App)
-	if result.comms.State.streaming {
+	if result.views.Comms.State.streaming {
 		t.Error("expected streaming=false after error")
 	}
 }

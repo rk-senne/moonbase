@@ -95,7 +95,7 @@ func (c *CommsState) rebuildContent(t Theme) {
 
 // renderComms renders the COMMS view
 func (a App) renderComms() string {
-	header := a.renderHeader("Comms › " + a.comms.State.agent)
+	header := a.renderHeader("Comms › " + a.views.Comms.State.agent)
 
 	// Chat viewport
 	vpStyle := lipgloss.NewStyle().
@@ -104,21 +104,21 @@ func (a App) renderComms() string {
 		Width(a.width - 2).
 		Height(a.height - 5)
 
-	chatView := vpStyle.Render(a.comms.State.viewport.View())
+	chatView := vpStyle.Render(a.views.Comms.State.viewport.View())
 
 	// Input bar
 	inputPrefix := lipgloss.NewStyle().Foreground(a.theme.Data.Brand).Bold(true).Render(" > ")
 	var inputBar string
 
-	if a.ctxFile.Active {
-		inputBar = lipgloss.NewStyle().Foreground(a.theme.Data.Info).Render(" 📎 Attach: ") + a.ctxFile.Input.View()
-	} else if a.snippetPick.Active {
+	if a.views.CtxFile.Active {
+		inputBar = lipgloss.NewStyle().Foreground(a.theme.Data.Info).Render(" 📎 Attach: ") + a.views.CtxFile.Input.View()
+	} else if a.views.SnippetPick.Active {
 		inputBar = a.renderSnippetPicker()
-	} else if a.comms.State.streaming {
+	} else if a.views.Comms.State.streaming {
 		typingAnim := lipgloss.NewStyle().Foreground(a.theme.Data.Active).Render(a.chrome.Anim.RenderTyping())
 		inputBar = inputPrefix + typingAnim + lipgloss.NewStyle().Foreground(a.theme.Data.Dim).Render(" streaming...")
 	} else {
-		inputBar = inputPrefix + a.comms.Input.View()
+		inputBar = inputPrefix + a.views.Comms.Input.View()
 	}
 
 	statusBar := a.renderContextualStatusBar()
@@ -130,11 +130,11 @@ func (a App) renderSnippetPicker() string {
 	labelStyle := lipgloss.NewStyle().Foreground(a.theme.Data.Info).Bold(true)
 	var b strings.Builder
 	b.WriteString(labelStyle.Render(" 📋 SNIPPETS: "))
-	if len(a.snippetPick.List) == 0 {
+	if len(a.views.SnippetPick.List) == 0 {
 		b.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Dim).Render("(none saved — use: moonbase snippet save <name>)"))
 	} else {
-		for i, s := range a.snippetPick.List {
-			if i == a.snippetPick.Cursor {
+		for i, s := range a.views.SnippetPick.List {
+			if i == a.views.SnippetPick.Cursor {
 				b.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Active).Bold(true).Render(fmt.Sprintf(" [%s] ", s.Name)))
 			} else {
 				b.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Dim).Render(fmt.Sprintf("  %s  ", s.Name)))
