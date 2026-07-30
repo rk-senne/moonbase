@@ -12,6 +12,7 @@ import (
 
 var deployTask string
 var deployCmux bool
+var deployNative bool
 
 var deployCmd = &cobra.Command{
 	Use:     "deploy [numbuh] [task...]",
@@ -49,6 +50,7 @@ var deployCmd = &cobra.Command{
 func init() {
 	deployCmd.Flags().StringVarP(&deployTask, "task", "t", "", "task description for the operative")
 	deployCmd.Flags().BoolVar(&deployCmux, "cmux", false, "deploy agent in a cmux split pane")
+	deployCmd.Flags().BoolVar(&deployNative, "native", false, "deploy via Kiro-native compiled JSON (kiro-cli chat --agent)")
 }
 
 // selectAgent shows an interactive huh select form to pick an agent.

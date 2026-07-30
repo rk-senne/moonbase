@@ -48,6 +48,28 @@ type Config struct {
 
 	// cmux integration (manaflow-ai/cmux macOS terminal for AI agents).
 	UseCmux bool `yaml:"use_cmux,omitempty"` // Auto-enable cmux features when true (notifications, split panes)
+
+	// Kiro Native Interop configuration.
+	Compile CompileConfig `yaml:"compile,omitempty"` // Compilation settings
+	Deploy  DeployConfig  `yaml:"deploy,omitempty"`  // Deployment mode settings
+	Safety  SafetyConfig  `yaml:"safety,omitempty"`  // Safety delegation settings
+}
+
+// CompileConfig controls Kiro-native JSON compilation.
+type CompileConfig struct {
+	OutDir       string `yaml:"out_dir,omitempty"`       // Default output directory (default: ".kiro/agents")
+	AutoValidate bool   `yaml:"auto_validate,omitempty"` // Run kiro-cli agent validate after compile
+}
+
+// DeployConfig controls agent deployment mode.
+type DeployConfig struct {
+	Mode        string `yaml:"mode,omitempty"`         // "legacy" (raw prompt) | "native" (compiled JSON)
+	AutoCompile bool   `yaml:"auto_compile,omitempty"` // Auto-recompile stale agents on deploy
+}
+
+// SafetyConfig controls safety mechanism delegation.
+type SafetyConfig struct {
+	DelegateToKiro bool `yaml:"delegate_to_kiro,omitempty"` // When true + native mode: skip moonbase safety checks
 }
 
 // DefaultConfig returns a Config with sensible defaults.

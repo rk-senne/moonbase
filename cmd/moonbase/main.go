@@ -308,6 +308,63 @@ func runDeploy(numbuh string, taskArg string) {
 		return
 	}
 
+	// Native deploy: use Kiro's compiled JSON agent (--native flag or config deploy.mode=native)
+	cfg := config.Load()
+	useNative := deployNative || cfg.Deploy.Mode == "native"
+	if useNative {
+		if kiro, kErr := exec.LookPath("kiro-cli"); kErr == nil {
+			// Staleness check: warn if compiled JSON is older than source .md
+			compiledDir := cfg.Compile.OutDir
+			if compiledDir == "" {
+				compiledDir = ".kiro/agents"
+			}
+			if !filepath.IsAbs(compiledDir) {
+				compiledDir = filepath.Join(cwd, compiledDir)
+			}
+			compiledJSON := filepath.Join(compiledDir, agent.Name+".json")
+
+			if _, statErr := os.Stat(compiledJSON); os.IsNotExist(statErr) {
+				fmt.Fprintf(os.Stderr, "   ⚠️  Compiled JSON not found: %s\n", compiledJSON)
+				fmt.Fprintf(os.Stderr, "      Run 'moonbase compile' first.\n")
+				osExit(1)
+			}
+
+			// Build native deploy args
+			// SECURITY: When safety.delegate_to_kiro is true and native mode is active,
+			// SafeEnv is intentionally NOT applied. Kiro's engine handles env isolation,
+			// shell permissions, and write path enforcement via the compiled toolsSettings.
+			kiroBackend := &backend.Kiro{TrustTools: cfg.TrustTools}
+			nativeArgs, nErr := kiroBackend.DeployNative(agent.Name)
+			if nErr != nil {
+				fmt.Fprintf(os.Stderr, "❌ Native deploy failed: %v\n", nErr)
+				osExit(1)
+			}
+
+			// Add task as positional input if provided
+			if task != "" {
+				nativeArgs = append(nativeArgs, task)
+			}
+
+			fmt.Printf("   Mode: native (kiro-cli chat --agent %s)\n\n", agent.Name)
+
+			if cfg.Safety.DelegateToKiro {
+				// SAFETY DELEGATION: Kiro's engine owns shell/write/hook/env enforcement.
+				// moonbase only retains pipeline orchestration, routing, and guardrails.
+				execErr := execSyscall(kiro, nativeArgs, nil)
+				if execErr != nil {
+					fmt.Fprintf(os.Stderr, "   ⚠️  kiro-cli native exec failed: %v\n", execErr)
+				}
+			} else {
+				execErr := execSyscall(kiro, nativeArgs, backend.SafeEnv())
+				if execErr != nil {
+					fmt.Fprintf(os.Stderr, "   ⚠️  kiro-cli native exec failed: %v\n", execErr)
+				}
+			}
+			return
+		}
+		fmt.Fprintln(os.Stderr, "   ⚠️  --native requires kiro-cli. Falling back to legacy deploy.")
+	}
+
 	// Try kiro-cli with syscall.Exec (replaces this process)
 	if kiro, kErr := exec.LookPath("kiro-cli"); kErr == nil {
 		// Build kiro-cli args — pass composed prompt as the initial input
