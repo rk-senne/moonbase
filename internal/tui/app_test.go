@@ -391,18 +391,28 @@ func TestApp_CursorBoundsCheck(t *testing.T) {
 	}
 }
 
-// TestApp_FieldCountBounded asserts the top-level App struct field budget.
-// The design target is ≤15 fields (orchestration/shared only). The current count
-// is higher because several field groups have not yet been extracted into sub-models:
+// TestApp_FieldCountBounded ratchets the top-level App struct field budget so it
+// can only shrink, never silently grow. App has been reduced from 47 fields to the
+// current count by extracting 15 cohesive sub-models:
+//   TerminalModel, DashboardModel, PipelineModel, SystemModel, SearchModel,
+//   SnippetPickerModel, ContextFileModel, MissionModel, ChromeModel, BootModel,
+//   InfraModel, BrowserModel, BackendModel, and CommsModel.
 //
-// Remaining groups that could be extracted in future phases:
-//   (none currently identified)
+// The remaining fields are either legitimately top-level (keys, view, registry,
+// width, height, spinner, intel, projectCtx), the two lazily-initialized secondary
+// view-state pointers (docs, projectNav), or the theme triple (theme, themeData,
+// styles). The theme triple is DELIBERATELY not extracted: themeData/styles are read
+// on hundreds of hot-path render lines, so wrapping them buys ≈2 fields for very large
+// churn and no real cohesion gain.
 //
-// Extracted so far: TerminalModel, DashboardModel, PipelineModel, SystemModel,
-// SearchModel, SnippetPickerModel, ContextFileModel, MissionModel, ChromeModel,
-// BootModel, InfraModel, BrowserModel, BackendModel, and CommsModel.
-// Each remaining extraction is its own task; this test
-// ratchets the count down so it can only shrink, never silently grow.
+// The original ≤15 aspiration would now require either that hot-path theme churn or an
+// artificial aggregate-parent layer (e.g. App.views.Dashboard) that trades one
+// indirection for another. That is a deliberate architecture decision, not a mechanical
+// field move, and is intentionally left as a separate spec'd effort. This struct is no
+// longer a god-struct — it is a well-organised aggregate root.
+//
+// To LOWER this bound: extract another cohesive sub-model and decrement maxFields.
+// Never RAISE it to accommodate a new loose field — extract a sub-model instead.
 func TestApp_FieldCountBounded(t *testing.T) {
 	count := reflect.TypeOf(App{}).NumField()
 	// Ratchet: lower this only when an extraction reduces the count. Never raise it
