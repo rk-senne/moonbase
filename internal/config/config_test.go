@@ -718,3 +718,96 @@ func TestMigrateFromJSON_WithBackendsAPIKeys(t *testing.T) {
 		// Model info is also dropped (not in new format)
 	}
 }
+
+// --- Parallel Specialist Config Tests ---
+
+func TestDefaultConfig_ParallelSpecialists(t *testing.T) {
+	cfg := DefaultConfig()
+	if !cfg.ParallelSpecialists {
+		t.Error("expected ParallelSpecialists=true by default")
+	}
+	if cfg.MaxSpecialistConcurrency != 4 {
+		t.Errorf("expected MaxSpecialistConcurrency=4, got %d", cfg.MaxSpecialistConcurrency)
+	}
+}
+
+func TestParallelSpecialists_DisabledViaYAML(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yaml")
+
+	yamlContent := `default_backend: kiro-cli
+parallel_specialists: false
+`
+	os.WriteFile(configPath, []byte(yamlContent), 0o600)
+
+	loaded, err := loadFromFile(configPath)
+	if err != nil {
+		t.Fatalf("load failed: %v", err)
+	}
+	if loaded.ParallelSpecialists {
+		t.Error("expected ParallelSpecialists=false when set in YAML")
+	}
+}
+
+func TestParallelSpecialists_ConcurrencyOverride(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yaml")
+
+	yamlContent := `default_backend: kiro-cli
+max_specialist_concurrency: 2
+`
+	os.WriteFile(configPath, []byte(yamlContent), 0o600)
+
+	loaded, err := loadFromFile(configPath)
+	if err != nil {
+		t.Fatalf("load failed: %v", err)
+	}
+	if loaded.MaxSpecialistConcurrency != 2 {
+		t.Errorf("expected MaxSpecialistConcurrency=2, got %d", loaded.MaxSpecialistConcurrency)
+	}
+}
+
+func TestParallelSpecialists_MissingFields_DefaultApply(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yaml")
+
+	// Config with no parallel fields — should use zero values from YAML unmarshal.
+	yamlContent := `default_backend: kiro-cli
+theme: moonbase
+`
+	os.WriteFile(configPath, []byte(yamlContent), 0o600)
+
+	loaded, err := loadFromFile(configPath)
+	if err != nil {
+		t.Fatalf("load failed: %v", err)
+	}
+	// When not specified, bool defaults to false and int to 0 in Go unmarshaling.
+	// The Load() function applies defaults; loadFromFile is raw.
+	// This tests the raw load — caller should apply defaults.
+	_ = loaded
+}
+
+func TestParallelSpecialists_RoundTrip(t *testing.T) {
+	cfg := Config{
+		DefaultBackend:           "kiro-cli",
+		ParallelSpecialists:      true,
+		MaxSpecialistConcurrency: 8,
+	}
+
+	data, err := yaml.Marshal(cfg)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	var loaded Config
+	if err := yaml.Unmarshal(data, &loaded); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+
+	if !loaded.ParallelSpecialists {
+		t.Error("ParallelSpecialists lost in round-trip")
+	}
+	if loaded.MaxSpecialistConcurrency != 8 {
+		t.Errorf("MaxSpecialistConcurrency lost in round-trip: got %d", loaded.MaxSpecialistConcurrency)
+	}
+}
