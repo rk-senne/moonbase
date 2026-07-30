@@ -3,6 +3,15 @@
 // containing metadata and a markdown body containing the agent's system prompt.
 package agents
 
+// MCPServerConfig defines an MCP server available to the agent.
+type MCPServerConfig struct {
+	Name         string            `yaml:"name"`                          // Unique server name (required)
+	Command      string            `yaml:"command"`                       // Command to launch the MCP server (required)
+	Args         []string          `yaml:"args,omitempty"`                // Arguments for the command
+	Env          map[string]string `yaml:"env,omitempty"`                 // Environment variables for the server process
+	AllowedTools []string          `yaml:"allowed_tools,omitempty"`       // Scoped tool filtering for this server
+}
+
 // Agent represents a KND operative loaded from a .md file with YAML frontmatter.
 type Agent struct {
 	// --- Frontmatter fields (parsed from YAML) ---
@@ -21,6 +30,7 @@ type Agent struct {
 	Handoff          *HandoffConfig    `yaml:"handoff,omitempty"`       // Handoff format between agents
 	OutputSchema     string            `yaml:"output_schema,omitempty"` // Expected output format hint (e.g. 'json', 'markdown', 'structured')
 	PipelinePosition *int              `yaml:"pipeline_position,omitempty"` // Position in core pipeline (nil = not a pipeline agent)
+	MCPServers       []MCPServerConfig `yaml:"mcp_servers,omitempty"`       // MCP servers available to this agent
 	Shortcut         string         `yaml:"shortcut"`           // Keyboard shortcut in TUI
 	Triggers         *string        `yaml:"triggers,omitempty"` // Trigger conditions for conditional specialists
 
@@ -122,6 +132,11 @@ func (a *Agent) MaxOutputLimit() int {
 		return 0
 	}
 	return a.Guardrails.MaxOutput
+}
+
+// HasMCPServers returns true if the agent has MCP servers configured.
+func (a *Agent) HasMCPServers() bool {
+	return len(a.MCPServers) > 0
 }
 
 // HasPreToolHooks returns true if the agent has pre-tool-use hooks configured.
