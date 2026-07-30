@@ -126,15 +126,15 @@ func (a App) handleStreamChunk(msg streamChunkMsg) (tea.Model, tea.Cmd) {
 	}
 	if msg.err != nil {
 		a.comms.State.buffer += fmt.Sprintf("\n[ERROR: %s]", msg.err)
-		a.comms.State.FinishStream(a.themeData)
+		a.comms.State.FinishStream(a.theme.Data)
 		return a, nil
 	}
 	if msg.done {
-		a.comms.State.FinishStream(a.themeData)
+		a.comms.State.FinishStream(a.theme.Data)
 		a.ringBell()
 		return a, nil
 	}
-	a.comms.State.AppendStreamToken(msg.text, a.themeData)
+	a.comms.State.AppendStreamToken(msg.text, a.theme.Data)
 	// Continue polling the stream
 	return a, pollStream(a.pipeline.StreamCh)
 }

@@ -77,9 +77,7 @@ type App struct {
 	intel          []IntelEntry
 	mission        MissionModel
 	search         SearchModel
-	theme          string
-	themeData      Theme
-	styles         Styles
+	theme          ThemeModel
 	chrome         ChromeModel
 	comms          CommsModel
 	projectCtx     *discovery.ProjectContext
@@ -189,9 +187,7 @@ func NewApp() App {
 		search:       SearchModel{Input: si},
 		comms:        CommsModel{Input: ci},
 		ctxFile:      ContextFileModel{Input: fi},
-		theme:        "moonbase",
-		themeData:    initialTheme,
-		styles:       initialStyles,
+		theme:        ThemeModel{Name: "moonbase", Data: initialTheme, Styles: initialStyles},
 		chrome: ChromeModel{
 			Clock:     time.Now().Format("15:04:05"),
 			StartTime: time.Now(),
@@ -304,7 +300,7 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a.handleTermOutput(msg)
 
 	case termCdMsg:
-		a.terminal = a.terminal.HandleCd(msg, a.themeData)
+		a.terminal = a.terminal.HandleCd(msg, a.theme.Data)
 		if msg.err == nil && msg.newCwd != "" {
 			a.addIntel("cd → %s", msg.newCwd)
 		}

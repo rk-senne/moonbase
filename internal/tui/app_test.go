@@ -36,8 +36,8 @@ func TestNewApp_Initializes(t *testing.T) {
 	if app.dashboard.Cursor != 0 {
 		t.Errorf("expected cursor=0, got %d", app.dashboard.Cursor)
 	}
-	if app.theme != "moonbase" {
-		t.Errorf("expected theme=moonbase, got %s", app.theme)
+	if app.theme.Name != "moonbase" {
+		t.Errorf("expected theme=moonbase, got %s", app.theme.Name)
 	}
 	if app.chrome.Focus != FocusSidebar {
 		t.Errorf("expected focus=FocusSidebar, got %d", app.chrome.Focus)
@@ -314,26 +314,26 @@ func TestApp_ThemeCycle(t *testing.T) {
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'T'}})
 	result := model.(App)
-	if result.theme != "treehouse" {
-		t.Errorf("expected theme=treehouse after first 'T', got %s", result.theme)
+	if result.theme.Name != "treehouse" {
+		t.Errorf("expected theme=treehouse after first 'T', got %s", result.theme.Name)
 	}
 
 	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'T'}})
 	result = model.(App)
-	if result.theme != "classified" {
-		t.Errorf("expected theme=classified after second 'T', got %s", result.theme)
+	if result.theme.Name != "classified" {
+		t.Errorf("expected theme=classified after second 'T', got %s", result.theme.Name)
 	}
 
 	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'T'}})
 	result = model.(App)
-	if result.theme != "nerv" {
-		t.Errorf("expected theme=nerv after third 'T', got %s", result.theme)
+	if result.theme.Name != "nerv" {
+		t.Errorf("expected theme=nerv after third 'T', got %s", result.theme.Name)
 	}
 
 	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'T'}})
 	result = model.(App)
-	if result.theme != "moonbase" {
-		t.Errorf("expected theme=moonbase after fourth 'T' (wrap), got %s", result.theme)
+	if result.theme.Name != "moonbase" {
+		t.Errorf("expected theme=moonbase after fourth 'T' (wrap), got %s", result.theme.Name)
 	}
 }
 
@@ -417,7 +417,7 @@ func TestApp_FieldCountBounded(t *testing.T) {
 	count := reflect.TypeOf(App{}).NumField()
 	// Ratchet: lower this only when an extraction reduces the count. Never raise it
 	// to accommodate new loose fields — extract a sub-model instead.
-	const maxFields = 25
+	const maxFields = 23
 	if count > maxFields {
 		t.Errorf("App has %d fields, expected ≤ %d — did you add fields without extracting? See comment above.", count, maxFields)
 	}

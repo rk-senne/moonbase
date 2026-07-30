@@ -53,19 +53,19 @@ func TestCycleTheme_AdvancesAndWraps(t *testing.T) {
 	app := NewApp()
 
 	// Verify initial state
-	if app.theme != "moonbase" {
-		t.Fatalf("expected initial theme moonbase, got %s", app.theme)
+	if app.theme.Name != "moonbase" {
+		t.Fatalf("expected initial theme moonbase, got %s", app.theme.Name)
 	}
 
 	// Cycle through all themes
 	expected := []string{"treehouse", "classified", "nerv", "moonbase"}
 	for _, want := range expected {
 		app.cycleTheme()
-		if app.theme != want {
-			t.Errorf("expected theme %s, got %s", want, app.theme)
+		if app.theme.Name != want {
+			t.Errorf("expected theme %s, got %s", want, app.theme.Name)
 		}
-		if app.themeData.Name != want {
-			t.Errorf("expected themeData.Name %s, got %s", want, app.themeData.Name)
+		if app.theme.Data.Name != want {
+			t.Errorf("expected themeData.Name %s, got %s", want, app.theme.Data.Name)
 		}
 	}
 }
@@ -96,8 +96,8 @@ func TestCycleTheme_PureValueTransform(t *testing.T) {
 	a2 := NewApp()
 	a1.cycleTheme()
 	a2.cycleTheme()
-	if a1.theme != a2.theme {
-		t.Errorf("cycling not deterministic: %s vs %s", a1.theme, a2.theme)
+	if a1.theme.Name != a2.theme.Name {
+		t.Errorf("cycling not deterministic: %s vs %s", a1.theme.Name, a2.theme.Name)
 	}
 }
 

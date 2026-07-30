@@ -28,7 +28,7 @@ func (a App) appContext() AppContext {
 		Registry:   a.registry,
 		Backend:    a.env.Backend.Active,
 		ProjectCtx: a.projectCtx,
-		Styles:     a.styles,
+		Styles:     a.theme.Styles,
 		Keys:       a.keys,
 		Width:      a.width,
 		Height:     a.height,

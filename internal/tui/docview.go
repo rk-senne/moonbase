@@ -54,8 +54,8 @@ func (a App) renderDocs() string {
 	header := a.renderHeader("Documentation")
 
 	if a.docs == nil || len(a.docs.files) == 0 {
-		body := a.styles.Panel.Width(a.width - 4).Render(
-			lipgloss.NewStyle().Foreground(a.themeData.Dim).Render("\n  No documentation found.\n\n  Place .md files in: docs/, wiki/, spec/, or project root.\n"))
+		body := a.theme.Styles.Panel.Width(a.width - 4).Render(
+			lipgloss.NewStyle().Foreground(a.theme.Data.Dim).Render("\n  No documentation found.\n\n  Place .md files in: docs/, wiki/, spec/, or project root.\n"))
 		statusBar := a.renderContextualStatusBar()
 		return lipgloss.JoinVertical(lipgloss.Left, header, "\n"+body, statusBar)
 	}
@@ -65,8 +65,8 @@ func (a App) renderDocs() string {
 
 	// Sidebar: file list
 	var s strings.Builder
-	s.WriteString(lipgloss.NewStyle().Foreground(a.themeData.Brand).Bold(true).Render("◆ DOCS") + "\n")
-	s.WriteString(lipgloss.NewStyle().Foreground(a.themeData.Dim).Render("──────────────────") + "\n")
+	s.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Brand).Bold(true).Render("◆ DOCS") + "\n")
+	s.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Dim).Render("──────────────────") + "\n")
 
 	for i, f := range a.docs.files {
 		name := f.Name
@@ -74,15 +74,15 @@ func (a App) renderDocs() string {
 			name = name[:sideW-4]
 		}
 		if i == a.docs.cursor {
-			s.WriteString(lipgloss.NewStyle().Foreground(a.themeData.Active).Bold(true).Render(fmt.Sprintf(" ▸ %s", name)) + "\n")
+			s.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Active).Bold(true).Render(fmt.Sprintf(" ▸ %s", name)) + "\n")
 		} else {
-			s.WriteString(lipgloss.NewStyle().Foreground(a.themeData.Dim).Render(fmt.Sprintf("   %s", name)) + "\n")
+			s.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Dim).Render(fmt.Sprintf("   %s", name)) + "\n")
 		}
 	}
 
 	sidebar := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
-		BorderForeground(a.themeData.Dim).
+		BorderForeground(a.theme.Data.Dim).
 		Padding(0, 1).
 		Width(sideW).
 		Height(a.height - 3).
@@ -91,7 +91,7 @@ func (a App) renderDocs() string {
 	// Main: rendered markdown viewport
 	mainPanel := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(a.themeData.Info).
+		BorderForeground(a.theme.Data.Info).
 		Width(mainW).
 		Height(a.height - 3).
 		Render(a.docs.viewport.View())

@@ -112,9 +112,7 @@ func newGoldenApp(t *testing.T) App {
 		width:         100,
 		height:        30,
 		boot:          BootModel{Ready: true},
-		theme:         "moonbase",
-		themeData:     moonbaseTheme,
-		styles:        NewStyles(moonbaseTheme),
+		theme:         ThemeModel{Name: "moonbase", Data: moonbaseTheme, Styles: NewStyles(moonbaseTheme)},
 		chrome: ChromeModel{
 			Clock:     "12:00:00",
 			StartTime: time.Now(),

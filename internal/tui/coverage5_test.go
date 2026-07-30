@@ -2273,22 +2273,22 @@ func TestAgentColor_AllVariants(t *testing.T) {
 
 func TestCycleTheme_FullCycle(t *testing.T) {
 	app := NewApp()
-	app.theme = "moonbase"
+	app.theme.Name = "moonbase"
 	app.cycleTheme()
-	if app.theme != "treehouse" {
-		t.Errorf("expected treehouse, got %s", app.theme)
+	if app.theme.Name != "treehouse" {
+		t.Errorf("expected treehouse, got %s", app.theme.Name)
 	}
 	app.cycleTheme()
-	if app.theme != "classified" {
-		t.Errorf("expected classified, got %s", app.theme)
+	if app.theme.Name != "classified" {
+		t.Errorf("expected classified, got %s", app.theme.Name)
 	}
 	app.cycleTheme()
-	if app.theme != "nerv" {
-		t.Errorf("expected nerv, got %s", app.theme)
+	if app.theme.Name != "nerv" {
+		t.Errorf("expected nerv, got %s", app.theme.Name)
 	}
 	app.cycleTheme()
-	if app.theme != "moonbase" {
-		t.Errorf("expected moonbase, got %s", app.theme)
+	if app.theme.Name != "moonbase" {
+		t.Errorf("expected moonbase, got %s", app.theme.Name)
 	}
 }
 

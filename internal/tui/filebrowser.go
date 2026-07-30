@@ -156,7 +156,7 @@ func (fb *FileBrowser) SelectedIsFile() bool {
 // Render the file browser for the main panel
 func (a App) renderFileBrowser(width, maxH int) string {
 	fb := a.browser.FileBrowser
-	borderColor := a.themeData.Active
+	borderColor := a.theme.Data.Active
 
 	var s strings.Builder
 
@@ -166,8 +166,8 @@ func (a App) renderFileBrowser(width, maxH int) string {
 	if strings.HasPrefix(cwdShort, home) {
 		cwdShort = "~" + cwdShort[len(home):]
 	}
-	title := lipgloss.NewStyle().Foreground(a.themeData.Brand).Bold(true).Render("─ KND ")
-	path := lipgloss.NewStyle().Foreground(a.themeData.Dim).Render(cwdShort + " ")
+	title := lipgloss.NewStyle().Foreground(a.theme.Data.Brand).Bold(true).Render("─ KND ")
+	path := lipgloss.NewStyle().Foreground(a.theme.Data.Dim).Render(cwdShort + " ")
 	titleW := lipgloss.Width(title)
 	pathW := lipgloss.Width(path)
 	fillW := max(1, width-titleW-pathW)
@@ -211,12 +211,12 @@ func (a App) renderFileBrowser(width, maxH int) string {
 		}
 
 		if i == fb.cursor {
-			style := lipgloss.NewStyle().Foreground(a.themeData.Active).Bold(true)
+			style := lipgloss.NewStyle().Foreground(a.theme.Data.Active).Bold(true)
 			list.WriteString(style.Render(fmt.Sprintf(" ▸ %s %s", icon, name)) + "\n")
 		} else {
-			style := lipgloss.NewStyle().Foreground(a.themeData.Dim)
+			style := lipgloss.NewStyle().Foreground(a.theme.Data.Dim)
 			if entry.IsDir {
-				style = lipgloss.NewStyle().Foreground(a.themeData.Info)
+				style = lipgloss.NewStyle().Foreground(a.theme.Data.Info)
 			}
 			list.WriteString(style.Render(fmt.Sprintf("   %s %s", icon, name)) + "\n")
 		}
@@ -224,7 +224,7 @@ func (a App) renderFileBrowser(width, maxH int) string {
 
 	// Preview
 	var prev strings.Builder
-	prevTitle := lipgloss.NewStyle().Foreground(a.themeData.Info).Render("─ PREVIEW ─")
+	prevTitle := lipgloss.NewStyle().Foreground(a.theme.Data.Info).Render("─ PREVIEW ─")
 	prev.WriteString(prevTitle + "\n")
 	if fb.preview != "" {
 		lines := strings.Split(fb.preview, "\n")
@@ -235,7 +235,7 @@ func (a App) renderFileBrowser(width, maxH int) string {
 			if len(line) > previewW-2 {
 				line = line[:previewW-2]
 			}
-			prev.WriteString(lipgloss.NewStyle().Foreground(a.themeData.Dim).Render(line) + "\n")
+			prev.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Dim).Render(line) + "\n")
 		}
 	}
 
@@ -247,7 +247,7 @@ func (a App) renderFileBrowser(width, maxH int) string {
 	// Footer
 	s.WriteString("\n")
 	count := fmt.Sprintf(" %d items", len(fb.entries))
-	s.WriteString(lipgloss.NewStyle().Foreground(a.themeData.Dim).Render(count))
+	s.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Dim).Render(count))
 
 	return lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).

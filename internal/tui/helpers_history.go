@@ -14,9 +14,9 @@ func (a App) renderHistory() string {
 	header := a.renderHeader("Mission History")
 
 	var b strings.Builder
-	titleStyle := lipgloss.NewStyle().Foreground(a.themeData.Brand).Bold(true)
-	dimStyle := lipgloss.NewStyle().Foreground(a.themeData.Dim)
-	labelStyle := lipgloss.NewStyle().Foreground(a.themeData.Info)
+	titleStyle := lipgloss.NewStyle().Foreground(a.theme.Data.Brand).Bold(true)
+	dimStyle := lipgloss.NewStyle().Foreground(a.theme.Data.Dim)
+	labelStyle := lipgloss.NewStyle().Foreground(a.theme.Data.Info)
 
 	b.WriteString("\n")
 	b.WriteString(titleStyle.Render("  ◆ MISSION LOG") + "\n")
@@ -47,7 +47,7 @@ func (a App) renderHistory() string {
 	b.WriteString("\n")
 	b.WriteString(dimStyle.Render("  [esc] Back") + "\n")
 
-	body := a.styles.Panel.Width(a.width - 4).Render(b.String())
+	body := a.theme.Styles.Panel.Width(a.width - 4).Render(b.String())
 	statusBar := a.renderContextualStatusBar()
 	return lipgloss.JoinVertical(lipgloss.Left, header, "\n"+body, statusBar)
 }

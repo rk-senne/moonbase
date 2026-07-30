@@ -49,8 +49,8 @@ func TestApp_ThemeCycleAll(t *testing.T) {
 	for _, expected := range themes {
 		model, _ := result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'T'}})
 		result = model.(App)
-		if result.theme != expected {
-			t.Errorf("expected theme=%s, got %s", expected, result.theme)
+		if result.theme.Name != expected {
+			t.Errorf("expected theme=%s, got %s", expected, result.theme.Name)
 		}
 	}
 }

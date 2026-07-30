@@ -177,7 +177,7 @@ func (a App) handleFileChange(msg fileChangeMsg) (tea.Model, tea.Cmd) {
 
 // handleTermOutput processes embedded terminal command output.
 func (a App) handleTermOutput(msg termOutputMsg) (tea.Model, tea.Cmd) {
-	a.terminal = a.terminal.HandleOutput(msg, a.themeData)
+	a.terminal = a.terminal.HandleOutput(msg, a.theme.Data)
 	return a, nil
 }
 

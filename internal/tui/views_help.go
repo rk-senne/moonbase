@@ -45,8 +45,8 @@ func (a App) renderHelp() string {
 
 	groups := a.keys.FullHelp()
 
-	keyStyle := lipgloss.NewStyle().Foreground(a.themeData.Text).Bold(true)
-	descStyle := lipgloss.NewStyle().Foreground(a.themeData.Info)
+	keyStyle := lipgloss.NewStyle().Foreground(a.theme.Data.Text).Bold(true)
+	descStyle := lipgloss.NewStyle().Foreground(a.theme.Data.Info)
 
 	// Render categories in pairs (left + right) to match the two-column layout
 	var sections []string
@@ -77,7 +77,7 @@ func (a App) renderHelp() string {
 	keyTable := strings.Join(sections, "\n\n")
 
 	// KND-flavoured brand prose (kept as brand, not key data)
-	brandFooter := lipgloss.NewStyle().Foreground(a.themeData.Info).Render(`
+	brandFooter := lipgloss.NewStyle().Foreground(a.theme.Data.Info).Render(`
   ◆ THE KND WAY
   ──────────────────────
   Sector V = core pipeline.  Specialists = cross-cutting.

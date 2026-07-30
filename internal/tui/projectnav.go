@@ -24,16 +24,16 @@ func (a App) renderProjects() string {
 	header := a.renderHeader("Projects")
 
 	if a.projectNav == nil || len(a.projectNav.list) == 0 {
-		body := a.styles.Panel.Width(a.width - 4).Render(
-			lipgloss.NewStyle().Foreground(a.themeData.Dim).Render("\n  No projects found in ~/Workspace/Personal or ~/Workspace/Projects.\n"))
+		body := a.theme.Styles.Panel.Width(a.width - 4).Render(
+			lipgloss.NewStyle().Foreground(a.theme.Data.Dim).Render("\n  No projects found in ~/Workspace/Personal or ~/Workspace/Projects.\n"))
 		statusBar := a.renderContextualStatusBar()
 		return lipgloss.JoinVertical(lipgloss.Left, header, "\n"+body, statusBar)
 	}
 
 	var s strings.Builder
-	titleStyle := lipgloss.NewStyle().Foreground(a.themeData.Brand).Bold(true)
-	dimStyle := lipgloss.NewStyle().Foreground(a.themeData.Dim)
-	activeStyle := lipgloss.NewStyle().Foreground(a.themeData.Active).Bold(true)
+	titleStyle := lipgloss.NewStyle().Foreground(a.theme.Data.Brand).Bold(true)
+	dimStyle := lipgloss.NewStyle().Foreground(a.theme.Data.Dim)
+	activeStyle := lipgloss.NewStyle().Foreground(a.theme.Data.Active).Bold(true)
 
 	s.WriteString(titleStyle.Render("  ◆ SELECT PROJECT") + "\n")
 	s.WriteString(dimStyle.Render("  Navigate to a project to view its docs.") + "\n\n")
@@ -65,7 +65,7 @@ func (a App) renderProjects() string {
 	s.WriteString("\n")
 	s.WriteString(dimStyle.Render(fmt.Sprintf("  %d projects found", len(a.projectNav.list))) + "\n")
 
-	body := a.styles.Panel.Width(a.width - 4).Height(a.height - 3).Render(s.String())
+	body := a.theme.Styles.Panel.Width(a.width - 4).Height(a.height - 3).Render(s.String())
 	statusBar := a.renderContextualStatusBar()
 
 	return lipgloss.JoinVertical(lipgloss.Left, header, body, statusBar)

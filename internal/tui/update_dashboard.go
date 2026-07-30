@@ -101,7 +101,7 @@ func (a App) handleDashboardKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return a, textinput.Blink
 	case key.Matches(msg, a.keys.CycleTheme):
 		a.cycleTheme()
-		a.addIntel("Theme: %s", a.theme)
+		a.addIntel("Theme: %s", a.theme.Name)
 	case key.Matches(msg, a.keys.Search):
 		a.search.Active = true
 		a.search.Input.Focus()

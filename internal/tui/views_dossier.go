@@ -24,9 +24,9 @@ func (a App) renderDossier() string {
 	}
 
 	var d strings.Builder
-	nameStyle := lipgloss.NewStyle().Foreground(a.themeData.Brand).Bold(true)
-	labelStyle := lipgloss.NewStyle().Foreground(a.themeData.Info)
-	dimStyle := lipgloss.NewStyle().Foreground(a.themeData.Dim)
+	nameStyle := lipgloss.NewStyle().Foreground(a.theme.Data.Brand).Bold(true)
+	labelStyle := lipgloss.NewStyle().Foreground(a.theme.Data.Info)
+	dimStyle := lipgloss.NewStyle().Foreground(a.theme.Data.Dim)
 
 	d.WriteString(nameStyle.Render(fmt.Sprintf("  %s", strings.ToUpper(agent.Name))) + "\n")
 	d.WriteString(dimStyle.Render(fmt.Sprintf("  %s", agent.Description)) + "\n\n")
@@ -60,19 +60,19 @@ func (a App) renderDossier() string {
 	d.WriteString("  [enter] Deploy    [c] Copy prompt\n")
 	d.WriteString("  [t] Spawn hook    [esc] Back\n")
 
-	dossierPanel := a.styles.Panel.Width(mainWidth).Render(d.String())
+	dossierPanel := a.theme.Styles.Panel.Width(mainWidth).Render(d.String())
 
 	// Portrait panel
 	var p strings.Builder
 	portrait := portraitFor(agent.Name)
-	portraitStyled := lipgloss.NewStyle().Foreground(a.themeData.Brand).Render(portrait)
+	portraitStyled := lipgloss.NewStyle().Foreground(a.theme.Data.Brand).Render(portrait)
 	p.WriteString(labelStyle.Render("  ╭─ PORTRAIT ─╮") + "\n")
 	p.WriteString(portraitStyled + "\n")
 	p.WriteString(labelStyle.Render("  ╰────────────╯") + "\n")
 
 	portraitPanel := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(a.themeData.Dim).
+		BorderForeground(a.theme.Data.Dim).
 		Padding(0, 1).
 		Width(portraitW).
 		Render(p.String())

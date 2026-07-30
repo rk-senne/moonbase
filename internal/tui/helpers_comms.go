@@ -31,7 +31,7 @@ func (a *App) openComms() {
 			viewport: viewport.New(vpWidth, vpHeight),
 			agent:    agent.Name,
 		}
-		a.comms.State.rebuildContent(a.themeData)
+		a.comms.State.rebuildContent(a.theme.Data)
 	} else {
 		a.comms.State = newCommsState(agent.Name, agent.Prompt, a.width, a.height)
 	}
@@ -49,7 +49,7 @@ func (a *App) sendCommsMessage() tea.Cmd {
 		return nil
 	}
 	a.comms.Input.Reset()
-	a.comms.State.AddUserMessage(msg, a.themeData)
+	a.comms.State.AddUserMessage(msg, a.theme.Data)
 	a.comms.State.streaming = true
 
 	// Start streaming and store channel for continued polling
@@ -121,9 +121,9 @@ func (a *App) relayToAgent(targetName, msg string) tea.Cmd {
 		viewport: viewport.New(a.width-6, a.height-6),
 		agent:    target.Name,
 	}
-	a.comms.State.rebuildContent(a.themeData)
+	a.comms.State.rebuildContent(a.theme.Data)
 
-	a.comms.State.AddUserMessage(relayMsg, a.themeData)
+	a.comms.State.AddUserMessage(relayMsg, a.theme.Data)
 	a.comms.State.streaming = true
 	a.addIntel("Relayed to %s from %s", target.Name, fromAgent)
 

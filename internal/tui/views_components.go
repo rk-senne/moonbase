@@ -49,7 +49,7 @@ func (a App) renderHeader(breadcrumb string) string {
 
 	full := left + strings.Repeat(" ", gap) + right
 
-	return a.styles.Header.Width(a.width).Render(full)
+	return a.theme.Styles.Header.Width(a.width).Render(full)
 }
 
 func (a App) renderSidebar(width int, maxH int) string {
@@ -65,7 +65,7 @@ func (a App) renderSidebar(width int, maxH int) string {
 
 	for _, group := range groups {
 		// Section header
-		s.WriteString(lipgloss.NewStyle().Foreground(a.themeData.Brand).Bold(true).Render("◆ "+group.title) + "\n")
+		s.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Brand).Bold(true).Render("◆ "+group.title) + "\n")
 
 		for _, entry := range group.entries {
 			isSelected := entry.index == a.dashboard.Cursor
@@ -73,20 +73,20 @@ func (a App) renderSidebar(width int, maxH int) string {
 			// Build the line
 			prefix := " "
 			badge := BadgeInactive
-			nameStyle := lipgloss.NewStyle().Foreground(a.themeData.Text)
-			roleStyle := lipgloss.NewStyle().Foreground(a.themeData.Muted)
+			nameStyle := lipgloss.NewStyle().Foreground(a.theme.Data.Text)
+			roleStyle := lipgloss.NewStyle().Foreground(a.theme.Data.Muted)
 
 			if isSelected {
 				prefix = "▸"
 				badge = BadgeActive
-				nameStyle = a.styles.Active
-				roleStyle = lipgloss.NewStyle().Foreground(a.themeData.Active)
+				nameStyle = a.theme.Styles.Active
+				roleStyle = lipgloss.NewStyle().Foreground(a.theme.Data.Active)
 			}
 
 			// Key hint
 			hint := ""
 			if showHints {
-				hint = lipgloss.NewStyle().Foreground(a.themeData.Dim).Render("["+entry.key+"]")
+				hint = lipgloss.NewStyle().Foreground(a.theme.Data.Dim).Render("["+entry.key+"]")
 			}
 
 			// Name (truncate if needed)
@@ -134,29 +134,29 @@ func (a App) renderSidebar(width int, maxH int) string {
 
 	// Tools section
 	s.WriteString("\n")
-	s.WriteString(lipgloss.NewStyle().Foreground(a.themeData.Brand).Bold(true).Render("◆ TOOLS") + "\n")
-	s.WriteString(lipgloss.NewStyle().Foreground(a.themeData.Dim).Render("──────────────────") + "\n")
+	s.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Brand).Bold(true).Render("◆ TOOLS") + "\n")
+	s.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Dim).Render("──────────────────") + "\n")
 	tools := []string{"lazygit", "docker", "btop", "nvim", "cmux", "tmux", "fish"}
 	for _, tool := range tools {
 		mark := "✗"
-		st := a.styles.Inactive
+		st := a.theme.Styles.Inactive
 		if a.isToolAvailable(tool) {
 			mark = "✓"
-			st = lipgloss.NewStyle().Foreground(a.themeData.Active)
+			st = lipgloss.NewStyle().Foreground(a.theme.Data.Active)
 		}
 		s.WriteString(st.Render(fmt.Sprintf(" %s %s", mark, tool)) + "\n")
 	}
 
 	// Backend section
 	s.WriteString("\n")
-	s.WriteString(lipgloss.NewStyle().Foreground(a.themeData.Brand).Bold(true).Render("◆ BACKEND") + "\n")
-	s.WriteString(lipgloss.NewStyle().Foreground(a.themeData.Dim).Render("──────────────────") + "\n")
+	s.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Brand).Bold(true).Render("◆ BACKEND") + "\n")
+	s.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Dim).Render("──────────────────") + "\n")
 	for _, b := range a.env.Backend.Available {
 		mark := "✗"
-		st := a.styles.Inactive
+		st := a.theme.Styles.Inactive
 		if b.Available() {
 			mark = "●"
-			st = lipgloss.NewStyle().Foreground(a.themeData.Active)
+			st = lipgloss.NewStyle().Foreground(a.theme.Data.Active)
 			if a.chrome.Blink {
 				mark = "◉"
 			}
@@ -164,7 +164,7 @@ func (a App) renderSidebar(width int, maxH int) string {
 		s.WriteString(st.Render(fmt.Sprintf(" %s %s", mark, b.Name())) + "\n")
 	}
 
-	return a.styles.Sidebar.
+	return a.theme.Styles.Sidebar.
 		Width(width).
 		Height(maxH).
 		Render(s.String())
@@ -177,9 +177,9 @@ func (a App) renderMainPanel(width int, maxH int) string {
 	}
 
 	// Terminal/Intel mode
-	borderColor := a.themeData.Info
+	borderColor := a.theme.Data.Info
 	if a.chrome.Focus == FocusMain {
-		borderColor = a.themeData.Active
+		borderColor = a.theme.Data.Active
 	}
 
 	var s strings.Builder
@@ -189,8 +189,8 @@ func (a App) renderMainPanel(width int, maxH int) string {
 	if strings.HasPrefix(cwdShort, home) {
 		cwdShort = "~" + cwdShort[len(home):]
 	}
-	title := lipgloss.NewStyle().Foreground(a.themeData.Info).Bold(true).Render("─ TERMINAL ")
-	cwd := lipgloss.NewStyle().Foreground(a.themeData.Dim).Render(cwdShort + " ")
+	title := lipgloss.NewStyle().Foreground(a.theme.Data.Info).Bold(true).Render("─ TERMINAL ")
+	cwd := lipgloss.NewStyle().Foreground(a.theme.Data.Dim).Render(cwdShort + " ")
 	titleW := lipgloss.Width(title)
 	cwdW := lipgloss.Width(cwd)
 	fillW := max(1, width-titleW-cwdW)
@@ -203,7 +203,7 @@ func (a App) renderMainPanel(width int, maxH int) string {
 
 	var lines []string
 	for _, entry := range a.intel {
-		timeStyle := lipgloss.NewStyle().Foreground(a.themeData.Dim)
+		timeStyle := lipgloss.NewStyle().Foreground(a.theme.Data.Dim)
 		msg := entry.Message
 		if width > 12 && lipgloss.Width(msg) > width-10 {
 			// Truncate by runes
@@ -220,7 +220,7 @@ func (a App) renderMainPanel(width int, maxH int) string {
 	}
 
 	if len(lines) == 0 {
-		s.WriteString(lipgloss.NewStyle().Foreground(a.themeData.Dim).Render(" Type commands below. [`] for file browser.") + "\n")
+		s.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Dim).Render(" Type commands below. [`] for file browser.") + "\n")
 	}
 
 	start := 0
@@ -240,7 +240,7 @@ func (a App) renderMainPanel(width int, maxH int) string {
 	}
 
 	if a.terminal.Active {
-		prompt := lipgloss.NewStyle().Foreground(a.themeData.Active).Bold(true).Render(" $ ")
+		prompt := lipgloss.NewStyle().Foreground(a.theme.Data.Active).Bold(true).Render(" $ ")
 		s.WriteString(prompt + a.terminal.Input.View())
 	}
 
@@ -254,31 +254,31 @@ func (a App) renderMainPanel(width int, maxH int) string {
 }
 
 func (a App) renderRightPanel(width int, maxH int) string {
-	borderColor := a.themeData.Dim
+	borderColor := a.theme.Data.Dim
 	if a.chrome.Focus == FocusRight {
-		borderColor = a.themeData.Active
+		borderColor = a.theme.Data.Active
 	}
 
 	var s strings.Builder
-	labelStyle := lipgloss.NewStyle().Foreground(a.themeData.Info).Bold(true)
-	dimStyle := lipgloss.NewStyle().Foreground(a.themeData.Dim)
+	labelStyle := lipgloss.NewStyle().Foreground(a.theme.Data.Info).Bold(true)
+	dimStyle := lipgloss.NewStyle().Foreground(a.theme.Data.Dim)
 
 	// System Status
-	radar := lipgloss.NewStyle().Foreground(a.themeData.Active).Render(a.chrome.Anim.RenderRadar())
+	radar := lipgloss.NewStyle().Foreground(a.theme.Data.Active).Render(a.chrome.Anim.RenderRadar())
 	sysLabel := labelStyle.Render("─ SYSTEM STATUS ")
 	sysLabelW := lipgloss.Width(sysLabel)
 	radarW := lipgloss.Width(radar)
 	s.WriteString(sysLabel + radar + " " + strings.Repeat("─", max(1, width-sysLabelW-radarW-1)) + "\n")
 
-	gitStyle := lipgloss.NewStyle().Foreground(a.themeData.Active)
+	gitStyle := lipgloss.NewStyle().Foreground(a.theme.Data.Active)
 	if !a.env.System.Clean {
-		gitStyle = lipgloss.NewStyle().Foreground(a.themeData.Warning)
+		gitStyle = lipgloss.NewStyle().Foreground(a.theme.Data.Warning)
 	}
 	s.WriteString(fmt.Sprintf(" GIT    %s %s\n", gitStyle.Render(a.env.System.Branch), a.gitStatus()))
 
 	dockerStatus := dimStyle.Render("not running")
 	if a.env.System.Docker > 0 {
-		dockerStatus = lipgloss.NewStyle().Foreground(a.themeData.Active).Render(fmt.Sprintf("● %d up", a.env.System.Docker))
+		dockerStatus = lipgloss.NewStyle().Foreground(a.theme.Data.Active).Render(fmt.Sprintf("● %d up", a.env.System.Docker))
 	}
 	s.WriteString(fmt.Sprintf(" DOCKER %s\n", dockerStatus))
 	s.WriteString(fmt.Sprintf(" AGENTS %d loaded\n", a.registry.Count()))
@@ -358,12 +358,12 @@ func (a App) threatSignals() ThreatSignals {
 func (a App) renderThreatGauge(width int) string {
 	lvl := computeThreat(a.threatSignals())
 
-	color := a.themeData.Active // LOW
+	color := a.theme.Data.Active // LOW
 	switch lvl.Name {
 	case "MEDIUM":
-		color = a.themeData.Warning
+		color = a.theme.Data.Warning
 	case "HIGH", "CRITICAL":
-		color = a.themeData.Error
+		color = a.theme.Data.Error
 	}
 
 	// Fill the 10-segment bar from the 0..100 score; any non-zero risk shows
@@ -394,16 +394,16 @@ func (a App) renderStatusBar(keys string) string {
 	uptimeW := lipgloss.Width(uptime)
 	gap := a.width - keysW - uptimeW - 4
 	if gap < 1 {
-		return a.styles.StatusBar.Width(a.width).Render("  " + keys)
+		return a.theme.Styles.StatusBar.Width(a.width).Render("  " + keys)
 	}
-	return a.styles.StatusBar.Width(a.width).Render("  " + keys + strings.Repeat(" ", gap) + uptime)
+	return a.theme.Styles.StatusBar.Width(a.width).Render("  " + keys + strings.Repeat(" ", gap) + uptime)
 }
 
 // renderContextualStatusBar renders a footer with only the keys valid for the current
 // view and sub-mode, generated from the KeyMap (never hand-duplicated).
 func (a App) renderContextualStatusBar() string {
 	bindings := a.keys.keysFor(a.view, a.search.Active, a.terminal.Active, a.browser.Active)
-	h := newHelpModel(a.width-4, a.themeData)
+	h := newHelpModel(a.width-4, a.theme.Data)
 	footer := h.ShortHelpView(bindings)
 	return a.renderStatusBar(footer)
 }

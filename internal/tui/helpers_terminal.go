@@ -31,12 +31,12 @@ func (a *App) execTermCmd(input string) tea.Cmd {
 		}
 		if err := os.Chdir(dir); err != nil {
 			a.terminal.Output = append(a.terminal.Output,
-				lipgloss.NewStyle().Foreground(a.themeData.Active).Render("$ "+input),
-				lipgloss.NewStyle().Foreground(a.themeData.Error).Render(err.Error()))
+				lipgloss.NewStyle().Foreground(a.theme.Data.Active).Render("$ "+input),
+				lipgloss.NewStyle().Foreground(a.theme.Data.Error).Render(err.Error()))
 		} else {
 			a.terminal.Cwd, _ = os.Getwd()
 			a.terminal.Output = append(a.terminal.Output,
-				lipgloss.NewStyle().Foreground(a.themeData.Active).Render("$ "+input))
+				lipgloss.NewStyle().Foreground(a.theme.Data.Active).Render("$ "+input))
 			a.addIntel("cd → %s", a.terminal.Cwd)
 		}
 		return nil

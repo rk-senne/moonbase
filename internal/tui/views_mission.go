@@ -10,8 +10,8 @@ func (a App) renderMission() string {
 	header := a.renderHeader("New Mission")
 
 	var b strings.Builder
-	titleStyle := lipgloss.NewStyle().Foreground(a.themeData.Brand).Bold(true)
-	dimStyle := lipgloss.NewStyle().Foreground(a.themeData.Dim)
+	titleStyle := lipgloss.NewStyle().Foreground(a.theme.Data.Brand).Bold(true)
+	dimStyle := lipgloss.NewStyle().Foreground(a.theme.Data.Dim)
 
 	b.WriteString("\n\n")
 	b.WriteString(titleStyle.Render("  ◆ NEW MISSION BRIEFING") + "\n\n")
@@ -20,7 +20,7 @@ func (a App) renderMission() string {
 	b.WriteString("  Mission: " + a.mission.Input.View() + "\n\n")
 	b.WriteString(dimStyle.Render("  [enter] Deploy council    [esc] Cancel") + "\n")
 
-	body := a.styles.Panel.Width(a.width - 4).Render(b.String())
+	body := a.theme.Styles.Panel.Width(a.width - 4).Render(b.String())
 	statusBar := a.renderContextualStatusBar()
 	return lipgloss.JoinVertical(lipgloss.Left, header, "\n"+body+"\n", statusBar)
 }
