@@ -32,11 +32,18 @@ type FlywheelEntry struct {
 	Phase         int       `json:"phase"`
 	Agent         string    `json:"agent"`
 	Task          string    `json:"task"`
-	Outcome       string    `json:"outcome"`      // "complete", "rework", "failed", "skipped"
+	Outcome       string    `json:"outcome"`      // "complete", "rework", "failed", "skipped", "budget_exceeded"
 	RiskLevel     string    `json:"risk_level,omitempty"`
 	DurationMs    int64     `json:"duration_ms"`
 	OutputSize    int       `json:"output_size"`
 	ReworkCount   int       `json:"rework_count"`
+	// Token/cost observability (added without schema version bump per evolution contract).
+	// These fields are omitempty: zero values mean "no data" (not "zero tokens consumed").
+	PromptTokens     int     `json:"prompt_tokens,omitempty"`
+	CompletionTokens int     `json:"completion_tokens,omitempty"`
+	TotalTokens      int     `json:"total_tokens,omitempty"`
+	Model            string  `json:"model,omitempty"`
+	EstimatedCostUSD float64 `json:"estimated_cost_usd,omitempty"`
 }
 
 // FlywheelLog manages append-only JSONL logging for flywheel analysis.
