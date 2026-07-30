@@ -27,6 +27,7 @@ func runCompile() {
 			fmt.Fprintf(os.Stderr, "❌ Agent %q not found.\n", compileAgent)
 			fmt.Fprintf(os.Stderr, "   Run 'moonbase list' to see available agents.\n")
 			osExit(1)
+			return // unreachable, but satisfies staticcheck nil analysis
 		}
 		toCompile = []agents.Agent{*a}
 	} else {
