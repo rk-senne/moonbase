@@ -56,5 +56,10 @@ jobs:
       - name: Agent lint
         run: go run ./cmd/moonbase lint
 
+      - name: Staticcheck
+        run: |
+          go install honnef.co/go/tools/cmd/staticcheck@latest
+          staticcheck ./...
+
       - name: Verify agents parse
         run: go test ./internal/agents/ -run TestParseAgentFile -count=1 -timeout 60s
