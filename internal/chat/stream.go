@@ -26,9 +26,17 @@ const maxErrorBodySize = 1 << 20
 const maxStreamResponseSize = 10 << 20
 
 type StreamChunk struct {
-	Text string
-	Done bool
-	Err  error
+	Text  string
+	Done  bool
+	Err   error
+	Usage *StreamUsage // populated on Done=true chunk when available
+}
+
+// StreamUsage holds token usage reported by Anthropic's streaming API.
+// Populated from message_start (input_tokens) and message_delta (output_tokens) events.
+type StreamUsage struct {
+	InputTokens  int
+	OutputTokens int
 }
 
 type anthropicRequest struct {
@@ -134,6 +142,7 @@ func streamFrom(url, apiKey, model string, conv *Conversation, client *http.Clie
 		// Parse SSE stream — only extract text content, discard anything else.
 		scanner := bufio.NewScanner(resp.Body)
 		var totalSize int
+		var inputTokens, outputTokens int
 		for scanner.Scan() {
 			line := scanner.Text()
 
@@ -144,20 +153,38 @@ func streamFrom(url, apiKey, model string, conv *Conversation, client *http.Clie
 			data := strings.TrimPrefix(line, "data: ")
 
 			if data == "[DONE]" {
-				ch <- StreamChunk{Done: true}
+				ch <- StreamChunk{Done: true, Usage: buildStreamUsage(inputTokens, outputTokens)}
 				return
 			}
 
 			var event struct {
-				Type  string `json:"type"`
+				Type    string `json:"type"`
+				Message *struct {
+					Usage *struct {
+						InputTokens int `json:"input_tokens"`
+					} `json:"usage"`
+				} `json:"message"`
 				Delta struct {
 					Type string `json:"type"`
 					Text string `json:"text"`
 				} `json:"delta"`
+				Usage *struct {
+					OutputTokens int `json:"output_tokens"`
+				} `json:"usage"`
 			}
 
 			if err := json.Unmarshal([]byte(data), &event); err != nil {
 				continue // SECURITY: Discard malformed events, don't propagate parse errors
+			}
+
+			// Extract input tokens from message_start event.
+			if event.Type == "message_start" && event.Message != nil && event.Message.Usage != nil {
+				inputTokens = event.Message.Usage.InputTokens
+			}
+
+			// Extract output tokens from message_delta event.
+			if event.Type == "message_delta" && event.Usage != nil {
+				outputTokens = event.Usage.OutputTokens
 			}
 
 			if event.Type == "content_block_delta" && event.Delta.Text != "" {
@@ -170,13 +197,24 @@ func streamFrom(url, apiKey, model string, conv *Conversation, client *http.Clie
 			}
 
 			if event.Type == "message_stop" {
-				ch <- StreamChunk{Done: true}
+				ch <- StreamChunk{Done: true, Usage: buildStreamUsage(inputTokens, outputTokens)}
 				return
 			}
 		}
 
-		ch <- StreamChunk{Done: true}
+		ch <- StreamChunk{Done: true, Usage: buildStreamUsage(inputTokens, outputTokens)}
 	}()
 
 	return ch
+}
+
+// buildStreamUsage returns a StreamUsage if any tokens were captured, or nil otherwise.
+func buildStreamUsage(inputTokens, outputTokens int) *StreamUsage {
+	if inputTokens == 0 && outputTokens == 0 {
+		return nil
+	}
+	return &StreamUsage{
+		InputTokens:  inputTokens,
+		OutputTokens: outputTokens,
+	}
 }

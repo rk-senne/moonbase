@@ -118,6 +118,18 @@ func (a *Anthropic) Available() bool { return envExists("ANTHROPIC_API_KEY") }
 // Deploy sends the agent prompt + task to Anthropic's Messages API via streaming,
 // collects all response chunks, and returns the full response text.
 func (a *Anthropic) Deploy(agent agents.Agent, context *discovery.ProjectContext, task string) (string, error) {
+	output, _, err := a.deployWithUsage(agent, context, task)
+	return output, err
+}
+
+// DeployWithUsage returns the response plus token usage from the Anthropic API.
+// Implements the UsageReporter optional interface.
+func (a *Anthropic) DeployWithUsage(agent agents.Agent, context *discovery.ProjectContext, task string) (string, *UsageInfo, error) {
+	return a.deployWithUsage(agent, context, task)
+}
+
+// deployWithUsage is the shared implementation that streams and captures usage.
+func (a *Anthropic) deployWithUsage(agent agents.Agent, context *discovery.ProjectContext, task string) (string, *UsageInfo, error) {
 	composed := discovery.ComposePrompt(agent.Prompt, context, task)
 
 	// Build a conversation with the system prompt and task as the user message
@@ -127,18 +139,35 @@ func (a *Anthropic) Deploy(agent agents.Agent, context *discovery.ProjectContext
 	// Stream the response and collect all chunks
 	ch := chat.Stream(conv)
 	var result strings.Builder
+	var usage *UsageInfo
 	for chunk := range ch {
 		if chunk.Err != nil {
-			return result.String(), fmt.Errorf("anthropic streaming error: %w", chunk.Err)
+			return result.String(), nil, fmt.Errorf("anthropic streaming error: %w", chunk.Err)
 		}
 		if chunk.Done {
+			if chunk.Usage != nil {
+				model := os.Getenv("ANTHROPIC_MODEL")
+				if model == "" {
+					model = "claude-sonnet-4-20250514"
+				}
+				total := chunk.Usage.InputTokens + chunk.Usage.OutputTokens
+				usage = &UsageInfo{
+					PromptTokens:     chunk.Usage.InputTokens,
+					CompletionTokens: chunk.Usage.OutputTokens,
+					TotalTokens:      total,
+					Model:            model,
+				}
+			}
 			break
 		}
 		result.WriteString(chunk.Text)
 	}
 
-	return result.String(), nil
+	return result.String(), usage, nil
 }
+
+// Compile-time interface assertion for Anthropic.
+var _ UsageReporter = (*Anthropic)(nil)
 
 // Ollama deploys agents via local Ollama
 type Ollama struct{}
