@@ -288,8 +288,26 @@ Moonbase logs pipeline execution data to `~/.moonbase/flywheel.jsonl`.
 Over time, patterns emerge that reveal which agents struggle, which phases
 get reworked most, and where the pipeline bottlenecks.
 
+Token consumption and estimated cost are captured per phase when using
+OpenAI, Anthropic, or Kimi API backends. The flywheel shows total cost,
+per-agent breakdowns, and identifies cost-heavy phases.
+
 ```bash
-moonbase flywheel          # Show learning insights
+moonbase flywheel          # Show learning insights (incl. token/cost)
+```
+
+Optional token budget enforcement stops runaway missions:
+
+```yaml
+# ~/.config/moonbase/config.yaml
+token_budget:
+  max_tokens_per_mission: 500000   # hard cap (0 = unlimited)
+  warn_threshold_pct: 80           # warn at 80% of budget
+
+model_pricing:
+  gpt-4o:
+    prompt: 2.50       # USD per 1M prompt tokens (override defaults)
+    completion: 10.00
 ```
 
 ### Skills & Stored Prompts

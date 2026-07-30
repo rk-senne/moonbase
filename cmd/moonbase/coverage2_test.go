@@ -633,7 +633,7 @@ echo "Backend response: task completed successfully"
 	os.WriteFile(fakeKiro, []byte(script), 0o755)
 	os.Setenv("PATH", tmpBin+":"+origPath)
 
-	output, err := backend.DeployComposed(context.Background(), "composed prompt here", "test task", 5*time.Minute)
+	output, _, err := backend.DeployComposed(context.Background(), "composed prompt here", "test task", 5*time.Minute)
 	if err != nil {
 		t.Fatalf("expected success, got error: %v", err)
 	}
@@ -666,7 +666,7 @@ exit 1
 	w.Close()
 	defer func() { os.Stdin = oldStdin }()
 
-	output, err := backend.DeployComposed(context.Background(), "test prompt", "test task", 5*time.Minute)
+	output, _, err := backend.DeployComposed(context.Background(), "test prompt", "test task", 5*time.Minute)
 	if err != nil {
 		// Valid error paths:
 		// 1. kiro-cli found on PATH but fails after retries
@@ -698,7 +698,7 @@ func TestDeployComposed_NoBackendAvailable(t *testing.T) {
 	w.Close() // EOF immediately
 	defer func() { os.Stdin = oldStdin }()
 
-	_, err := backend.DeployComposed(context.Background(), "test", "task", 5*time.Minute)
+	_, _, err := backend.DeployComposed(context.Background(), "test", "task", 5*time.Minute)
 	// Either clipboard works (macOS has pbcopy at absolute path sometimes)
 	// or we get the no backend error
 	if err != nil {
@@ -1294,7 +1294,7 @@ echo "Response from kiro-cli for phase"
 
 	// Long composed prompt to exercise the temp file path
 	longPrompt := strings.Repeat("This is a long prompt for testing. ", 100)
-	output, err := backend.DeployComposed(context.Background(), longPrompt, "implement the feature", 5*time.Minute)
+	output, _, err := backend.DeployComposed(context.Background(), longPrompt, "implement the feature", 5*time.Minute)
 	if err != nil {
 		t.Fatalf("DeployComposed failed: %v", err)
 	}

@@ -267,3 +267,170 @@ func TestFlywheelLog_Path(t *testing.T) {
 		t.Errorf("path mismatch: got %s, want %s", fl.Path(), path)
 	}
 }
+
+func TestFlywheelEntry_TokenFieldsRoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	fl := &FlywheelLog{path: filepath.Join(dir, "flywheel.jsonl")}
+
+	entry := FlywheelEntry{
+		Timestamp:        time.Now().UTC(),
+		TraceID:          "20260730T120000-token-test",
+		Phase:            3,
+		Agent:            "numbuh-3",
+		Task:             "implement feature",
+		Outcome:          "complete",
+		DurationMs:       5000,
+		OutputSize:       8000,
+		PromptTokens:     45000,
+		CompletionTokens: 12000,
+		TotalTokens:      57000,
+		Model:            "gpt-4o",
+		EstimatedCostUSD: 0.2325,
+	}
+
+	if err := fl.Append(entry); err != nil {
+		t.Fatalf("failed to append entry: %v", err)
+	}
+
+	// Read back and verify token fields
+	file, err := os.Open(fl.Path())
+	if err != nil {
+		t.Fatalf("failed to open flywheel log: %v", err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	scanner.Scan()
+	var decoded FlywheelEntry
+	if err := json.Unmarshal(scanner.Bytes(), &decoded); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+
+	if decoded.PromptTokens != 45000 {
+		t.Errorf("prompt tokens: got %d, want 45000", decoded.PromptTokens)
+	}
+	if decoded.CompletionTokens != 12000 {
+		t.Errorf("completion tokens: got %d, want 12000", decoded.CompletionTokens)
+	}
+	if decoded.TotalTokens != 57000 {
+		t.Errorf("total tokens: got %d, want 57000", decoded.TotalTokens)
+	}
+	if decoded.Model != "gpt-4o" {
+		t.Errorf("model: got %q, want %q", decoded.Model, "gpt-4o")
+	}
+	if decoded.EstimatedCostUSD != 0.2325 {
+		t.Errorf("estimated cost: got %f, want 0.2325", decoded.EstimatedCostUSD)
+	}
+	// Existing fields still intact
+	if decoded.Phase != 3 {
+		t.Errorf("phase: got %d, want 3", decoded.Phase)
+	}
+	if decoded.Agent != "numbuh-3" {
+		t.Errorf("agent: got %q, want %q", decoded.Agent, "numbuh-3")
+	}
+}
+
+func TestFlywheelEntry_LegacyWithoutTokenFieldsReadsAsZero(t *testing.T) {
+	// Simulate reading a legacy entry that was written before token fields existed.
+	// The JSON has no token fields — they should unmarshal as zero values.
+	legacyJSON := `{"v":1,"timestamp":"2026-07-20T12:00:00Z","trace_id":"legacy-trace","phase":1,"agent":"numbuh-1","task":"old task","outcome":"complete","duration_ms":1200,"output_size":4500,"rework_count":0}`
+
+	var entry FlywheelEntry
+	if err := json.Unmarshal([]byte(legacyJSON), &entry); err != nil {
+		t.Fatalf("failed to unmarshal legacy entry: %v", err)
+	}
+
+	if entry.PromptTokens != 0 {
+		t.Errorf("expected 0 prompt tokens for legacy entry, got %d", entry.PromptTokens)
+	}
+	if entry.CompletionTokens != 0 {
+		t.Errorf("expected 0 completion tokens for legacy entry, got %d", entry.CompletionTokens)
+	}
+	if entry.TotalTokens != 0 {
+		t.Errorf("expected 0 total tokens for legacy entry, got %d", entry.TotalTokens)
+	}
+	if entry.Model != "" {
+		t.Errorf("expected empty model for legacy entry, got %q", entry.Model)
+	}
+	if entry.EstimatedCostUSD != 0 {
+		t.Errorf("expected 0 cost for legacy entry, got %f", entry.EstimatedCostUSD)
+	}
+
+	// Existing fields should still be correct
+	if entry.SchemaVersion != 1 {
+		t.Errorf("schema version: got %d, want 1", entry.SchemaVersion)
+	}
+	if entry.Phase != 1 {
+		t.Errorf("phase: got %d, want 1", entry.Phase)
+	}
+	if entry.Agent != "numbuh-1" {
+		t.Errorf("agent: got %q, want %q", entry.Agent, "numbuh-1")
+	}
+}
+
+func TestFlywheelEntry_V0LegacyReadsAsZero(t *testing.T) {
+	// v=0 entries (written before schema versioning) should also tolerate missing fields.
+	v0JSON := `{"v":0,"timestamp":"2026-07-01T10:00:00Z","trace_id":"v0-trace","phase":2,"agent":"numbuh-2","task":"v0 task","outcome":"rework","risk_level":"MEDIUM","duration_ms":3000,"output_size":2000,"rework_count":1}`
+
+	var entry FlywheelEntry
+	if err := json.Unmarshal([]byte(v0JSON), &entry); err != nil {
+		t.Fatalf("failed to unmarshal v0 entry: %v", err)
+	}
+
+	if entry.SchemaVersion != 0 {
+		t.Errorf("schema version: got %d, want 0", entry.SchemaVersion)
+	}
+	if entry.PromptTokens != 0 {
+		t.Errorf("expected 0 prompt tokens for v0 entry, got %d", entry.PromptTokens)
+	}
+	if entry.TotalTokens != 0 {
+		t.Errorf("expected 0 total tokens for v0 entry, got %d", entry.TotalTokens)
+	}
+	if entry.Model != "" {
+		t.Errorf("expected empty model for v0 entry, got %q", entry.Model)
+	}
+}
+
+func TestFlywheelEntry_TokenFieldsOmitEmptyWhenZero(t *testing.T) {
+	// Ensure omitempty means zero-value token fields are not serialized.
+	entry := FlywheelEntry{
+		SchemaVersion: 1,
+		Timestamp:     time.Now().UTC(),
+		TraceID:       "omitempty-test",
+		Phase:         1,
+		Agent:         "numbuh-1",
+		Task:          "test",
+		Outcome:       "complete",
+		DurationMs:    100,
+		OutputSize:    50,
+		// Token fields are zero — should not appear in JSON
+	}
+
+	data, err := json.Marshal(entry)
+	if err != nil {
+		t.Fatalf("failed to marshal: %v", err)
+	}
+
+	jsonStr := string(data)
+	// Zero token fields should NOT appear in JSON (omitempty)
+	if contains := "prompt_tokens"; len(jsonStr) > 0 {
+		var m map[string]interface{}
+		json.Unmarshal(data, &m)
+		if _, exists := m["prompt_tokens"]; exists {
+			t.Error("expected prompt_tokens to be omitted when zero")
+		}
+		if _, exists := m["completion_tokens"]; exists {
+			t.Error("expected completion_tokens to be omitted when zero")
+		}
+		if _, exists := m["total_tokens"]; exists {
+			t.Error("expected total_tokens to be omitted when zero")
+		}
+		if _, exists := m["model"]; exists {
+			t.Error("expected model to be omitted when empty")
+		}
+		if _, exists := m["estimated_cost_usd"]; exists {
+			t.Error("expected estimated_cost_usd to be omitted when zero")
+		}
+		_ = contains
+	}
+}

@@ -40,9 +40,10 @@ const openaiMaxErrorBody = 1 << 20
 
 // openaiRequest is the request body for POST /v1/chat/completions.
 type openaiRequest struct {
-	Model    string                `json:"model"`
-	Messages []openaiMessage       `json:"messages"`
-	Stream   bool                  `json:"stream"`
+	Model         string         `json:"model"`
+	Messages      []openaiMessage `json:"messages"`
+	Stream        bool           `json:"stream"`
+	StreamOptions *streamOptions `json:"stream_options,omitempty"`
 }
 
 type openaiMessage struct {
@@ -62,9 +63,50 @@ type openaiMessage struct {
 // - Response is parsed as SSE; malformed data is discarded
 // - Error response body is size-limited to prevent OOM
 func (o *OpenAI) Deploy(agent agents.Agent, context *discovery.ProjectContext, task string) (string, error) {
+	output, _, err := o.deployWithUsage(agent, context, task)
+	return output, err
+}
+
+// DeployWithUsage returns the response plus token usage from the OpenAI API.
+// Implements the UsageReporter optional interface.
+func (o *OpenAI) DeployWithUsage(agent agents.Agent, context *discovery.ProjectContext, task string) (string, *UsageInfo, error) {
+	return o.deployWithUsage(agent, context, task)
+}
+
+// DeployRawWithUsage sends a pre-composed prompt and returns token usage.
+// Implements the RawUsageReporter optional interface.
+func (o *OpenAI) DeployRawWithUsage(composed string, task string) (string, *UsageInfo, error) {
 	apiKey := os.Getenv("OPENAI_API_KEY")
 	if apiKey == "" {
-		return "", fmt.Errorf("OPENAI_API_KEY not set")
+		return "", nil, fmt.Errorf("OPENAI_API_KEY not set")
+	}
+
+	baseURL := os.Getenv("OPENAI_BASE_URL")
+	if baseURL == "" {
+		baseURL = "https://api.openai.com/v1"
+	}
+
+	model := os.Getenv("OPENAI_MODEL")
+	if model == "" {
+		model = "gpt-4o"
+	}
+
+	result, usage, err := streamChatCompletion(openaiHTTPClient, baseURL, apiKey, model, composed, task)
+	if err != nil {
+		var deployErr *DeployError
+		if errors.As(err, &deployErr) {
+			return result, usage, deployErr
+		}
+		return result, usage, fmt.Errorf("openai: %w", err)
+	}
+	return result, usage, nil
+}
+
+// deployWithUsage is the shared implementation for Deploy and DeployWithUsage.
+func (o *OpenAI) deployWithUsage(agent agents.Agent, context *discovery.ProjectContext, task string) (string, *UsageInfo, error) {
+	apiKey := os.Getenv("OPENAI_API_KEY")
+	if apiKey == "" {
+		return "", nil, fmt.Errorf("OPENAI_API_KEY not set")
 	}
 
 	baseURL := os.Getenv("OPENAI_BASE_URL")
@@ -79,14 +121,21 @@ func (o *OpenAI) Deploy(agent agents.Agent, context *discovery.ProjectContext, t
 
 	composed := discovery.ComposePrompt(agent.Prompt, context, task)
 
-	result, err := streamChatCompletion(openaiHTTPClient, baseURL, apiKey, model, composed, task)
+	result, usage, err := streamChatCompletion(openaiHTTPClient, baseURL, apiKey, model, composed, task)
 	if err != nil {
 		// Preserve *DeployError type for callers that check status codes.
 		var deployErr *DeployError
 		if errors.As(err, &deployErr) {
-			return result, deployErr
+			return result, usage, deployErr
 		}
-		return result, fmt.Errorf("openai: %w", err)
+		return result, usage, fmt.Errorf("openai: %w", err)
 	}
-	return result, nil
+	return result, usage, nil
 }
+
+// Compile-time interface assertions for OpenAI.
+var (
+	_ Backend          = (*OpenAI)(nil)
+	_ UsageReporter    = (*OpenAI)(nil)
+	_ RawUsageReporter = (*OpenAI)(nil)
+)

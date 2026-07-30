@@ -40,9 +40,45 @@ func (k *Kimi) Available() bool { return envExists("MOONSHOT_API_KEY") }
 // - Response is parsed as SSE; malformed data is discarded
 // - Error response body is size-limited to prevent OOM
 func (k *Kimi) Deploy(agent agents.Agent, context *discovery.ProjectContext, task string) (string, error) {
+	output, _, err := k.deployWithUsage(agent, context, task)
+	return output, err
+}
+
+// DeployWithUsage returns the response plus token usage from the Kimi API.
+// Implements the UsageReporter optional interface.
+func (k *Kimi) DeployWithUsage(agent agents.Agent, context *discovery.ProjectContext, task string) (string, *UsageInfo, error) {
+	return k.deployWithUsage(agent, context, task)
+}
+
+// DeployRawWithUsage sends a pre-composed prompt and returns token usage.
+// Implements the RawUsageReporter optional interface.
+func (k *Kimi) DeployRawWithUsage(composed string, task string) (string, *UsageInfo, error) {
 	apiKey := os.Getenv("MOONSHOT_API_KEY")
 	if apiKey == "" {
-		return "", fmt.Errorf("MOONSHOT_API_KEY not set")
+		return "", nil, fmt.Errorf("MOONSHOT_API_KEY not set")
+	}
+
+	model := os.Getenv("KIMI_MODEL")
+	if model == "" {
+		model = "kimi-k3"
+	}
+
+	result, usage, err := streamChatCompletion(openaiHTTPClient, "https://api.moonshot.ai/v1", apiKey, model, composed, task)
+	if err != nil {
+		var deployErr *DeployError
+		if errors.As(err, &deployErr) {
+			return result, usage, deployErr
+		}
+		return result, usage, fmt.Errorf("kimi: %w", err)
+	}
+	return result, usage, nil
+}
+
+// deployWithUsage is the shared implementation for Deploy and DeployWithUsage.
+func (k *Kimi) deployWithUsage(agent agents.Agent, context *discovery.ProjectContext, task string) (string, *UsageInfo, error) {
+	apiKey := os.Getenv("MOONSHOT_API_KEY")
+	if apiKey == "" {
+		return "", nil, fmt.Errorf("MOONSHOT_API_KEY not set")
 	}
 
 	model := os.Getenv("KIMI_MODEL")
@@ -52,13 +88,20 @@ func (k *Kimi) Deploy(agent agents.Agent, context *discovery.ProjectContext, tas
 
 	composed := discovery.ComposePrompt(agent.Prompt, context, task)
 
-	result, err := streamChatCompletion(openaiHTTPClient, "https://api.moonshot.ai/v1", apiKey, model, composed, task)
+	result, usage, err := streamChatCompletion(openaiHTTPClient, "https://api.moonshot.ai/v1", apiKey, model, composed, task)
 	if err != nil {
 		var deployErr *DeployError
 		if errors.As(err, &deployErr) {
-			return result, deployErr
+			return result, usage, deployErr
 		}
-		return result, fmt.Errorf("kimi: %w", err)
+		return result, usage, fmt.Errorf("kimi: %w", err)
 	}
-	return result, nil
+	return result, usage, nil
 }
+
+// Compile-time interface assertions for Kimi.
+var (
+	_ Backend          = (*Kimi)(nil)
+	_ UsageReporter    = (*Kimi)(nil)
+	_ RawUsageReporter = (*Kimi)(nil)
+)

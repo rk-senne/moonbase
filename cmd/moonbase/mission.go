@@ -13,12 +13,13 @@ import (
 
 	"github.com/rk-senne/moonbase/internal/agents"
 	"github.com/rk-senne/moonbase/internal/backend"
+	"github.com/rk-senne/moonbase/internal/config"
 	"github.com/rk-senne/moonbase/internal/discovery"
 	"github.com/rk-senne/moonbase/internal/pipeline"
 )
 
 // executeAndRecordPhase runs a single phase and records results to flywheel.
-// Returns the output string and any error.
+// Returns the output string, usage info (nil if unavailable), and any error.
 func executeAndRecordPhase(
 	missionCtx context.Context,
 	p *pipeline.Pipeline,
@@ -27,7 +28,8 @@ func executeAndRecordPhase(
 	ctx *discovery.ProjectContext,
 	flywheel *pipeline.FlywheelLog,
 	task string,
-) (string, error) {
+	pricing map[string]pipeline.ModelPrice,
+) (string, *backend.UsageInfo, error) {
 	phase.StartPhase()
 
 	phaseInput := p.Context.ForPhase(phase.Number)
@@ -44,7 +46,7 @@ func executeAndRecordPhase(
 	}
 
 	composed := discovery.ComposePrompt(agent.Prompt, ctx, phaseInput)
-	output, err := backend.DeployComposed(missionCtx, composed, phaseInput, p.PhaseTimeout)
+	output, usage, err := backend.DeployComposed(missionCtx, composed, phaseInput, p.PhaseTimeout)
 
 	if err != nil {
 		phase.Status = pipeline.StatusFailed
@@ -58,13 +60,14 @@ func executeAndRecordPhase(
 			DurationMs: time.Since(phase.StartedAt).Milliseconds(),
 			OutputSize: 0,
 		})
-		return "", err
+		return "", nil, err
 	}
 
 	p.Context.RecordPhase(phase.Number, output)
 	phase.CompletePhase()
 
-	flywheel.Append(pipeline.FlywheelEntry{
+	// Build flywheel entry with token/cost data if available.
+	entry := pipeline.FlywheelEntry{
 		Timestamp:   time.Now().UTC(),
 		TraceID:     p.TraceID,
 		Phase:       phase.Number,
@@ -75,7 +78,17 @@ func executeAndRecordPhase(
 		DurationMs:  phase.ElapsedTime().Milliseconds(),
 		OutputSize:  len(output),
 		ReworkCount: p.Context.ReworkCount,
-	})
+	}
+	if usage != nil {
+		entry.PromptTokens = usage.PromptTokens
+		entry.CompletionTokens = usage.CompletionTokens
+		entry.TotalTokens = usage.TotalTokens
+		entry.Model = usage.Model
+		if pricing != nil {
+			entry.EstimatedCostUSD = pipeline.EstimateCost(usage.Model, usage.PromptTokens, usage.CompletionTokens, pricing)
+		}
+	}
+	flywheel.Append(entry)
 
 	// Capture git diff after Phase 3
 	if phase.Number == 3 {
@@ -94,7 +107,7 @@ func executeAndRecordPhase(
 		}
 	}
 
-	return output, nil
+	return output, usage, nil
 }
 
 // runMission executes the full KND Council pipeline from the CLI.
@@ -239,6 +252,17 @@ func runPipelineLoop(
 	task string,
 	opts pipelineLoopOptions,
 ) {
+	// Load config for pricing and budget.
+	cfg := config.Load()
+	pricing := effectivePricing(cfg)
+	budgetMax := cfg.TokenBudget.MaxTokensPerMission
+	warnPct := cfg.TokenBudget.WarnThresholdPct
+	if warnPct <= 0 {
+		warnPct = 80 // default warn at 80%
+	}
+
+	var missionTokens int
+
 	for i := 0; i < len(p.Phases); i++ {
 		// Check for interrupt before starting next phase
 		if missionCtx.Err() != nil {
@@ -285,7 +309,7 @@ func runPipelineLoop(
 			fmt.Printf("   [trace] Phase %d started at %s\n", phase.Number, time.Now().Format(time.RFC3339))
 		}
 
-		output, err := executeAndRecordPhase(missionCtx, p, phase, agent, ctx, flywheel, task)
+		output, usage, err := executeAndRecordPhase(missionCtx, p, phase, agent, ctx, flywheel, task, pricing)
 		if err != nil {
 			// Check if the error was due to interrupt
 			if missionCtx.Err() != nil {
@@ -298,6 +322,38 @@ func runPipelineLoop(
 				fmt.Printf("   ❌ Phase %d failed: %v\n", phase.Number, err)
 			}
 			break
+		}
+
+		// Budget enforcement (AC-6): check cumulative tokens after each phase.
+		if usage != nil && budgetMax > 0 {
+			missionTokens += usage.TotalTokens
+			if missionTokens > budgetMax {
+				fmt.Printf("   🛑 Token budget exceeded (%dK / %dK). Pipeline stopped.\n",
+					missionTokens/1000, budgetMax/1000)
+				flywheel.Append(pipeline.FlywheelEntry{
+					Timestamp:        time.Now().UTC(),
+					TraceID:          p.TraceID,
+					Phase:            phase.Number,
+					Agent:            phase.AgentName,
+					Task:             task,
+					Outcome:          "budget_exceeded",
+					DurationMs:       phase.ElapsedTime().Milliseconds(),
+					OutputSize:       len(output),
+					PromptTokens:     usage.PromptTokens,
+					CompletionTokens: usage.CompletionTokens,
+					TotalTokens:      usage.TotalTokens,
+					Model:            usage.Model,
+				})
+				home := mustUserHomeDir()
+				checkpointDir := filepath.Join(home, ".moonbase", "checkpoints")
+				pipeline.SaveCheckpoint(p, checkpointDir)
+				return
+			}
+			pct := (missionTokens * 100) / budgetMax
+			if pct >= warnPct {
+				fmt.Printf("   ⚠️  Token budget: %d%% used (%dK / %dK)\n",
+					pct, missionTokens/1000, budgetMax/1000)
+			}
 		}
 
 		if missionTrace {
@@ -399,7 +455,7 @@ func runConditionalPhasesParallel(p *pipeline.Pipeline, reg *agents.Registry, ct
 		go func(phase *pipeline.Phase, agent *agents.Agent) {
 			phaseInput := p.Context.ForPhase(phase.Number)
 			composed := discovery.ComposePrompt(agent.Prompt, ctx, phaseInput)
-			output, err := backend.DeployComposed(missionCtx, composed, phaseInput, p.PhaseTimeout)
+			output, _, err := backend.DeployComposed(missionCtx, composed, phaseInput, p.PhaseTimeout)
 			results <- result{phase.Number, output, err}
 		}(w.phase, w.agent)
 	}
@@ -521,4 +577,14 @@ func handleMissionInterrupt(p *pipeline.Pipeline, phase *pipeline.Phase, flywhee
 	pipeline.SaveCheckpoint(p, checkpointDir)
 
 	fmt.Printf("\n🛑 Mission interrupted — checkpoint saved (trace %s). Resume with 'moonbase replay %s'.\n", p.TraceID, p.TraceID)
+}
+
+// effectivePricing merges default model pricing with user overrides from config.
+// Config prices take precedence over defaults for the same model name.
+func effectivePricing(cfg config.Config) map[string]pipeline.ModelPrice {
+	merged := pipeline.DefaultPricing()
+	for model, price := range cfg.ModelPricing {
+		merged[model] = price
+	}
+	return merged
 }

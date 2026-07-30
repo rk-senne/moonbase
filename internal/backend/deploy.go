@@ -15,10 +15,9 @@ import (
 // DeployComposed deploys a pre-composed prompt via the preferred backend with retry.
 // Uses WithRetryCtx for exponential backoff with jitter.
 //
-// If the backend implements RawDeployer, it sends the pre-composed prompt
-// directly (avoiding double-composition). Otherwise, it passes the composed prompt
-// as the task parameter with a zero-value agent and nil context, which is acceptable
-// for backends that treat system+task as a single conversation turn.
+// If the backend implements RawUsageReporter, it sends the pre-composed prompt
+// directly and captures token usage. Falls back to RawDeployer (no usage),
+// UsageReporter, and finally Backend.Deploy (no usage).
 //
 // The timeout parameter bounds the total retry budget: the overall context
 // deadline is set to timeout, and per-attempt timeouts are derived as
@@ -29,7 +28,7 @@ import (
 //
 // Falls back to clipboard + stdin if no AI backend is available.
 // SECURITY: All subprocess execution uses SafeEnv() via the backend implementations.
-func DeployComposed(ctx context.Context, composed, task string, timeout time.Duration) (string, error) {
+func DeployComposed(ctx context.Context, composed, task string, timeout time.Duration) (string, *UsageInfo, error) {
 	be := Preferred()
 
 	if be.Name() != "clipboard" {
@@ -43,6 +42,8 @@ func DeployComposed(ctx context.Context, composed, task string, timeout time.Dur
 		deployCtx, cancel := context.WithTimeout(ctx, timeout)
 		defer cancel()
 
+		var capturedUsage *UsageInfo
+
 		output, err := WithRetryCtx(deployCtx, func() (string, error) {
 			attemptCtx, attemptCancel := context.WithTimeout(deployCtx, perAttempt)
 			defer attemptCancel()
@@ -50,9 +51,22 @@ func DeployComposed(ctx context.Context, composed, task string, timeout time.Dur
 			var result string
 			var deployErr error
 
-			// Use RawDeployer if available to avoid double-composing the prompt.
-			if raw, ok := be.(RawDeployer); ok {
+			// Prefer RawUsageReporter > RawDeployer > UsageReporter > Backend.Deploy
+			if raw, ok := be.(RawUsageReporter); ok {
+				var usage *UsageInfo
+				result, usage, deployErr = raw.DeployRawWithUsage(composed, task)
+				if deployErr == nil {
+					capturedUsage = usage
+				}
+			} else if raw, ok := be.(RawDeployer); ok {
 				result, deployErr = raw.DeployRaw(composed, task)
+				// usage stays nil
+			} else if ur, ok := be.(UsageReporter); ok {
+				var usage *UsageInfo
+				result, usage, deployErr = ur.DeployWithUsage(agents.Agent{}, nil, composed)
+				if deployErr == nil {
+					capturedUsage = usage
+				}
 			} else {
 				// Fallback: pass composed prompt as task with a zero-value agent.
 				// This causes a double-composition, but it's the best we can do
@@ -74,13 +88,14 @@ func DeployComposed(ctx context.Context, composed, task string, timeout time.Dur
 		}, DefaultMaxAttempts)
 
 		if err != nil {
-			return "", fmt.Errorf("%s failed after %d attempts: %w", be.Name(), DefaultMaxAttempts, err)
+			return "", nil, fmt.Errorf("%s failed after %d attempts: %w", be.Name(), DefaultMaxAttempts, err)
 		}
-		return output, nil
+		return output, capturedUsage, nil
 	}
 
 	// Clipboard backend — fall back to clipboard/stdin
-	return clipboardFallback(composed, task)
+	output, err := clipboardFallback(composed, task)
+	return output, nil, err
 }
 
 // clipboardFallback handles the case where no AI backend (kiro-cli) is available.
