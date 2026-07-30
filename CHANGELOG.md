@@ -7,15 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Security
-- deps: clear all `govulncheck` findings that were failing CI — bump `golang.org/x/text` v0.30.0→v0.39.0 (GO-2026-5970, infinite loop on invalid input), `github.com/yuin/goldmark` v1.7.13→v1.7.17 (GO-2026-5320, XSS in rendered markdown), and the Go toolchain to 1.26.5 (GO-2026-5856, crypto/tls Encrypted Client Hello privacy leak). `govulncheck ./...` now reports 0 vulnerabilities affecting the code.
+## [1.7.0] - 2026-07-30
 
 ### Added
 - MIT `LICENSE` — moonbase is now MIT-licensed (Copyright (c) 2026 Senne), so anyone can use, modify, and distribute it once the repository is public. Referenced from the README.
 - `install.sh` — one-line installer (`curl -fsSL https://raw.githubusercontent.com/rk-senne/moonbase/main/install.sh | sh`) that detects your OS/arch, downloads the latest release, verifies its checksum, installs the binary to `~/.local/bin`, and runs `moonbase setup`. README now documents installation via the script, `go install`, release download, or source. (Requires the repository/releases to be publicly accessible.)
+- Subsequence fuzzy agent search in the TUI — typing `n4` now matches `numbuh-4`, `arch` matches the architect, etc.; results are ranked by match quality (stdlib-only).
+- Mission WIP lock — `moonbase mission` refuses to start a second concurrent mission (file lock at `~/.moonbase/mission.lock` with a liveness check and stale/corrupt-lock takeover); a `--force` flag overrides a running mission.
+- `moonbase flywheel` now reports average mission lead time and the longest phase.
 
 ### Changed
-- chore(updater): the self-updater now derives the GitHub owner/repo from the module path baked into the binary (`debug.ReadBuildInfo`) instead of a hardcoded owner, and `.goreleaser.yml` auto-detects the repository from the git `origin` remote. Forks are followed automatically with no config edits; a fallback default is used only when build info is unavailable.
+- Graceful shutdown — `Ctrl+C`/`SIGTERM` during `moonbase mission` cancels the in-flight backend call, marks the phase interrupted, writes a flywheel entry, saves a checkpoint, and prints a `moonbase replay <id>` hint (no orphaned state).
+- The mission pipeline is now backend-orthogonal — it runs with any configured backend via `backend.Preferred()` (kiro-cli, OpenAI, Anthropic, Ollama, or clipboard fallback), not only kiro-cli.
+- All 14 agents gained a role-tailored `Reasoning Discipline` section (ReAct + Reflexion, complexity-scaled) and an inter-agent handoff protocol (shared context as distributed state), drawn from the research library.
+- Risk gate now prefers the structured `__moonbase_meta` block over regex heuristics when present, falling back to regex only for non-conforming output.
+- The self-updater derives the GitHub owner/repo from the module path baked into the binary (`debug.ReadBuildInfo`) instead of a hardcoded owner, and `.goreleaser.yml` auto-detects the repository from the git `origin` remote. Forks are followed automatically.
+- O(1) agent-registry lookup (`GetByName` now uses a `byName` index instead of a linear scan).
+
+### Fixed
+- Retry budget is now bounded by the phase timeout — retries can no longer exceed a phase's deadline.
+- Persisted data integrity: schema version (`v`) added to flywheel/checkpoint/history records (safe format evolution); checkpoint writes are now atomic (temp-then-rename); flywheel appends `fsync` for crash durability; backend SSE responses are bounded (10 MB) to prevent unbounded memory growth.
+
+### Security
+- deps: clear all `govulncheck` findings — bump `golang.org/x/text` v0.30.0→v0.39.0 (GO-2026-5970, infinite loop on invalid input), `github.com/yuin/goldmark` v1.7.13→v1.7.17 (GO-2026-5320, XSS in rendered markdown), and the Go toolchain to 1.26.5 (GO-2026-5856, crypto/tls Encrypted Client Hello privacy leak). `govulncheck ./...` now reports 0 vulnerabilities affecting the code.
+- The self-updater's HTTP client now enforces a TLS 1.2 minimum (it downloads executable code).
 
 ## [1.6.0] - 2026-07-29
 
@@ -111,6 +126,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Security: SafeEnv isolation, hook command validation, input sanitization
 - Mission history with persistence
 
+[1.7.0]: https://github.com/rk-senne/moonbase/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/rk-senne/moonbase/compare/v1.5.0...v1.6.0
 [1.2.0]: https://github.com/rk-senne/moonbase/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/rk-senne/moonbase/compare/v1.0.0...v1.1.0
