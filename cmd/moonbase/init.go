@@ -84,6 +84,13 @@ func runInit() {
 		fmt.Printf("   ⚠️  Failed to write skills/README.md: %v\n", err)
 	}
 
+	// Scaffold example skill in Kiro-native directory format
+	exampleSkillDir := filepath.Join(kiroDir, "skills", "example")
+	os.MkdirAll(exampleSkillDir, 0o755)
+	if err := writeTemplate(filepath.Join(exampleSkillDir, "SKILL.md"), exampleSkillContent); err != nil {
+		fmt.Printf("   ⚠️  Failed to write skills/example/SKILL.md: %v\n", err)
+	}
+
 	// Write prompts README
 	if err := writeTemplate(filepath.Join(kiroDir, "prompts", "README.md"), promptsReadme); err != nil {
 		fmt.Printf("   ⚠️  Failed to write prompts/README.md: %v\n", err)
@@ -289,15 +296,41 @@ const tasksTemplate = `# Tasks: {Feature Name}
 
 const skillsReadme = `# Skills
 
-Skills are domain-specific knowledge files that agents reference.
-Create subdirectories with a SKILL.md file for each domain.
+Skills are domain-specific knowledge files that agents reference progressively.
+Each skill has YAML frontmatter (name + description) so agents see a lightweight
+catalog and load full content on demand with @skill(name).
 
-Example:
+## Format
+
+` + "```" + `markdown
+---
+name: my-skill
+description: Short description of what this skill provides and when to use it.
+---
+
+# Skill Title
+
+Full content here — patterns, examples, rules, etc.
+` + "```" + `
+
+## Structure
+
   skills/
-    docker-build/
-      SKILL.md
-    git-workflow/
-      SKILL.md
+    my-skill/
+      SKILL.md          ← directory-style (Kiro-native compatible)
+    another-skill.md    ← flat-file style (also supported)
+
+## How Agents Use Skills
+
+1. Agents see the catalog (name + description) in every prompt
+2. Agents request specific skills with @skill(name) when needed
+3. Full content is injected on demand — saving context window tokens
+
+## Naming Rules
+
+- Lowercase alphanumeric and hyphens only: [a-z0-9-]
+- Maximum 64 characters
+- Must be unique across all skills
 `
 
 const promptsReadme = `# Prompts
@@ -310,4 +343,26 @@ Example:
     implement.md    # Resume implementation from spec
     review.md       # Run a code review
     diagnose.md     # Debug from an issue report
+`
+
+const exampleSkillContent = `---
+name: example
+description: Example skill — replace with your domain knowledge. Agents request this with @skill(example).
+---
+
+# Example Skill
+
+This is a template skill. Replace this content with domain-specific knowledge
+that your agents should have access to on demand.
+
+## When to Use
+
+Agents see the skill catalog (name + description) in every prompt. When they
+need the full content, they request it with @skill(example).
+
+## Guidelines
+
+- Keep skills focused on one domain or topic
+- Include examples, patterns, and rules
+- Target 500–2000 characters for best context efficiency
 `
