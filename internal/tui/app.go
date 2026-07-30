@@ -302,6 +302,9 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.views.Terminal = a.views.Terminal.HandleClear()
 		return a, nil
 
+	case tea.MouseMsg:
+		return a.handleMouse(msg)
+
 	case tea.KeyMsg:
 		// Boot view: any key skips
 		if a.view == ViewBoot {

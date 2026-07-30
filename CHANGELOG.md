@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- tui: **mouse support** — the mouse wheel now scrolls the active view (the COMMS transcript and document viewports, and the operative-roster / project-navigator cursors), and a click dismisses the boot splash. Enabled via cell-motion mode. Fully additive: every action still has a keyboard equivalent, so nothing changes for keyboard-only use. (Click-to-select an operative from the roster is a planned follow-up — it needs a render hit-map.)
+
 ## [1.8.0] - 2026-07-30
 
 ### Changed

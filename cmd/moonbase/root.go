@@ -78,7 +78,7 @@ Pipe Mode:
 		}
 
 		// Default: launch TUI
-		p := tea.NewProgram(tui.NewApp(), tea.WithAltScreen())
+		p := tea.NewProgram(tui.NewApp(), tea.WithAltScreen(), tea.WithMouseCellMotion())
 		if _, err := p.Run(); err != nil {
 			return fmt.Errorf("TUI error: %w", err)
 		}
