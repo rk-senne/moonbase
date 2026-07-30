@@ -9,6 +9,8 @@ import (
 
 	"github.com/rk-senne/moonbase/internal/agents"
 	"github.com/rk-senne/moonbase/internal/backend"
+	"github.com/rk-senne/moonbase/internal/compile"
+	"github.com/rk-senne/moonbase/internal/config"
 	"github.com/rk-senne/moonbase/internal/discovery"
 )
 
@@ -65,6 +67,48 @@ func runStatus() {
 	localAgents := filepath.Join(cwd, ".kiro", "agents")
 	if files, err := filepath.Glob(filepath.Join(localAgents, "*.md")); err == nil && len(files) > 0 {
 		fmt.Printf("   Local:      ✅ %d agents in .kiro/agents/\n", len(files))
+	}
+
+	// Native Interop status
+	cfg := config.Load()
+	fmt.Println()
+	fmt.Println("   NATIVE INTEROP")
+	compiledDir := cfg.Compile.OutDir
+	if compiledDir == "" {
+		compiledDir = ".kiro/agents"
+	}
+	if !filepath.IsAbs(compiledDir) {
+		compiledDir = filepath.Join(cwd, compiledDir)
+	}
+	compiledFiles, _ := filepath.Glob(filepath.Join(compiledDir, "*.json"))
+	totalAgents := 0
+	if dir != "" {
+		agentFiles, _ := filepath.Glob(filepath.Join(dir, "*.md"))
+		totalAgents = len(agentFiles)
+	}
+	staleCount := 0
+	for _, cf := range compiledFiles {
+		base := filepath.Base(cf)
+		name := strings.TrimSuffix(base, ".json")
+		if dir != "" {
+			mdPath := filepath.Join(dir, name+".md")
+			if stale, sErr := compileIsStale(mdPath, cf); sErr == nil && stale {
+				staleCount++
+			}
+		}
+	}
+	deployMode := cfg.Deploy.Mode
+	if deployMode == "" {
+		deployMode = "legacy"
+	}
+	fmt.Printf("   Compiled:   %d/%d agents", len(compiledFiles), totalAgents)
+	if staleCount > 0 {
+		fmt.Printf(" (%d stale)", staleCount)
+	}
+	fmt.Println()
+	fmt.Printf("   Deploy:     %s\n", deployMode)
+	if cfg.Safety.DelegateToKiro {
+		fmt.Println("   Safety:     delegated to Kiro")
 	}
 
 	fmt.Println()
@@ -204,5 +248,27 @@ func lintAgent(agent *agents.Agent, knownAgents map[string]bool) []string {
 		issues = append(issues, "prompt missing Operating Protocol section")
 	}
 
+	// MCP server validation
+	if len(agent.MCPServers) > 0 {
+		seen := make(map[string]bool)
+		for _, srv := range agent.MCPServers {
+			if srv.Name == "" {
+				issues = append(issues, "mcp_server has empty name")
+			}
+			if srv.Command == "" {
+				issues = append(issues, fmt.Sprintf("mcp_server %q has empty command", srv.Name))
+			}
+			if seen[srv.Name] {
+				issues = append(issues, fmt.Sprintf("duplicate mcp_server name %q", srv.Name))
+			}
+			seen[srv.Name] = true
+		}
+	}
+
 	return issues
+}
+
+// compileIsStale is a thin wrapper around compile.IsStale for the status command.
+func compileIsStale(mdPath, jsonPath string) (bool, error) {
+	return compile.IsStale(mdPath, jsonPath)
 }

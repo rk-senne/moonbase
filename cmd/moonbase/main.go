@@ -49,13 +49,15 @@ func runList() {
 		fmt.Println("  SECTOR V")
 		for _, a := range all {
 			if a.PipelinePosition != nil && *a.PipelinePosition >= 1 && *a.PipelinePosition <= 5 {
-				fmt.Printf("  [%s] %-18s %-26s %s\n", extractNumbuh(a.Name), a.Designation, a.Role, sourceTag(a.Source))
+				mcpTag := mcpCountTag(a)
+				fmt.Printf("  [%s] %-18s %-26s %s%s\n", extractNumbuh(a.Name), a.Designation, a.Role, sourceTag(a.Source), mcpTag)
 			}
 		}
 		// Also include numbuh-0 (pipeline position 0 or architect role)
 		for _, a := range all {
 			if a.PipelinePosition != nil && *a.PipelinePosition == 0 {
-				fmt.Printf("  [%s] %-18s %-26s %s\n", extractNumbuh(a.Name), a.Designation, a.Role, sourceTag(a.Source))
+				mcpTag := mcpCountTag(a)
+				fmt.Printf("  [%s] %-18s %-26s %s%s\n", extractNumbuh(a.Name), a.Designation, a.Role, sourceTag(a.Source), mcpTag)
 			}
 		}
 
@@ -65,7 +67,8 @@ func runList() {
 			if a.PipelinePosition == nil || *a.PipelinePosition > 5 {
 				num := extractNumbuh(a.Name)
 				if num != "" {
-					fmt.Printf("  [%s] %-18s %-26s %s\n", num, a.Designation, a.Role, sourceTag(a.Source))
+					mcpTag := mcpCountTag(a)
+					fmt.Printf("  [%s] %-18s %-26s %s%s\n", num, a.Designation, a.Role, sourceTag(a.Source), mcpTag)
 				}
 			}
 		}
@@ -146,6 +149,14 @@ func sourceTag(source string) string {
 	default:
 		return ""
 	}
+}
+
+// mcpCountTag returns a display tag showing MCP server count, or empty string if none.
+func mcpCountTag(a agents.Agent) string {
+	if a.HasMCPServers() {
+		return fmt.Sprintf(" [%d MCP]", len(a.MCPServers))
+	}
+	return ""
 }
 
 // extractNumbuh extracts the display number/identifier from an agent name.
