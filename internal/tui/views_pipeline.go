@@ -41,7 +41,23 @@ func (a App) renderPipeline() string {
 		progressStyle := lipgloss.NewStyle().Foreground(a.theme.Data.Info)
 		phases.WriteString(progressStyle.Render(fmt.Sprintf(" Phase %d/%d", completedMandatory, mandatoryCount)) + "\n\n")
 
-		for _, phase := range a.views.Pipeline.State.Phases {
+		for i, phase := range a.views.Pipeline.State.Phases {
+			// Insert fan-out group header before first conditional when parallel is enabled.
+			if phase.Conditional && a.views.Pipeline.State.ParallelSpecialists {
+				// Check if this is the first conditional in the list.
+				isFirst := true
+				for j := 0; j < i; j++ {
+					if a.views.Pipeline.State.Phases[j].Conditional {
+						isFirst = false
+						break
+					}
+				}
+				if isFirst {
+					fanoutStyle := lipgloss.NewStyle().Foreground(a.theme.Data.Info)
+					phases.WriteString(fanoutStyle.Render(" ⚡ Fan-Out") + "\n")
+				}
+			}
+
 			badge := BadgeWaiting
 			style := a.theme.Styles.Inactive
 			timing := ""
