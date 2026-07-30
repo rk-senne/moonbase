@@ -44,6 +44,8 @@ type FlywheelEntry struct {
 	TotalTokens      int     `json:"total_tokens,omitempty"`
 	Model            string  `json:"model,omitempty"`
 	EstimatedCostUSD float64 `json:"estimated_cost_usd,omitempty"`
+	// Parallel specialist fan-out correlation (added without schema version bump).
+	ParallelGroup string `json:"parallel_group,omitempty"` // Groups entries from same fan-out batch
 }
 
 // FlywheelLog manages append-only JSONL logging for flywheel analysis.

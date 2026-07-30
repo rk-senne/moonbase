@@ -26,15 +26,16 @@ const currentCheckpointVersion = 1
 // Checkpoint captures pipeline state for persistence and recovery.
 // Stored as JSON in ~/.moonbase/checkpoints/{traceID}.json.
 type Checkpoint struct {
-	SchemaVersion  int            `json:"v"`
-	TraceID        string         `json:"trace_id"`
-	Task           string         `json:"task"`
-	Current        int            `json:"current"`
-	PhaseStatuses  map[int]string `json:"phase_statuses"`
-	PhaseOutputs   map[int]string `json:"phase_outputs"`
-	ReworkCount    int            `json:"rework_count"`
-	RiskLevel      string         `json:"risk_level"`
-	CreatedAt      time.Time      `json:"created_at"`
+	SchemaVersion     int            `json:"v"`
+	TraceID           string         `json:"trace_id"`
+	Task              string         `json:"task"`
+	Current           int            `json:"current"`
+	PhaseStatuses     map[int]string `json:"phase_statuses"`
+	PhaseOutputs      map[int]string `json:"phase_outputs"`
+	ReworkCount       int            `json:"rework_count"`
+	RiskLevel         string         `json:"risk_level"`
+	CreatedAt         time.Time      `json:"created_at"`
+	SpecialistResults map[int]string `json:"specialist_results,omitempty"` // Phase → "complete"/"failed" (fan-out)
 }
 
 // SaveCheckpoint serializes the pipeline state to a JSON file.
