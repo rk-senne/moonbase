@@ -11,8 +11,8 @@ func TestCommsKeys_SnippetPicker(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
 	app.boot.Ready = true
-	app.comms = newCommsState("test-agent", "system prompt", 80, 40)
-	app.commsInput.Focus()
+	app.comms.State = newCommsState("test-agent", "system prompt", 80, 40)
+	app.comms.Input.Focus()
 	app.snippetPick.Active = true
 	app.snippetPick.List = nil
 
@@ -33,8 +33,8 @@ func TestCommsKeys_ContextFile(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
 	app.boot.Ready = true
-	app.comms = newCommsState("test-agent", "system prompt", 80, 40)
-	app.commsInput.Focus()
+	app.comms.State = newCommsState("test-agent", "system prompt", 80, 40)
+	app.comms.Input.Focus()
 	app.ctxFile.Active = true
 	app.ctxFile.Input.Focus()
 
@@ -50,8 +50,8 @@ func TestCommsKeys_ContextFileEnter(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
 	app.boot.Ready = true
-	app.comms = newCommsState("test-agent", "system prompt", 80, 40)
-	app.commsInput.Focus()
+	app.comms.State = newCommsState("test-agent", "system prompt", 80, 40)
+	app.comms.Input.Focus()
 	app.ctxFile.Active = true
 	app.ctxFile.Input.Focus()
 	app.ctxFile.Input.SetValue("/nonexistent/path")
@@ -68,15 +68,15 @@ func TestCommsKeys_AtSwitch(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
 	app.boot.Ready = true
-	app.comms = newCommsState("test-agent", "system prompt", 80, 40)
-	app.commsInput.Focus()
-	app.commsInput.SetValue("@numbuh-1")
+	app.comms.State = newCommsState("test-agent", "system prompt", 80, 40)
+	app.comms.Input.Focus()
+	app.comms.Input.SetValue("@numbuh-1")
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
 	// Should have reset input after @ command
-	if result.commsInput.Value() != "" {
-		t.Errorf("expected comms input reset after @ command, got '%s'", result.commsInput.Value())
+	if result.comms.Input.Value() != "" {
+		t.Errorf("expected comms input reset after @ command, got '%s'", result.comms.Input.Value())
 	}
 }
 
@@ -160,7 +160,7 @@ func TestFileBrowserKeys_Backtick(t *testing.T) {
 func TestApp_StreamChunkMsg_NilComms(t *testing.T) {
 	app := NewApp()
 	app.boot.Ready = true
-	app.comms = nil
+	app.comms.State = nil
 
 	msg := streamChunkMsg{text: "hello", done: false}
 	model, _ := app.Update(msg)
@@ -172,13 +172,13 @@ func TestApp_StreamChunkMsg_NilComms(t *testing.T) {
 func TestApp_StreamChunkMsg_Done(t *testing.T) {
 	app := NewApp()
 	app.boot.Ready = true
-	app.comms = newCommsState("test-agent", "system prompt", 80, 40)
-	app.comms.streaming = true
+	app.comms.State = newCommsState("test-agent", "system prompt", 80, 40)
+	app.comms.State.streaming = true
 
 	msg := streamChunkMsg{done: true}
 	model, _ := app.Update(msg)
 	result := model.(App)
-	if result.comms.streaming {
+	if result.comms.State.streaming {
 		t.Error("expected streaming=false after done message")
 	}
 }
@@ -186,13 +186,13 @@ func TestApp_StreamChunkMsg_Done(t *testing.T) {
 func TestApp_StreamChunkMsg_Error(t *testing.T) {
 	app := NewApp()
 	app.boot.Ready = true
-	app.comms = newCommsState("test-agent", "system prompt", 80, 40)
-	app.comms.streaming = true
+	app.comms.State = newCommsState("test-agent", "system prompt", 80, 40)
+	app.comms.State.streaming = true
 
 	msg := streamChunkMsg{err: errTestDummy}
 	model, _ := app.Update(msg)
 	result := model.(App)
-	if result.comms.streaming {
+	if result.comms.State.streaming {
 		t.Error("expected streaming=false after error")
 	}
 }

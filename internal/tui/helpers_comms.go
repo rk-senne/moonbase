@@ -26,34 +26,34 @@ func (a *App) openComms() {
 	// Load existing chat history or start fresh
 	conv := chat.Load(agent.Name, agent.Prompt)
 	if conv != nil {
-		a.comms = &CommsState{
+		a.comms.State = &CommsState{
 			conv:     conv,
 			viewport: viewport.New(vpWidth, vpHeight),
 			agent:    agent.Name,
 		}
-		a.comms.rebuildContent(a.themeData)
+		a.comms.State.rebuildContent(a.themeData)
 	} else {
-		a.comms = newCommsState(agent.Name, agent.Prompt, a.width, a.height)
+		a.comms.State = newCommsState(agent.Name, agent.Prompt, a.width, a.height)
 	}
 	a.view = ViewComms
-	a.commsInput.Focus()
-	a.commsInput.Width = a.width - 8
-	if a.commsInput.Width < 10 {
-		a.commsInput.Width = 10
+	a.comms.Input.Focus()
+	a.comms.Input.Width = a.width - 8
+	if a.comms.Input.Width < 10 {
+		a.comms.Input.Width = 10
 	}
 }
 
 func (a *App) sendCommsMessage() tea.Cmd {
-	msg := a.commsInput.Value()
+	msg := a.comms.Input.Value()
 	if msg == "" {
 		return nil
 	}
-	a.commsInput.Reset()
-	a.comms.AddUserMessage(msg, a.themeData)
-	a.comms.streaming = true
+	a.comms.Input.Reset()
+	a.comms.State.AddUserMessage(msg, a.themeData)
+	a.comms.State.streaming = true
 
 	// Start streaming and store channel for continued polling
-	a.pipeline.StreamCh = chat.Stream(a.comms.conv)
+	a.pipeline.StreamCh = chat.Stream(a.comms.State.conv)
 	return pollStream(a.pipeline.StreamCh)
 }
 
@@ -72,8 +72,8 @@ func pollStream(ch <-chan chat.StreamChunk) tea.Cmd {
 func (a *App) switchCommsAgent(name string) {
 	for _, agent := range a.registry.All() {
 		if strings.Contains(strings.ToLower(agent.Name), strings.ToLower(name)) {
-			a.comms.agent = agent.Name
-			a.comms.conv.System = agent.Prompt
+			a.comms.State.agent = agent.Name
+			a.comms.State.conv.System = agent.Prompt
 			a.addIntel("COMMS switched to: %s", agent.Name)
 			return
 		}
@@ -96,11 +96,11 @@ func (a *App) relayToAgent(targetName, msg string) tea.Cmd {
 		return nil
 	}
 
-	fromAgent := a.comms.agent
+	fromAgent := a.comms.State.agent
 	if msg == "" {
-		for i := len(a.comms.conv.Messages) - 1; i >= 0; i-- {
-			if a.comms.conv.Messages[i].Role == chat.RoleAssistant {
-				msg = a.comms.conv.Messages[i].Content
+		for i := len(a.comms.State.conv.Messages) - 1; i >= 0; i-- {
+			if a.comms.State.conv.Messages[i].Role == chat.RoleAssistant {
+				msg = a.comms.State.conv.Messages[i].Content
 				break
 			}
 		}
@@ -116,17 +116,17 @@ func (a *App) relayToAgent(targetName, msg string) tea.Cmd {
 	if conv == nil {
 		conv = chat.NewConversation(target.Name, target.Prompt)
 	}
-	a.comms = &CommsState{
+	a.comms.State = &CommsState{
 		conv:     conv,
 		viewport: viewport.New(a.width-6, a.height-6),
 		agent:    target.Name,
 	}
-	a.comms.rebuildContent(a.themeData)
+	a.comms.State.rebuildContent(a.themeData)
 
-	a.comms.AddUserMessage(relayMsg, a.themeData)
-	a.comms.streaming = true
+	a.comms.State.AddUserMessage(relayMsg, a.themeData)
+	a.comms.State.streaming = true
 	a.addIntel("Relayed to %s from %s", target.Name, fromAgent)
 
-	a.pipeline.StreamCh = chat.Stream(a.comms.conv)
+	a.pipeline.StreamCh = chat.Stream(a.comms.State.conv)
 	return pollStream(a.pipeline.StreamCh)
 }

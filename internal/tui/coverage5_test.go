@@ -610,16 +610,16 @@ func TestRelayToAgent_DirectCall_TargetFound(t *testing.T) {
 	// Use names from the actual registry
 	firstAgent := app.registry.Get(0)
 	secondAgent := app.registry.Get(1)
-	app.comms = newCommsState(firstAgent.Name, firstAgent.Prompt, 80, 40)
+	app.comms.State = newCommsState(firstAgent.Name, firstAgent.Prompt, 80, 40)
 	// Add an assistant message to relay
-	app.comms.conv.Add(chat.RoleAssistant, "Here is my analysis of the code.")
+	app.comms.State.conv.Add(chat.RoleAssistant, "Here is my analysis of the code.")
 
 	cmd := app.relayToAgent(secondAgent.Name, "")
 	if cmd == nil {
 		t.Error("expected non-nil cmd when relaying last response")
 	}
-	if app.comms.agent != secondAgent.Name {
-		t.Errorf("expected comms agent switched to %s, got %s", secondAgent.Name, app.comms.agent)
+	if app.comms.State.agent != secondAgent.Name {
+		t.Errorf("expected comms agent switched to %s, got %s", secondAgent.Name, app.comms.State.agent)
 	}
 }
 
@@ -636,16 +636,16 @@ func TestRelayToAgent_DirectCall_WithExplicitMsg(t *testing.T) {
 	app.height = 40
 	firstAgent := app.registry.Get(0)
 	thirdAgent := app.registry.Get(2)
-	app.comms = newCommsState(firstAgent.Name, firstAgent.Prompt, 80, 40)
+	app.comms.State = newCommsState(firstAgent.Name, firstAgent.Prompt, 80, 40)
 
 	cmd := app.relayToAgent(thirdAgent.Name, "please implement this feature")
 	if cmd == nil {
 		t.Error("expected non-nil cmd from relay with explicit message")
 	}
-	if app.comms.agent != thirdAgent.Name {
-		t.Errorf("expected comms switched to %s, got %s", thirdAgent.Name, app.comms.agent)
+	if app.comms.State.agent != thirdAgent.Name {
+		t.Errorf("expected comms switched to %s, got %s", thirdAgent.Name, app.comms.State.agent)
 	}
-	if !app.comms.streaming {
+	if !app.comms.State.streaming {
 		t.Error("expected streaming=true after relay")
 	}
 }
@@ -663,7 +663,7 @@ func TestRelayToAgent_DirectCall_NoAssistantMsg(t *testing.T) {
 	app.height = 40
 	firstAgent := app.registry.Get(0)
 	secondAgent := app.registry.Get(1)
-	app.comms = newCommsState(firstAgent.Name, firstAgent.Prompt, 80, 40)
+	app.comms.State = newCommsState(firstAgent.Name, firstAgent.Prompt, 80, 40)
 	// No assistant messages — relay with empty msg should fail
 
 	cmd := app.relayToAgent(secondAgent.Name, "")
@@ -900,12 +900,12 @@ func TestOpenComms_NewConversation(t *testing.T) {
 	if app.view != ViewComms {
 		t.Errorf("expected ViewComms after openComms, got %d", app.view)
 	}
-	if app.comms == nil {
+	if app.comms.State == nil {
 		t.Fatal("expected comms to be initialized")
 	}
 	agent := app.registry.Get(0)
-	if app.comms.agent != agent.Name {
-		t.Errorf("expected comms.agent=%s, got %s", agent.Name, app.comms.agent)
+	if app.comms.State.agent != agent.Name {
+		t.Errorf("expected comms.agent=%s, got %s", agent.Name, app.comms.State.agent)
 	}
 }
 
@@ -930,11 +930,11 @@ func TestOpenComms_ExistingConversation(t *testing.T) {
 	chat.Save(conv)
 
 	app.openComms()
-	if app.comms == nil {
+	if app.comms.State == nil {
 		t.Fatal("expected comms to be initialized")
 	}
 	// Should have loaded the existing conversation with messages
-	if len(app.comms.conv.Messages) == 0 {
+	if len(app.comms.State.conv.Messages) == 0 {
 		t.Error("expected existing messages to be loaded")
 	}
 }
@@ -1425,23 +1425,23 @@ func TestSwitchCommsAgent_Found(t *testing.T) {
 	if app.registry.Count() == 0 {
 		t.Skip("no agents loaded")
 	}
-	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
 
 	app.switchCommsAgent("numbuh-4")
-	if app.comms.agent != "numbuh-4" {
-		t.Errorf("expected comms agent=numbuh-4, got %s", app.comms.agent)
+	if app.comms.State.agent != "numbuh-4" {
+		t.Errorf("expected comms agent=numbuh-4, got %s", app.comms.State.agent)
 	}
 }
 
 func TestSwitchCommsAgent_NotFoundAgent(t *testing.T) {
 	app := NewApp()
 	app.registry = newTestRegistry()
-	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
 
 	app.switchCommsAgent("nonexistent-xyz-999")
 	// Should stay as numbuh-1
-	if app.comms.agent != "numbuh-1" {
-		t.Errorf("expected comms agent unchanged, got %s", app.comms.agent)
+	if app.comms.State.agent != "numbuh-1" {
+		t.Errorf("expected comms agent unchanged, got %s", app.comms.State.agent)
 	}
 }
 
@@ -1465,9 +1465,9 @@ func TestRenderComms_StreamingMode(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.view = ViewComms
-	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.comms.streaming = true
-	app.comms.buffer = "streaming response..."
+	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms.State.streaming = true
+	app.comms.State.buffer = "streaming response..."
 
 	result := app.renderComms()
 	if result == "" {
@@ -1480,7 +1480,7 @@ func TestRenderComms_StreamingMode(t *testing.T) {
 func TestHandleStreamChunk_NilComms(t *testing.T) {
 	app := NewApp()
 	app.boot.Ready = true
-	app.comms = nil
+	app.comms.State = nil
 
 	model, _ := app.Update(streamChunkMsg{text: "hello"})
 	result := model.(App)
@@ -1490,12 +1490,12 @@ func TestHandleStreamChunk_NilComms(t *testing.T) {
 func TestHandleStreamChunk_Error(t *testing.T) {
 	app := NewApp()
 	app.boot.Ready = true
-	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.comms.streaming = true
+	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms.State.streaming = true
 
 	model, _ := app.Update(streamChunkMsg{err: os.ErrNotExist})
 	result := model.(App)
-	if result.comms.streaming {
+	if result.comms.State.streaming {
 		t.Error("expected streaming=false after error")
 	}
 }
@@ -1503,13 +1503,13 @@ func TestHandleStreamChunk_Error(t *testing.T) {
 func TestHandleStreamChunk_Done(t *testing.T) {
 	app := NewApp()
 	app.boot.Ready = true
-	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.comms.streaming = true
-	app.comms.buffer = "completed response"
+	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms.State.streaming = true
+	app.comms.State.buffer = "completed response"
 
 	model, _ := app.Update(streamChunkMsg{done: true})
 	result := model.(App)
-	if result.comms.streaming {
+	if result.comms.State.streaming {
 		t.Error("expected streaming=false after done")
 	}
 }
@@ -1783,7 +1783,7 @@ func TestRenderComms_ContextFile(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.view = ViewComms
-	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.ctxFile.Active = true
 	app.ctxFile.Input.SetValue("/some/path")
 
@@ -1801,7 +1801,7 @@ func TestRenderComms_SnippetPicker(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.view = ViewComms
-	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.snippetPick.Active = true
 
 	result := app.renderComms()
@@ -1855,7 +1855,7 @@ func TestCommsKeys_ContextFile_EnterValid(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.ctxFile.Active = true
 	app.ctxFile.Input.Focus()
 	app.ctxFile.Input.SetValue(tmpFile)
@@ -1873,7 +1873,7 @@ func TestCommsKeys_ContextFile_EnterInvalid(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.ctxFile.Active = true
 	app.ctxFile.Input.Focus()
 	app.ctxFile.Input.SetValue("/nonexistent/path/xyz.txt")
@@ -1902,14 +1902,14 @@ func TestCommsKeys_AtAgent(t *testing.T) {
 	}
 	// Use the second agent's actual name
 	targetAgent := app.registry.Get(1)
-	app.comms = newCommsState(app.registry.Get(0).Name, "prompt", 80, 40)
-	app.commsInput.Focus()
-	app.commsInput.SetValue("@" + targetAgent.Name)
+	app.comms.State = newCommsState(app.registry.Get(0).Name, "prompt", 80, 40)
+	app.comms.Input.Focus()
+	app.comms.Input.SetValue("@" + targetAgent.Name)
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
-	if result.comms.agent != targetAgent.Name {
-		t.Errorf("expected agent switch to %s, got %s", targetAgent.Name, result.comms.agent)
+	if result.comms.State.agent != targetAgent.Name {
+		t.Errorf("expected agent switch to %s, got %s", targetAgent.Name, result.comms.State.agent)
 	}
 }
 
@@ -2025,8 +2025,8 @@ func TestCommsKeys_CtrlS(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.commsInput.Focus()
+	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms.Input.Focus()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
 	result := model.(App)
@@ -2043,8 +2043,8 @@ func TestCommsKeys_CtrlF(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.commsInput.Focus()
+	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms.Input.Focus()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyCtrlF})
 	result := model.(App)
@@ -2061,7 +2061,7 @@ func TestCommsKeys_ContextFile_Esc(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.ctxFile.Active = true
 	app.ctxFile.Input.Focus()
 
@@ -2080,7 +2080,7 @@ func TestCommsKeys_ContextFile_Typing(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.ctxFile.Active = true
 	app.ctxFile.Input.Focus()
 
@@ -2099,8 +2099,8 @@ func TestCommsKeys_EscBack(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.commsInput.Focus()
+	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms.Input.Focus()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
 	result := model.(App)
@@ -2117,8 +2117,8 @@ func TestCommsKeys_CtrlC(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.commsInput.Focus()
+	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms.Input.Focus()
 
 	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
 	if cmd == nil {
@@ -2134,13 +2134,13 @@ func TestCommsKeys_Typing(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.commsInput.Focus()
+	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms.Input.Focus()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'h'}})
 	result := model.(App)
-	if result.commsInput.Value() != "h" {
-		t.Errorf("expected 'h', got %q", result.commsInput.Value())
+	if result.comms.Input.Value() != "h" {
+		t.Errorf("expected 'h', got %q", result.comms.Input.Value())
 	}
 }
 
@@ -2152,10 +2152,10 @@ func TestCommsKeys_StreamingBlocked(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.comms.streaming = true
-	app.commsInput.Focus()
-	app.commsInput.SetValue("")
+	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms.State.streaming = true
+	app.comms.Input.Focus()
+	app.comms.Input.SetValue("")
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
@@ -2378,8 +2378,8 @@ func TestRelayToAgent_InlineRegistry(t *testing.T) {
 	agent1 := reg.Get(1)
 	t.Logf("Testing relay from %s to %s (registry has %d agents)", agent0.Name, agent1.Name, reg.Count())
 
-	app.comms = newCommsState(agent0.Name, agent0.Prompt, 80, 40)
-	app.comms.conv.Add(chat.RoleAssistant, "Here is my detailed analysis.")
+	app.comms.State = newCommsState(agent0.Name, agent0.Prompt, 80, 40)
+	app.comms.State.conv.Add(chat.RoleAssistant, "Here is my detailed analysis.")
 
 	// Relay with empty msg (should use last assistant message)
 	cmd := app.relayToAgent(agent1.Name, "")
@@ -2432,11 +2432,11 @@ func TestSwitchCommsAgent_FoundReal(t *testing.T) {
 		t.Skip("need at least 2 agents")
 	}
 	agent1 := app.registry.Get(1)
-	app.comms = newCommsState(app.registry.Get(0).Name, "prompt", 80, 40)
+	app.comms.State = newCommsState(app.registry.Get(0).Name, "prompt", 80, 40)
 
 	app.switchCommsAgent(agent1.Name)
-	if app.comms.agent != agent1.Name {
-		t.Errorf("expected comms.agent=%s, got %s", agent1.Name, app.comms.agent)
+	if app.comms.State.agent != agent1.Name {
+		t.Errorf("expected comms.agent=%s, got %s", agent1.Name, app.comms.State.agent)
 	}
 }
 
@@ -2595,7 +2595,7 @@ func TestCommsKeys_SnippetPicker_Enter(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.snippetPick.Active = true
 	app.snippetPick.Cursor = 0
 	// Empty list — enter should not crash
@@ -2612,7 +2612,7 @@ func TestCommsKeys_SnippetPicker_Esc(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.snippetPick.Active = true
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
@@ -2628,7 +2628,7 @@ func TestCommsKeys_SnippetPicker_Navigate(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.snippetPick.Active = true
 	app.snippetPick.Cursor = 0
 
@@ -2652,9 +2652,9 @@ func TestCommsKeys_DoubleArrow_NoSpace(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.registry = newTestRegistry()
-	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.commsInput.Focus()
-	app.commsInput.SetValue(">>numbuh-2") // no space = only 1 part
+	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms.Input.Focus()
+	app.comms.Input.SetValue(">>numbuh-2") // no space = only 1 part
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
@@ -2935,7 +2935,7 @@ func TestCommsKeys_SnippetPicker_EnterWithItems(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.snippetPick.Active = true
 	app.snippetPick.Cursor = 0
 	// snippetPick.List is populated by ForAgent — just verify empty list path
@@ -3469,9 +3469,9 @@ func TestCommsKeys_DefaultTyping(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.comms.streaming = false
-	app.commsInput.Focus()
+	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms.State.streaming = false
+	app.comms.Input.Focus()
 
 	// Type a backspace (non-rune key that goes to default)
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyBackspace})
@@ -3487,14 +3487,14 @@ func TestHandleStreamChunk_TextContent(t *testing.T) {
 
 	app := NewApp()
 	app.boot.Ready = true
-	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.comms.streaming = true
+	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms.State.streaming = true
 	app.pipeline.StreamCh = ch
 
 	model, cmd := app.Update(streamChunkMsg{text: "hello world"})
 	result := model.(App)
-	if result.comms.buffer != "hello world" {
-		t.Errorf("expected buffer='hello world', got %q", result.comms.buffer)
+	if result.comms.State.buffer != "hello world" {
+		t.Errorf("expected buffer='hello world', got %q", result.comms.State.buffer)
 	}
 	if cmd == nil {
 		t.Error("expected non-nil cmd (pollStream continuation)")

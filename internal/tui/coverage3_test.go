@@ -85,7 +85,7 @@ func TestOpenComms(t *testing.T) {
 	if app.view != ViewComms {
 		t.Errorf("expected ViewComms after openComms, got %d", app.view)
 	}
-	if app.comms == nil {
+	if app.comms.State == nil {
 		t.Error("expected comms state to be initialized")
 	}
 }
@@ -97,12 +97,12 @@ func TestSwitchCommsAgent(t *testing.T) {
 	app.registry = newTestRegistry()
 	app.width = 100
 	app.height = 40
-	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
 
 	app.switchCommsAgent("numbuh-2")
 	// Should switch to new agent
-	if app.comms.agent != "numbuh-2" {
-		t.Errorf("expected agent numbuh-2, got %s", app.comms.agent)
+	if app.comms.State.agent != "numbuh-2" {
+		t.Errorf("expected agent numbuh-2, got %s", app.comms.State.agent)
 	}
 }
 
@@ -111,7 +111,7 @@ func TestSwitchCommsAgent_NotFound(t *testing.T) {
 	app.registry = newTestRegistry()
 	app.width = 100
 	app.height = 40
-	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
 
 	app.switchCommsAgent("nonexistent-agent")
 	// Should not crash, agent stays the same or gets an error message
@@ -125,7 +125,7 @@ func TestRenderComms(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.view = ViewComms
-	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
 
 	result := app.renderComms()
 	if result == "" {
@@ -139,9 +139,9 @@ func TestRenderComms_Streaming(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.view = ViewComms
-	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.comms.streaming = true
-	app.comms.buffer = "partial response..."
+	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms.State.streaming = true
+	app.comms.State.buffer = "partial response..."
 
 	result := app.renderComms()
 	if result == "" {

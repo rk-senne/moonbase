@@ -23,7 +23,7 @@ func (a App) handleCommsKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			path := a.ctxFile.Input.Value()
 			if data, err := os.ReadFile(path); err == nil {
 				inject := fmt.Sprintf("[attached: %s]\n```\n%s\n```", path, string(data))
-				a.commsInput.SetValue(a.commsInput.Value() + inject)
+				a.comms.Input.SetValue(a.comms.Input.Value() + inject)
 			} else {
 				a.addIntel("File not found: %s", path)
 			}
@@ -52,7 +52,7 @@ func (a App) handleCommsKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		case key.Matches(msg, a.keys.SnippetConfirm):
 			if len(a.snippetPick.List) > 0 {
-				a.commsInput.SetValue(a.snippetPick.List[a.snippetPick.Cursor].Content)
+				a.comms.Input.SetValue(a.snippetPick.List[a.snippetPick.Cursor].Content)
 				a.snippetPick.Active = false
 			}
 		}
@@ -61,22 +61,22 @@ func (a App) handleCommsKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, a.keys.Back):
 		a.view = ViewDossier
-		a.commsInput.Blur()
+		a.comms.Input.Blur()
 	case key.Matches(msg, a.keys.SendMessage):
-		if !a.comms.streaming {
-			val := a.commsInput.Value()
+		if !a.comms.State.streaming {
+			val := a.comms.Input.Value()
 			// @agent — switch active agent
 			if strings.HasPrefix(val, "@") {
 				agentName := strings.TrimPrefix(val, "@")
 				a.switchCommsAgent(agentName)
-				a.commsInput.Reset()
+				a.comms.Input.Reset()
 				return a, nil
 			}
 			// >>agent message — relay custom message to agent
 			if strings.HasPrefix(val, ">>") {
 				parts := strings.SplitN(strings.TrimPrefix(val, ">>"), " ", 2)
 				if len(parts) >= 2 {
-					a.commsInput.Reset()
+					a.comms.Input.Reset()
 					cmd := a.relayToAgent(parts[0], parts[1])
 					if cmd != nil {
 						return a, cmd
@@ -87,7 +87,7 @@ func (a App) handleCommsKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			// >agent — relay last assistant response to agent
 			if strings.HasPrefix(val, ">") {
 				target := strings.TrimPrefix(val, ">")
-				a.commsInput.Reset()
+				a.comms.Input.Reset()
 				cmd := a.relayToAgent(target, "")
 				if cmd != nil {
 					return a, cmd
@@ -104,15 +104,15 @@ func (a App) handleCommsKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		a.ctxFile.Input.Focus()
 		return a, textinput.Blink
 	case key.Matches(msg, a.keys.SnippetPicker):
-		a.snippetPick.List = snippets.ForAgent(a.comms.agent)
+		a.snippetPick.List = snippets.ForAgent(a.comms.State.agent)
 		a.snippetPick.Cursor = 0
 		a.snippetPick.Active = true
 	case key.Matches(msg, a.keys.CommsQuit):
 		return a, tea.Quit
 	default:
-		if !a.comms.streaming {
+		if !a.comms.State.streaming {
 			var cmd tea.Cmd
-			a.commsInput, cmd = a.commsInput.Update(msg)
+			a.comms.Input, cmd = a.comms.Input.Update(msg)
 			return a, cmd
 		}
 	}
@@ -121,20 +121,20 @@ func (a App) handleCommsKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 // handleStreamChunk processes incoming stream tokens for COMMS.
 func (a App) handleStreamChunk(msg streamChunkMsg) (tea.Model, tea.Cmd) {
-	if a.comms == nil {
+	if a.comms.State == nil {
 		return a, nil
 	}
 	if msg.err != nil {
-		a.comms.buffer += fmt.Sprintf("\n[ERROR: %s]", msg.err)
-		a.comms.FinishStream(a.themeData)
+		a.comms.State.buffer += fmt.Sprintf("\n[ERROR: %s]", msg.err)
+		a.comms.State.FinishStream(a.themeData)
 		return a, nil
 	}
 	if msg.done {
-		a.comms.FinishStream(a.themeData)
+		a.comms.State.FinishStream(a.themeData)
 		a.ringBell()
 		return a, nil
 	}
-	a.comms.AppendStreamToken(msg.text, a.themeData)
+	a.comms.State.AppendStreamToken(msg.text, a.themeData)
 	// Continue polling the stream
 	return a, pollStream(a.pipeline.StreamCh)
 }

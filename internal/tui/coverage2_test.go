@@ -19,7 +19,7 @@ func TestView_Comms(t *testing.T) {
 	app.width = 120
 	app.height = 40
 	app.view = ViewComms
-	app.comms = newCommsState("numbuh-1", "system prompt", 80, 40)
+	app.comms.State = newCommsState("numbuh-1", "system prompt", 80, 40)
 
 	output := app.View()
 	if output == "" {

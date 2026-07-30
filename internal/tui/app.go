@@ -82,8 +82,7 @@ type App struct {
 	themeData      Theme
 	styles         Styles
 	chrome         ChromeModel
-	comms          *CommsState
-	commsInput     textinput.Model
+	comms          CommsModel
 	infra          InfraModel
 	projectCtx     *discovery.ProjectContext
 	snippetPick    SnippetPickerModel
@@ -182,7 +181,7 @@ func NewApp() App {
 		backend:       BackendModel{Active: activeBackend},
 		mission:      MissionModel{Input: ti, History: missionEntries},
 		search:       SearchModel{Input: si},
-		commsInput:   ci,
+		comms:        CommsModel{Input: ci},
 		ctxFile:      ContextFileModel{Input: fi},
 		theme:        "moonbase",
 		themeData:    initialTheme,

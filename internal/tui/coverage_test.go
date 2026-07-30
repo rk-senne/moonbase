@@ -162,8 +162,8 @@ func TestCommsKeys_SnippetPickerNav(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
 	app.boot.Ready = true
-	app.comms = newCommsState("test", "prompt", 80, 40)
-	app.commsInput.Focus()
+	app.comms.State = newCommsState("test", "prompt", 80, 40)
+	app.comms.Input.Focus()
 	app.snippetPick.Active = true
 	app.snippetPick.List = []snippets.Snippet{
 		{Name: "s1", Content: "content1"},
@@ -191,8 +191,8 @@ func TestCommsKeys_SnippetPickerNav(t *testing.T) {
 	if result.snippetPick.Active {
 		t.Error("expected snippetPick.Active=false after enter")
 	}
-	if result.commsInput.Value() != "content1" {
-		t.Errorf("expected comms input set to snippet content, got '%s'", result.commsInput.Value())
+	if result.comms.Input.Value() != "content1" {
+		t.Errorf("expected comms input set to snippet content, got '%s'", result.comms.Input.Value())
 	}
 }
 
@@ -202,14 +202,14 @@ func TestCommsKeys_RelayCommand(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
 	app.boot.Ready = true
-	app.comms = newCommsState("test", "prompt", 80, 40)
-	app.commsInput.Focus()
-	app.commsInput.SetValue(">>numbuh-1 hello there")
+	app.comms.State = newCommsState("test", "prompt", 80, 40)
+	app.comms.Input.Focus()
+	app.comms.Input.SetValue(">>numbuh-1 hello there")
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
-	if result.commsInput.Value() != "" {
-		t.Errorf("expected comms input reset after relay, got '%s'", result.commsInput.Value())
+	if result.comms.Input.Value() != "" {
+		t.Errorf("expected comms input reset after relay, got '%s'", result.comms.Input.Value())
 	}
 }
 
@@ -217,14 +217,14 @@ func TestCommsKeys_RelayLastResponse(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
 	app.boot.Ready = true
-	app.comms = newCommsState("test", "prompt", 80, 40)
-	app.commsInput.Focus()
-	app.commsInput.SetValue(">numbuh-2")
+	app.comms.State = newCommsState("test", "prompt", 80, 40)
+	app.comms.Input.Focus()
+	app.comms.Input.SetValue(">numbuh-2")
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
-	if result.commsInput.Value() != "" {
-		t.Errorf("expected comms input reset after relay, got '%s'", result.commsInput.Value())
+	if result.comms.Input.Value() != "" {
+		t.Errorf("expected comms input reset after relay, got '%s'", result.comms.Input.Value())
 	}
 }
 
@@ -232,8 +232,8 @@ func TestCommsKeys_CtrlS_SnippetPicker(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
 	app.boot.Ready = true
-	app.comms = newCommsState("test", "prompt", 80, 40)
-	app.commsInput.Focus()
+	app.comms.State = newCommsState("test", "prompt", 80, 40)
+	app.comms.Input.Focus()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
 	result := model.(App)
@@ -246,8 +246,8 @@ func TestCommsKeys_CtrlF_ContextFile(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
 	app.boot.Ready = true
-	app.comms = newCommsState("test", "prompt", 80, 40)
-	app.commsInput.Focus()
+	app.comms.State = newCommsState("test", "prompt", 80, 40)
+	app.comms.Input.Focus()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyCtrlF})
 	result := model.(App)

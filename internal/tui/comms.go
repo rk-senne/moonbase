@@ -95,7 +95,7 @@ func (c *CommsState) rebuildContent(t Theme) {
 
 // renderComms renders the COMMS view
 func (a App) renderComms() string {
-	header := a.renderHeader("Comms › " + a.comms.agent)
+	header := a.renderHeader("Comms › " + a.comms.State.agent)
 
 	// Chat viewport
 	vpStyle := lipgloss.NewStyle().
@@ -104,7 +104,7 @@ func (a App) renderComms() string {
 		Width(a.width - 2).
 		Height(a.height - 5)
 
-	chatView := vpStyle.Render(a.comms.viewport.View())
+	chatView := vpStyle.Render(a.comms.State.viewport.View())
 
 	// Input bar
 	inputPrefix := lipgloss.NewStyle().Foreground(a.themeData.Brand).Bold(true).Render(" > ")
@@ -114,11 +114,11 @@ func (a App) renderComms() string {
 		inputBar = lipgloss.NewStyle().Foreground(a.themeData.Info).Render(" 📎 Attach: ") + a.ctxFile.Input.View()
 	} else if a.snippetPick.Active {
 		inputBar = a.renderSnippetPicker()
-	} else if a.comms.streaming {
+	} else if a.comms.State.streaming {
 		typingAnim := lipgloss.NewStyle().Foreground(a.themeData.Active).Render(a.chrome.Anim.RenderTyping())
 		inputBar = inputPrefix + typingAnim + lipgloss.NewStyle().Foreground(a.themeData.Dim).Render(" streaming...")
 	} else {
-		inputBar = inputPrefix + a.commsInput.View()
+		inputBar = inputPrefix + a.comms.Input.View()
 	}
 
 	statusBar := a.renderContextualStatusBar()

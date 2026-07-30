@@ -218,8 +218,8 @@ func TestCommsKeys_Esc(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
 	app.boot.Ready = true
-	app.comms = newCommsState("test-agent", "system prompt", 80, 40)
-	app.commsInput.Focus()
+	app.comms.State = newCommsState("test-agent", "system prompt", 80, 40)
+	app.comms.Input.Focus()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
 	result := model.(App)
@@ -232,8 +232,8 @@ func TestCommsKeys_MessageInput(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
 	app.boot.Ready = true
-	app.comms = newCommsState("test-agent", "system prompt", 80, 40)
-	app.commsInput.Focus()
+	app.comms.State = newCommsState("test-agent", "system prompt", 80, 40)
+	app.comms.Input.Focus()
 
 	// Type a character
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'h'}})
@@ -241,8 +241,8 @@ func TestCommsKeys_MessageInput(t *testing.T) {
 	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'i'}})
 	result = model.(App)
 
-	if result.commsInput.Value() != "hi" {
-		t.Errorf("expected comms input='hi', got '%s'", result.commsInput.Value())
+	if result.comms.Input.Value() != "hi" {
+		t.Errorf("expected comms input='hi', got '%s'", result.comms.Input.Value())
 	}
 }
 

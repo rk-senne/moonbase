@@ -807,8 +807,8 @@ func TestCreatePR_ReturnsCmd(t *testing.T) {
 
 func TestSendCommsMessage_EmptyInput(t *testing.T) {
 	app := NewApp()
-	app.comms = newCommsState("test-agent", "prompt", 80, 40)
-	app.commsInput.SetValue("")
+	app.comms.State = newCommsState("test-agent", "prompt", 80, 40)
+	app.comms.Input.SetValue("")
 
 	cmd := app.sendCommsMessage()
 	if cmd != nil {
@@ -818,20 +818,20 @@ func TestSendCommsMessage_EmptyInput(t *testing.T) {
 
 func TestSendCommsMessage_WithMessage(t *testing.T) {
 	app := NewApp()
-	app.comms = newCommsState("test-agent", "prompt", 80, 40)
-	app.commsInput.SetValue("Hello agent")
+	app.comms.State = newCommsState("test-agent", "prompt", 80, 40)
+	app.comms.Input.SetValue("Hello agent")
 
 	cmd := app.sendCommsMessage()
 	// cmd may be nil if ANTHROPIC_API_KEY is not set, but message should be added
-	if app.commsInput.Value() != "" {
+	if app.comms.Input.Value() != "" {
 		t.Error("expected commsInput to be reset")
 	}
-	if !app.comms.streaming {
+	if !app.comms.State.streaming {
 		t.Error("expected streaming=true after sendCommsMessage")
 	}
 	// Verify user message was added
 	found := false
-	for _, m := range app.comms.conv.Messages {
+	for _, m := range app.comms.State.conv.Messages {
 		if m.Role == chat.RoleUser && m.Content == "Hello agent" {
 			found = true
 			break
@@ -857,15 +857,15 @@ func TestRelayToAgent_TargetNotFound(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.view = ViewComms
-	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.commsInput.Focus()
-	app.commsInput.SetValue(">>nonexistent-agent-xyz hello")
+	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms.Input.Focus()
+	app.comms.Input.SetValue(">>nonexistent-agent-xyz hello")
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
 	// Should not crash, agent stays numbuh-1
-	if result.comms.agent != "numbuh-1" {
-		t.Errorf("expected comms to stay as numbuh-1, got %s", result.comms.agent)
+	if result.comms.State.agent != "numbuh-1" {
+		t.Errorf("expected comms to stay as numbuh-1, got %s", result.comms.State.agent)
 	}
 }
 
@@ -875,9 +875,9 @@ func TestRelayToAgent_WithExplicitMessage(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.view = ViewComms
-	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.commsInput.Focus()
-	app.commsInput.SetValue(">>numbuh-2 analyze this code")
+	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms.Input.Focus()
+	app.comms.Input.SetValue(">>numbuh-2 analyze this code")
 
 	model, cmd := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
@@ -886,10 +886,10 @@ func TestRelayToAgent_WithExplicitMessage(t *testing.T) {
 	if app.registry.Count() == 0 {
 		t.Skip("registry empty (likely fd exhaustion)")
 	}
-	if result.comms.agent != "numbuh-2" {
-		t.Errorf("expected comms switched to numbuh-2, got %s", result.comms.agent)
+	if result.comms.State.agent != "numbuh-2" {
+		t.Errorf("expected comms switched to numbuh-2, got %s", result.comms.State.agent)
 	}
-	if !result.comms.streaming {
+	if !result.comms.State.streaming {
 		t.Error("expected streaming=true after relay")
 	}
 	if cmd == nil {
@@ -903,10 +903,10 @@ func TestRelayToAgent_EmptyMsgNoHistory(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.view = ViewComms
-	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
 	// No messages in conversation — relay with empty msg should fail
-	app.commsInput.Focus()
-	app.commsInput.SetValue(">numbuh-2")
+	app.comms.Input.Focus()
+	app.comms.Input.SetValue(">numbuh-2")
 
 	model, cmd := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
@@ -921,11 +921,11 @@ func TestRelayToAgent_EmptyMsgWithHistory(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.view = ViewComms
-	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
 	// Add an assistant message to relay
-	app.comms.conv.Add(chat.RoleAssistant, "previous response")
-	app.commsInput.Focus()
-	app.commsInput.SetValue(">numbuh-2")
+	app.comms.State.conv.Add(chat.RoleAssistant, "previous response")
+	app.comms.Input.Focus()
+	app.comms.Input.SetValue(">numbuh-2")
 
 	model, cmd := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
@@ -934,8 +934,8 @@ func TestRelayToAgent_EmptyMsgWithHistory(t *testing.T) {
 	if app.registry.Count() == 0 {
 		t.Skip("registry empty (likely fd exhaustion)")
 	}
-	if result.comms.agent != "numbuh-2" {
-		t.Errorf("expected comms switched to numbuh-2, got %s", result.comms.agent)
+	if result.comms.State.agent != "numbuh-2" {
+		t.Errorf("expected comms switched to numbuh-2, got %s", result.comms.State.agent)
 	}
 	if cmd == nil {
 		t.Error("expected non-nil cmd from relay with history")
@@ -1379,15 +1379,15 @@ func TestCommsKeys_RelayPrefix_NoHistory(t *testing.T) {
 	app.width = 100
 	app.height = 40
 	app.registry = newTestRegistry()
-	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
-	app.commsInput.Focus()
-	app.commsInput.SetValue(">numbuh-3")
+	app.comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
+	app.comms.Input.Focus()
+	app.comms.Input.SetValue(">numbuh-3")
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
 	// Should reset input even if relay fails (no history to relay)
-	if result.commsInput.Value() != "" {
-		t.Errorf("expected commsInput reset after relay, got %q", result.commsInput.Value())
+	if result.comms.Input.Value() != "" {
+		t.Errorf("expected commsInput reset after relay, got %q", result.comms.Input.Value())
 	}
 }
 
