@@ -171,6 +171,11 @@ Human Approval
 | Numbuh 999 | README needed, ADRs, changelogs |
 | Sector Z | Old/mysterious code touched, legacy context needed |
 
+**Parallel fan-out:** Independent specialists (read-only, no write tools) execute
+concurrently after QA returns LOW risk. Bounded to `max_specialist_concurrency`
+(default 4). One failure does not cancel siblings. Disable with
+`parallel_specialists: false` in config or `--sequential` on the CLI.
+
 ---
 
 ## Agent Format
