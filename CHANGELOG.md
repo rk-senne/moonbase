@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-07-30
+
 ### Added
 - tui: **click-to-select operatives** — left-clicking an operative in the dashboard roster now selects it and opens its dossier (the mouse equivalent of arrowing to it and pressing enter). Implemented with a drift-proof sidebar hit-map that shares the roster group-walk with the renderer, so click targets stay accurate as the roster changes. Completes the mouse-support follow-up noted in v1.9.0.
 
@@ -139,6 +141,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Security: SafeEnv isolation, hook command validation, input sanitization
 - Mission history with persistence
 
+[1.10.0]: https://github.com/rk-senne/moonbase/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/rk-senne/moonbase/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/rk-senne/moonbase/compare/v1.7.0...v1.8.0
 [1.7.0]: https://github.com/rk-senne/moonbase/compare/v1.6.0...v1.7.0
