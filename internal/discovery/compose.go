@@ -103,27 +103,49 @@ func ComposePrompt(agentPrompt string, context *ProjectContext, task string) str
 		sections = append(sections, specBlock.String())
 	}
 
-	// 4. Skills (domain knowledge available to the agent)
+	// 4. Skills — progressive loading: catalog for registry skills, eager for legacy.
+	// Registry skills: emit a lightweight catalog (name + description only).
+	// Legacy skills (no frontmatter): inject full content for backward compat.
 	if context != nil && context.HasSkills() {
 		var skillBlock strings.Builder
-		skillBlock.WriteString("\n--- PROJECT SKILLS ---\n")
-		skillBlock.WriteString("The following domain knowledge is available:\n\n")
 
-		limit := len(context.Skills)
-		if limit > maxSkills {
-			limit = maxSkills
-		}
-		for _, skill := range context.Skills[:limit] {
-			skillBlock.WriteString(fmt.Sprintf("### %s\n", skill.Name))
-			content := skill.Content
-			if len(content) > maxSkillSize {
-				content = content[:maxSkillSize] + "\n...(truncated)"
+		// Registry skills → catalog (metadata only, ~100 tokens each)
+		if context.HasRegistrySkills() {
+			skillBlock.WriteString("\n--- AVAILABLE SKILLS ---\n")
+			skillBlock.WriteString("The following skills are available. Request any skill with @skill(name) to load its full content.\n\n")
+			skillBlock.WriteString("| Skill | Description |\n")
+			skillBlock.WriteString("|-------|-------------|\n")
+			for _, meta := range context.SkillRegistry.List() {
+				desc := meta.Description
+				if desc == "" {
+					desc = "(no description)"
+				}
+				skillBlock.WriteString(fmt.Sprintf("| %s | %s |\n", meta.Name, desc))
 			}
-			skillBlock.WriteString(content)
-			skillBlock.WriteString("\n\n")
+			skillBlock.WriteString("\n--- END AVAILABLE SKILLS ---\n")
 		}
 
-		skillBlock.WriteString("--- END PROJECT SKILLS ---\n")
+		// Legacy skills (no frontmatter) → inject full content for backward compat
+		if len(context.Skills) > 0 {
+			skillBlock.WriteString("\n--- PROJECT SKILLS ---\n")
+			skillBlock.WriteString("The following domain knowledge is available:\n\n")
+
+			limit := len(context.Skills)
+			if limit > maxSkills {
+				limit = maxSkills
+			}
+			for _, skill := range context.Skills[:limit] {
+				skillBlock.WriteString(fmt.Sprintf("### %s\n", skill.Name))
+				content := skill.Content
+				if len(content) > maxSkillSize {
+					content = content[:maxSkillSize] + "\n...(truncated)"
+				}
+				skillBlock.WriteString(content)
+				skillBlock.WriteString("\n\n")
+			}
+			skillBlock.WriteString("--- END PROJECT SKILLS ---\n")
+		}
+
 		sections = append(sections, skillBlock.String())
 	}
 
@@ -139,6 +161,30 @@ func ComposePrompt(agentPrompt string, context *ProjectContext, task string) str
 	// 6. Task (if provided — this is what the user actually wants done)
 	if task != "" {
 		composed += fmt.Sprintf("\n\n--- TASK ---\n%s\n--- END TASK ---\n", task)
+	}
+
+	// 7. On-demand skill injection: pre-scan task (and agent prompt) for @skill(name)
+	// references and inject loaded content. This handles single-shot deploys where the
+	// operative cannot interactively request skills (e.g., `moonbase deploy 4 "use
+	// @skill(docker-build) to review the Dockerfile"`).
+	//
+	// NOTE: Full multi-turn pipeline scanning is out of scope for this implementation.
+	// The compose-time pre-scan satisfies single-shot deploys (AC-3.2/3.3).
+	if context != nil && context.HasRegistrySkills() {
+		// Scan task and agent prompt for skill references
+		scanText := task + " " + agentPrompt
+		requested := ExtractSkillRequests(scanText)
+		if len(requested) > 0 {
+			resolved, notFound := ResolveSkills(context.SkillRegistry, requested)
+			for _, skill := range resolved {
+				composed += fmt.Sprintf("\n--- SKILL: %s ---\n%s\n--- END SKILL ---\n", skill.Name, skill.Content)
+			}
+			if len(notFound) > 0 {
+				available := strings.Join(context.SkillRegistry.Names(), ", ")
+				composed += fmt.Sprintf("\n--- SKILL RESOLUTION ---\nSkill(s) not found: %s. Available: %s\n--- END SKILL RESOLUTION ---\n",
+					strings.Join(notFound, ", "), available)
+			}
+		}
 	}
 
 	// SECURITY: Final size guard — prevent OOM from accumulated content
