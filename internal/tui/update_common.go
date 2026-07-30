@@ -42,7 +42,7 @@ func (a App) handleBootDone() (tea.Model, tea.Cmd) {
 	a.view = ViewDashboard
 	a.addIntel("Moonbase online. %d operatives loaded.", a.registry.Count())
 	a.addIntel("AI backends detected: %s", a.detectedBackends())
-	a.addIntel("Git: %s %s", a.gitBranch, a.gitStatus())
+	a.addIntel("Git: %s %s", a.system.Branch, a.gitStatus())
 	return a, nil
 }
 
@@ -156,10 +156,16 @@ func (a App) handlePipelineAborted() (tea.Model, tea.Cmd) {
 
 // handleSystemInfo processes system detection results.
 func (a App) handleSystemInfo(msg systemInfoMsg) (tea.Model, tea.Cmd) {
-	a.gitBranch = msg.branch
-	a.gitClean = msg.clean
-	a.dockerCount = msg.dockerCount
-	a.gitDiffLines = msg.diffLines
+	a.system = SystemModel{
+		Branch:         msg.branch,
+		Clean:          msg.clean,
+		Docker:         msg.dockerCount,
+		ChangedLines:   msg.diffLines,
+		FilesChanged:   msg.filesChanged,
+		UntrackedFiles: msg.untrackedFiles,
+		SensitiveHits:  msg.sensitiveHits,
+		NoRepo:         msg.noRepo,
+	}
 	return a, nil
 }
 
@@ -229,50 +235,108 @@ func blinkTick() tea.Cmd {
 }
 
 type systemInfoMsg struct {
-	branch      string
-	clean       bool
-	dockerCount int
-	diffLines   int
+	branch         string
+	clean          bool
+	dockerCount    int
+	diffLines      int
+	filesChanged   int
+	untrackedFiles int
+	sensitiveHits  int
+	noRepo         bool
 }
 
 func detectSystem() tea.Cmd {
 	return func() tea.Msg {
-		branch := "unknown"
-		clean := false
-		dockerCount := 0
-		diffLines := 0
+		msg := systemInfoMsg{branch: "unknown", clean: true}
+
+		// Not a git repo: report docker only and mark noRepo so the threat
+		// gauge reads LOW/"no git repo" instead of a misleading empty state.
+		if err := exec.Command("git", "rev-parse", "--is-inside-work-tree").Run(); err != nil {
+			msg.noRepo = true
+			msg.dockerCount = dockerContainerCount()
+			return msg
+		}
 
 		if out, err := exec.Command("git", "branch", "--show-current").Output(); err == nil {
-			branch = strings.TrimSpace(string(out))
-		}
-		if out, err := exec.Command("git", "status", "--porcelain").Output(); err == nil {
-			clean = len(strings.TrimSpace(string(out))) == 0
-		}
-		if out, err := exec.Command("docker", "ps", "-q").Output(); err == nil {
-			lines := strings.TrimSpace(string(out))
-			if lines != "" {
-				dockerCount = len(strings.Split(lines, "\n"))
+			if b := strings.TrimSpace(string(out)); b != "" {
+				msg.branch = b
 			}
 		}
-		if out, err := exec.Command("git", "diff", "--stat").Output(); err == nil {
-			for _, line := range strings.Split(string(out), "\n") {
-				if strings.Contains(line, "insertion") || strings.Contains(line, "deletion") {
-					parts := strings.Fields(line)
-					for i, p := range parts {
-						if strings.HasPrefix(p, "insertion") || strings.HasPrefix(p, "deletion") {
-							if i > 0 {
-								n := 0
-								fmt.Sscanf(parts[i-1], "%d", &n)
-								diffLines += n
-							}
-						}
-					}
+
+		// A single porcelain scan yields dirtiness, files changed, untracked
+		// count, and security-sensitivity — for staged, unstaged, and new files.
+		if out, err := exec.Command("git", "status", "--porcelain").Output(); err == nil {
+			for _, ln := range strings.Split(string(out), "\n") {
+				if strings.TrimSpace(ln) == "" {
+					continue
+				}
+				msg.clean = false
+				status, path := parsePorcelainLine(ln)
+				if status == "??" {
+					msg.untrackedFiles++
+				} else {
+					msg.filesChanged++
+				}
+				if isSensitivePath(path) {
+					msg.sensitiveHits++
 				}
 			}
 		}
 
-		return systemInfoMsg{branch: branch, clean: clean, dockerCount: dockerCount, diffLines: diffLines}
+		// Changed lines vs HEAD captures staged + unstaged volume. Fall back to
+		// the working-tree diff when there is no HEAD yet (fresh repo).
+		if out, err := exec.Command("git", "diff", "HEAD", "--shortstat").Output(); err == nil {
+			msg.diffLines = parseShortstat(string(out))
+		} else if out, err := exec.Command("git", "diff", "--shortstat").Output(); err == nil {
+			msg.diffLines = parseShortstat(string(out))
+		}
+
+		msg.dockerCount = dockerContainerCount()
+		return msg
 	}
+}
+
+// dockerContainerCount returns the number of running docker containers, or 0
+// when docker is unavailable.
+func dockerContainerCount() int {
+	if out, err := exec.Command("docker", "ps", "-q").Output(); err == nil {
+		if lines := strings.TrimSpace(string(out)); lines != "" {
+			return len(strings.Split(lines, "\n"))
+		}
+	}
+	return 0
+}
+
+// parsePorcelainLine splits a `git status --porcelain` line into its two-char
+// status code and path, resolving rename entries ("old -> new") to the new path.
+func parsePorcelainLine(ln string) (status, path string) {
+	if len(ln) < 3 {
+		return strings.TrimSpace(ln), ""
+	}
+	status = strings.TrimSpace(ln[:2])
+	if strings.HasPrefix(ln, "??") {
+		status = "??"
+	}
+	path = strings.TrimSpace(ln[3:])
+	if idx := strings.Index(path, " -> "); idx >= 0 {
+		path = path[idx+4:]
+	}
+	return status, path
+}
+
+// parseShortstat extracts total insertions+deletions from `git diff --shortstat`
+// output, e.g. " 3 files changed, 12 insertions(+), 4 deletions(-)".
+func parseShortstat(out string) int {
+	total := 0
+	for _, field := range strings.Split(out, ",") {
+		field = strings.TrimSpace(field)
+		if strings.Contains(field, "insertion") || strings.Contains(field, "deletion") {
+			n := 0
+			fmt.Sscanf(field, "%d", &n)
+			total += n
+		}
+	}
+	return total
 }
 
 // agentColor returns a unique color for each pipeline agent

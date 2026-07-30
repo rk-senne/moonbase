@@ -60,10 +60,7 @@ func (a *App) filterAgents() {
 }
 
 func (a App) gitStatus() string {
-	if a.gitClean {
-		return "✓ clean"
-	}
-	return "● dirty"
+	return a.system.GitStatus()
 }
 
 func (a App) uptime() string {

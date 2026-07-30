@@ -271,14 +271,14 @@ func (a App) renderRightPanel(width int, maxH int) string {
 	s.WriteString(sysLabel + radar + " " + strings.Repeat("─", max(1, width-sysLabelW-radarW-1)) + "\n")
 
 	gitStyle := lipgloss.NewStyle().Foreground(a.themeData.Active)
-	if !a.gitClean {
+	if !a.system.Clean {
 		gitStyle = lipgloss.NewStyle().Foreground(a.themeData.Warning)
 	}
-	s.WriteString(fmt.Sprintf(" GIT    %s %s\n", gitStyle.Render(a.gitBranch), a.gitStatus()))
+	s.WriteString(fmt.Sprintf(" GIT    %s %s\n", gitStyle.Render(a.system.Branch), a.gitStatus()))
 
 	dockerStatus := dimStyle.Render("not running")
-	if a.dockerCount > 0 {
-		dockerStatus = lipgloss.NewStyle().Foreground(a.themeData.Active).Render(fmt.Sprintf("● %d up", a.dockerCount))
+	if a.system.Docker > 0 {
+		dockerStatus = lipgloss.NewStyle().Foreground(a.themeData.Active).Render(fmt.Sprintf("● %d up", a.system.Docker))
 	}
 	s.WriteString(fmt.Sprintf(" DOCKER %s\n", dockerStatus))
 	s.WriteString(fmt.Sprintf(" AGENTS %d loaded\n", a.registry.Count()))
@@ -287,7 +287,8 @@ func (a App) renderRightPanel(width int, maxH int) string {
 	// Threat Level
 	threatLabel := labelStyle.Render("─ THREAT LEVEL ")
 	s.WriteString(threatLabel + strings.Repeat("─", max(1, width-lipgloss.Width(threatLabel))) + "\n")
-	s.WriteString(" " + a.renderThreatGauge(width-4) + "\n\n")
+	s.WriteString(" " + a.renderThreatGauge(width-4) + "\n")
+	s.WriteString(" " + dimStyle.Render(computeThreat(a.threatSignals()).Reason) + "\n\n")
 
 	// Mission History
 	missionLabel := labelStyle.Render("─ MISSION HISTORY ")
@@ -349,32 +350,33 @@ func (a App) renderRightPanel(width int, maxH int) string {
 		Render(s.String())
 }
 
-func (a App) renderThreatGauge(width int) string {
-	// Map git diff lines to threat level
-	level := "LOW"
-	color := a.themeData.Active
-	filled := 2
+// threatSignals returns the current working-tree signals from detected state.
+func (a App) threatSignals() ThreatSignals {
+	return a.system.Signals()
+}
 
-	switch {
-	case a.gitDiffLines > 500:
-		level = "CRITICAL"
-		color = a.themeData.Error
-		filled = 10
-	case a.gitDiffLines > 200:
-		level = "HIGH"
-		color = a.themeData.Error
-		filled = 8
-	case a.gitDiffLines > 50:
-		level = "MEDIUM"
+func (a App) renderThreatGauge(width int) string {
+	lvl := computeThreat(a.threatSignals())
+
+	color := a.themeData.Active // LOW
+	switch lvl.Name {
+	case "MEDIUM":
 		color = a.themeData.Warning
-		filled = 5
-	case a.gitDiffLines > 10:
-		level = "LOW"
-		color = a.themeData.Active
-		filled = 3
+	case "HIGH", "CRITICAL":
+		color = a.themeData.Error
 	}
 
-	barW := width - len(level) - 2
+	// Fill the 10-segment bar from the 0..100 score; any non-zero risk shows
+	// at least one segment.
+	filled := lvl.Score / 10
+	if filled == 0 && lvl.Score > 0 {
+		filled = 1
+	}
+	if filled > 10 {
+		filled = 10
+	}
+
+	barW := width - len(lvl.Name) - 2
 	if barW < 5 {
 		barW = 5
 	}
@@ -383,7 +385,7 @@ func (a App) renderThreatGauge(width int) string {
 	}
 
 	bar := strings.Repeat("█", filled) + strings.Repeat("░", barW-filled)
-	return lipgloss.NewStyle().Foreground(color).Render(bar+" "+level)
+	return lipgloss.NewStyle().Foreground(color).Render(bar + " " + lvl.Name)
 }
 
 func (a App) renderStatusBar(keys string) string {

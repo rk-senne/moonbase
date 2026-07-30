@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- tui: the dashboard **THREAT LEVEL** gauge is now a real composite reflection of the working tree instead of a raw line count. It scores staged **and** unstaged change volume, breadth (files touched), untracked files, and security/infra-sensitive paths (auth, secrets, `.env`, Dockerfiles, CI workflows, terraform, k8s, migrations, payments…), shows a one-line reason, and forces at least **HIGH** whenever a sensitive file is in flight — mirroring the pipeline's Numbuh 274 trigger. Works in any git repository moonbase is launched in, not just moonbase itself.
+
 ## [1.7.0] - 2026-07-30
 
 ### Added

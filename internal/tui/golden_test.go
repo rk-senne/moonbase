@@ -125,10 +125,7 @@ func newGoldenApp(t *testing.T) App {
 		toolCacheTime: time.Now(),
 		fileBrowser:   nil,      // avoid real FS reads
 		browsing:      false,    // show terminal panel (deterministic with empty state)
-		gitBranch:     "main",
-		gitClean:      true,
-		gitDiffLines:  0,
-		dockerCount:   0,
+		system:        SystemModel{Branch: "main", Clean: true},
 		terminal:      TerminalModel{Cwd: "/home/operative/moonbase"}, // fixed path for stable header
 	}
 

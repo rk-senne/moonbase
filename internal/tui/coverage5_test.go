@@ -360,10 +360,10 @@ func TestRenderRightPanel_FocusRight(t *testing.T) {
 	app.height = 40
 	app.focus = FocusRight
 	app.registry = newTestRegistry()
-	app.gitBranch = "feature/test"
-	app.gitClean = false
-	app.dockerCount = 3
-	app.gitDiffLines = 75
+	app.system.Branch = "feature/test"
+	app.system.Clean = false
+	app.system.Docker = 3
+	app.system.ChangedLines = 75
 	app.missions = []MissionEntry{
 		{Name: "test mission 1", Status: "✅"},
 		{Name: "test mission 2", Status: "❌"},
@@ -385,7 +385,7 @@ func TestRenderRightPanel_HighDiffLines(t *testing.T) {
 	app.width = 120
 	app.height = 40
 	app.registry = newTestRegistry()
-	app.gitDiffLines = 600 // CRITICAL threat level
+	app.system = SystemModel{ChangedLines: 600, FilesChanged: 12, UntrackedFiles: 5, SensitiveHits: 2} // CRITICAL
 
 	result := app.renderRightPanel(30, 30)
 	if result == "" {
@@ -399,7 +399,7 @@ func TestRenderRightPanel_MediumDiffLines(t *testing.T) {
 	app.width = 120
 	app.height = 40
 	app.registry = newTestRegistry()
-	app.gitDiffLines = 100 // MEDIUM threat
+	app.system = SystemModel{ChangedLines: 150, FilesChanged: 6} // MEDIUM
 
 	result := app.renderRightPanel(30, 30)
 	if result == "" {
@@ -413,7 +413,7 @@ func TestRenderRightPanel_HighDiff(t *testing.T) {
 	app.width = 120
 	app.height = 40
 	app.registry = newTestRegistry()
-	app.gitDiffLines = 300 // HIGH threat
+	app.system = SystemModel{ChangedLines: 300, FilesChanged: 8, UntrackedFiles: 3} // HIGH
 
 	result := app.renderRightPanel(30, 30)
 	if result == "" {
@@ -1449,7 +1449,7 @@ func TestSwitchCommsAgent_NotFoundAgent(t *testing.T) {
 
 func TestRenderThreatGauge_VeryNarrow(t *testing.T) {
 	app := NewApp()
-	app.gitDiffLines = 250
+	app.system.ChangedLines = 250
 
 	result := app.renderThreatGauge(8)
 	if result == "" {
@@ -1745,7 +1745,7 @@ func TestDetectedBackends_WithBackends(t *testing.T) {
 
 func TestGitStatus_Clean(t *testing.T) {
 	app := NewApp()
-	app.gitClean = true
+	app.system.Clean = true
 	result := app.gitStatus()
 	if result != "✓ clean" {
 		t.Errorf("expected '✓ clean', got %q", result)
@@ -1754,7 +1754,7 @@ func TestGitStatus_Clean(t *testing.T) {
 
 func TestGitStatus_Dirty(t *testing.T) {
 	app := NewApp()
-	app.gitClean = false
+	app.system.Clean = false
 	result := app.gitStatus()
 	if result != "● dirty" {
 		t.Errorf("expected '● dirty', got %q", result)
@@ -2466,10 +2466,10 @@ func TestRenderRightPanel_DockerRunning(t *testing.T) {
 	app.width = 120
 	app.height = 40
 	app.registry = newTestRegistry()
-	app.dockerCount = 5
-	app.gitBranch = "feature/new"
-	app.gitClean = true
-	app.gitDiffLines = 15
+	app.system.Docker = 5
+	app.system.Branch = "feature/new"
+	app.system.Clean = true
+	app.system.ChangedLines = 15
 
 	result := app.renderRightPanel(30, 30)
 	if result == "" {
@@ -2913,17 +2913,17 @@ func TestHandleSystemInfo_Coverage(t *testing.T) {
 	}
 	model, _ := app.Update(msg)
 	result := model.(App)
-	if result.gitBranch != "feature/test" {
-		t.Errorf("expected branch=feature/test, got %s", result.gitBranch)
+	if result.system.Branch != "feature/test" {
+		t.Errorf("expected branch=feature/test, got %s", result.system.Branch)
 	}
-	if result.gitClean {
+	if result.system.Clean {
 		t.Error("expected clean=false")
 	}
-	if result.dockerCount != 3 {
-		t.Errorf("expected dockerCount=3, got %d", result.dockerCount)
+	if result.system.Docker != 3 {
+		t.Errorf("expected dockerCount=3, got %d", result.system.Docker)
 	}
-	if result.gitDiffLines != 42 {
-		t.Errorf("expected diffLines=42, got %d", result.gitDiffLines)
+	if result.system.ChangedLines != 42 {
+		t.Errorf("expected diffLines=42, got %d", result.system.ChangedLines)
 	}
 }
 

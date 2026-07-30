@@ -397,21 +397,20 @@ func TestApp_CursorBoundsCheck(t *testing.T) {
 //
 // Remaining groups that could be extracted in future phases:
 //   - Search state (searchInput, searching, filtered) → SearchModel
-//   - Git state (gitBranch, gitClean, gitDiffLines) → GitModel or into DashboardModel
-//   - Comms-related (comms, commsInput, snippetPicker, snippetList, snippetCursor, contextFile, contextInput) → into CommsState
+//   - Comms-related (comms, commsInput, snippetPicker, snippetList, snippetCursor, contextFile, contextInput) → CommsModel
 //   - Mission input (missionInput, missions) → MissionModel
 //   - Boot state (bootStep, ready) → BootModel
 //   - Visual state (clock, startTime, focus, blink, anim) → part of rendering context
 //   - Infra (fileWatcher, toolCache, toolCacheTime, ctx) → infra/platform grouping
 //
-// Each extraction is its own task; this test documents the current count to catch
-// unintentional field additions.
+// Extracted so far: TerminalModel, DashboardModel, PipelineModel, and SystemModel
+// (git/docker/threat state). Each remaining extraction is its own task; this test
+// ratchets the count down so it can only shrink, never silently grow.
 func TestApp_FieldCountBounded(t *testing.T) {
 	count := reflect.TypeOf(App{}).NumField()
-	// Current field count after Phase 5 extractions (TerminalModel, DashboardModel, PipelineModel).
-	// Target was ≤15, actual is 48 because only 3 of ~8 potential sub-models have been
-	// extracted. The remaining fields are documented above for future extraction work.
-	const maxFields = 48
+	// Ratchet: lower this only when an extraction reduces the count. Never raise it
+	// to accommodate new loose fields — extract a sub-model instead.
+	const maxFields = 44
 	if count > maxFields {
 		t.Errorf("App has %d fields, expected ≤ %d — did you add fields without extracting? See comment above.", count, maxFields)
 	}

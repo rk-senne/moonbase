@@ -77,10 +77,7 @@ type App struct {
 	bootStep       int
 	spinner        spinner.Model
 	intel          []IntelEntry
-	gitBranch      string
-	gitClean       bool
-	gitDiffLines   int
-	dockerCount    int
+	system         SystemModel
 	missionInput   textinput.Model
 	searchInput    textinput.Model
 	searching      bool

@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -279,21 +280,21 @@ func TestApp_ThreatGauge(t *testing.T) {
 	app.height = 40
 
 	tests := []struct {
-		diffLines int
-		contains  string
+		name   string
+		system SystemModel
+		want   string
 	}{
-		{0, "LOW"},
-		{15, "LOW"},
-		{60, "MEDIUM"},
-		{250, "HIGH"},
-		{600, "CRITICAL"},
+		{"clean", SystemModel{Clean: true}, "LOW"},
+		{"medium", SystemModel{ChangedLines: 150, FilesChanged: 6}, "MEDIUM"},
+		{"sensitive forces high", SystemModel{FilesChanged: 1, SensitiveHits: 1}, "HIGH"},
+		{"critical", SystemModel{ChangedLines: 600, FilesChanged: 12, UntrackedFiles: 5, SensitiveHits: 2}, "CRITICAL"},
 	}
 
 	for _, tt := range tests {
-		app.gitDiffLines = tt.diffLines
+		app.system = tt.system
 		gauge := app.renderThreatGauge(30)
-		if gauge == "" {
-			t.Errorf("expected non-empty gauge for diffLines=%d", tt.diffLines)
+		if !strings.Contains(gauge, tt.want) {
+			t.Errorf("%s: expected gauge to contain %q, got %q", tt.name, tt.want, gauge)
 		}
 	}
 }

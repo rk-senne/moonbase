@@ -229,17 +229,17 @@ func TestApp_SystemInfoMsg(t *testing.T) {
 		diffLines:   42,
 	})
 	result := model.(App)
-	if result.gitBranch != "main" {
-		t.Errorf("expected gitBranch='main', got %s", result.gitBranch)
+	if result.system.Branch != "main" {
+		t.Errorf("expected gitBranch='main', got %s", result.system.Branch)
 	}
-	if !result.gitClean {
+	if !result.system.Clean {
 		t.Error("expected gitClean=true")
 	}
-	if result.dockerCount != 3 {
-		t.Errorf("expected dockerCount=3, got %d", result.dockerCount)
+	if result.system.Docker != 3 {
+		t.Errorf("expected dockerCount=3, got %d", result.system.Docker)
 	}
-	if result.gitDiffLines != 42 {
-		t.Errorf("expected gitDiffLines=42, got %d", result.gitDiffLines)
+	if result.system.ChangedLines != 42 {
+		t.Errorf("expected gitDiffLines=42, got %d", result.system.ChangedLines)
 	}
 }
 
