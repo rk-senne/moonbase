@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.12.0] - 2026-07-30
+
 ### Added
 - feat(agents): `mcp_servers` frontmatter field for MCP server declarations
 - feat(compile): `moonbase compile` emits Kiro-native agent JSON (`--out`, `--validate`, `--agent`)
@@ -156,6 +158,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Security: SafeEnv isolation, hook command validation, input sanitization
 - Mission history with persistence
 
+[1.12.0]: https://github.com/rk-senne/moonbase/compare/v1.11.0...v1.12.0
 [1.11.0]: https://github.com/rk-senne/moonbase/compare/v1.10.0...v1.11.0
 [1.10.0]: https://github.com/rk-senne/moonbase/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/rk-senne/moonbase/compare/v1.8.0...v1.9.0
