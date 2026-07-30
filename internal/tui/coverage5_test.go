@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
 	"github.com/rk-senne/moonbase/internal/chat"
 	"github.com/rk-senne/moonbase/internal/discovery"
 	"github.com/rk-senne/moonbase/internal/docs"
@@ -29,7 +29,7 @@ func TestRenderDocs_WithLoadedContent(t *testing.T) {
 	app.views.Docs = &DocsState{
 		files:    []docs.Doc{{Name: "readme.md", Path: "/tmp/test.md"}, {Name: "guide.md", Path: "/tmp/guide.md"}},
 		cursor:   1,
-		viewport: viewport.New(70, 30),
+		viewport: viewport.New(viewport.WithWidth(70), viewport.WithHeight(30)),
 		loaded:   true,
 		content:  "# Hello World\n\nThis is documentation content.",
 	}
@@ -50,7 +50,7 @@ func TestRenderDocs_CursorAtZero(t *testing.T) {
 	app.views.Docs = &DocsState{
 		files:    []docs.Doc{{Name: "a-very-long-filename-that-exceeds-sidebar-width.md", Path: "/tmp/long.md"}},
 		cursor:   0,
-		viewport: viewport.New(50, 20),
+		viewport: viewport.New(viewport.WithWidth(50), viewport.WithHeight(20)),
 		loaded:   true,
 		content:  "short",
 	}
@@ -949,7 +949,7 @@ func TestLoadDoc_WithTempFile(t *testing.T) {
 	ds := &DocsState{
 		files:    []docs.Doc{{Name: "test.md", Path: tmpFile}},
 		cursor:   0,
-		viewport: viewport.New(70, 30),
+		viewport: viewport.New(viewport.WithWidth(70), viewport.WithHeight(30)),
 	}
 
 	ds.loadDoc(0, 70)
@@ -1003,7 +1003,7 @@ func TestHandlePipelineAdvance_WithState(t *testing.T) {
 	app.env.Backend.Active = nil
 	app.registry = newTestRegistry()
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'n', Text: "n"})
 	result := model.(App)
 	if result.views.Pipeline.State.Current == 0 {
 		t.Error("expected pipeline to advance past phase 0")
@@ -1027,7 +1027,7 @@ func TestHandleProjectsKeys_Enter(t *testing.T) {
 		cursor: 0,
 	}
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	result := model.(App)
 	if result.view != ViewDocs {
 		t.Errorf("expected ViewDocs after enter in projects, got %d", result.view)
@@ -1043,7 +1043,7 @@ func TestHandleProjectsKeys_M(t *testing.T) {
 		cursor: 0,
 	}
 
-	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'M'}})
+	_, cmd := app.Update(tea.KeyPressMsg{Code: 'M', Text: "M"})
 	if cmd == nil {
 		t.Error("expected non-nil cmd for M (launchCmux)")
 	}
@@ -1058,7 +1058,7 @@ func TestHandleProjectsKeys_F(t *testing.T) {
 		cursor: 0,
 	}
 
-	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'F'}})
+	_, cmd := app.Update(tea.KeyPressMsg{Code: 'F', Text: "F"})
 	if cmd == nil {
 		t.Error("expected non-nil cmd for F (fish)")
 	}
@@ -1075,13 +1075,13 @@ func TestHandleDocsKeys_PgDown(t *testing.T) {
 	app.views.Docs = &DocsState{
 		files:    []docs.Doc{{Name: "test.md", Path: "/tmp/t.md"}},
 		cursor:   0,
-		viewport: viewport.New(70, 30),
+		viewport: viewport.New(viewport.WithWidth(70), viewport.WithHeight(30)),
 		loaded:   true,
 		content:  "line1\nline2\nline3\nline4\nline5",
 	}
 	app.views.Docs.viewport.SetContent(app.views.Docs.content)
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyPgDown})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyPgDown})
 	result := model.(App)
 	_ = result // should not panic
 }
@@ -1095,13 +1095,13 @@ func TestHandleDocsKeys_PgUp(t *testing.T) {
 	app.views.Docs = &DocsState{
 		files:    []docs.Doc{{Name: "test.md", Path: "/tmp/t.md"}},
 		cursor:   0,
-		viewport: viewport.New(70, 30),
+		viewport: viewport.New(viewport.WithWidth(70), viewport.WithHeight(30)),
 		loaded:   true,
 		content:  "content here",
 	}
 	app.views.Docs.viewport.SetContent(app.views.Docs.content)
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyPgUp})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyPgUp})
 	result := model.(App)
 	_ = result
 }
@@ -1116,7 +1116,7 @@ func TestDashboardKeys_W_FileWatcher(t *testing.T) {
 	app.views.Terminal.Active = false
 	app.env.Infra.Watcher = nil // nil watcher, should not panic
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'w'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'w', Text: "w"})
 	result := model.(App)
 	_ = result
 }
@@ -1129,7 +1129,7 @@ func TestDashboardKeys_P_NotPersonal(t *testing.T) {
 	app.views.Terminal.Active = false
 	app.env.Infra.Ctx = platform.Context(1) // Work context
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'P'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'P', Text: "P"})
 	result := model.(App)
 	// Should add intel about not available
 	found := false
@@ -1151,7 +1151,7 @@ func TestDashboardKeys_P_Personal(t *testing.T) {
 	app.views.Terminal.Active = false
 	app.env.Infra.Ctx = platform.Context(0) // Personal context
 
-	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'P'}})
+	_, cmd := app.Update(tea.KeyPressMsg{Code: 'P', Text: "P"})
 	if cmd == nil {
 		t.Error("expected non-nil cmd for P in personal context")
 	}
@@ -1165,7 +1165,7 @@ func TestDashboardKeys_NumberKeys(t *testing.T) {
 	app.views.Terminal.Active = false
 	app.registry = newTestRegistry()
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'3'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: '3', Text: "3"})
 	result := model.(App)
 	if result.views.Dashboard.Cursor != 3 {
 		t.Errorf("expected cursor=3 after '3', got %d", result.views.Dashboard.Cursor)
@@ -1182,7 +1182,7 @@ func TestDashboardKeys_G_GitStatusCmd(t *testing.T) {
 	app.views.Browser.Active = false
 	app.views.Terminal.Active = false
 
-	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}})
+	_, cmd := app.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
 	if cmd == nil {
 		t.Error("expected non-nil cmd for 'g' (git status)")
 	}
@@ -1195,7 +1195,7 @@ func TestDashboardKeys_D_GitDiffCmd(t *testing.T) {
 	app.views.Browser.Active = false
 	app.views.Terminal.Active = false
 
-	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
+	_, cmd := app.Update(tea.KeyPressMsg{Code: 'd', Text: "d"})
 	if cmd == nil {
 		t.Error("expected non-nil cmd for 'd' (git diff)")
 	}
@@ -1209,7 +1209,7 @@ func TestDashboardKeys_F1_Protocol(t *testing.T) {
 	app.views.Terminal.Active = false
 
 	// The handler checks msg.String() == "F1" — send as Runes
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("F1")})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyF1})
 	result := model.(App)
 	// F1 might not map directly; just verify no crash
 	_ = result
@@ -1602,7 +1602,7 @@ func TestHandleSearchKeys_Esc(t *testing.T) {
 	app.views.Search.Filtered = []int{1, 2}
 	app.registry = newTestRegistry()
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	result := model.(App)
 	if result.views.Search.Active {
 		t.Error("expected searching=false after esc")
@@ -1622,7 +1622,7 @@ func TestHandleSearchKeys_EnterWithResults(t *testing.T) {
 	app.registry = newTestRegistry()
 	app.views.Search.Filtered = []int{2, 3, 5}
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	result := model.(App)
 	if result.views.Search.Active {
 		t.Error("expected searching=false after enter")
@@ -1644,7 +1644,7 @@ func TestHandleSearchKeys_EnterNoResults(t *testing.T) {
 	app.views.Search.Filtered = nil
 	app.registry = newTestRegistry()
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	result := model.(App)
 	if result.views.Search.Active {
 		t.Error("expected searching=false")
@@ -1659,7 +1659,7 @@ func TestHandleSearchKeys_Typing(t *testing.T) {
 	app.views.Search.Input.Focus()
 	app.registry = newTestRegistry()
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'n', Text: "n"})
 	result := model.(App)
 	if result.views.Search.Input.Value() != "n" {
 		t.Errorf("expected search input='n', got %q", result.views.Search.Input.Value())
@@ -1860,7 +1860,7 @@ func TestCommsKeys_ContextFile_EnterValid(t *testing.T) {
 	app.views.CtxFile.Input.Focus()
 	app.views.CtxFile.Input.SetValue(tmpFile)
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	result := model.(App)
 	if result.views.CtxFile.Active {
 		t.Error("expected ctxFile.Active=false after enter")
@@ -1878,7 +1878,7 @@ func TestCommsKeys_ContextFile_EnterInvalid(t *testing.T) {
 	app.views.CtxFile.Input.Focus()
 	app.views.CtxFile.Input.SetValue("/nonexistent/path/xyz.txt")
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	result := model.(App)
 	if result.views.CtxFile.Active {
 		t.Error("expected ctxFile.Active=false after enter")
@@ -1906,7 +1906,7 @@ func TestCommsKeys_AtAgent(t *testing.T) {
 	app.views.Comms.Input.Focus()
 	app.views.Comms.Input.SetValue("@" + targetAgent.Name)
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	result := model.(App)
 	if result.views.Comms.State.agent != targetAgent.Name {
 		t.Errorf("expected agent switch to %s, got %s", targetAgent.Name, result.views.Comms.State.agent)
@@ -1934,7 +1934,7 @@ func TestTerminalKeys_BacktickToFB(t *testing.T) {
 	app.views.Terminal.Active = true
 	app.views.Terminal.Input.Focus()
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'`'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: '`', Text: "`"})
 	result := model.(App)
 	if result.views.Terminal.Active {
 		t.Error("expected termActive=false after backtick")
@@ -1954,7 +1954,7 @@ func TestTerminalKeys_DefaultChar(t *testing.T) {
 	app.views.Terminal.Active = true
 	app.views.Terminal.Input.Focus()
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	result := model.(App)
 	if result.views.Terminal.Input.Value() != "x" {
 		t.Errorf("expected 'x' in termInput, got %q", result.views.Terminal.Input.Value())
@@ -1971,7 +1971,7 @@ func TestFileBrowserKeys_BacktickToTerm(t *testing.T) {
 	app.views.Terminal.Active = false
 	app.views.Browser.FileBrowser = newFileBrowser()
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'`'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: '`', Text: "`"})
 	result := model.(App)
 	if result.views.Browser.Active {
 		t.Error("expected browsing=false after backtick")
@@ -1998,7 +1998,7 @@ func TestFileBrowserKeys_Edit(t *testing.T) {
 		}
 	}
 
-	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	_, cmd := app.Update(tea.KeyPressMsg{Code: 'e', Text: "e"})
 	// Should return a cmd if a file is selected
 	_ = cmd
 }
@@ -2012,7 +2012,7 @@ func TestFileBrowserKeys_DotRefresh(t *testing.T) {
 	app.views.Browser.Active = true
 	app.views.Browser.FileBrowser = newFileBrowser()
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'.'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: '.', Text: "."})
 	result := model.(App)
 	_ = result // should not panic
 }
@@ -2028,7 +2028,7 @@ func TestCommsKeys_CtrlS(t *testing.T) {
 	app.views.Comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.views.Comms.Input.Focus()
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
 	result := model.(App)
 	if !result.views.SnippetPick.Active {
 		t.Error("expected snippetPick.Active=true after ctrl+s")
@@ -2046,7 +2046,7 @@ func TestCommsKeys_CtrlF(t *testing.T) {
 	app.views.Comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.views.Comms.Input.Focus()
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyCtrlF})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'f', Mod: tea.ModCtrl})
 	result := model.(App)
 	if !result.views.CtxFile.Active {
 		t.Error("expected ctxFile.Active=true after ctrl+f")
@@ -2065,7 +2065,7 @@ func TestCommsKeys_ContextFile_Esc(t *testing.T) {
 	app.views.CtxFile.Active = true
 	app.views.CtxFile.Input.Focus()
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	result := model.(App)
 	if result.views.CtxFile.Active {
 		t.Error("expected ctxFile.Active=false after esc")
@@ -2084,7 +2084,7 @@ func TestCommsKeys_ContextFile_Typing(t *testing.T) {
 	app.views.CtxFile.Active = true
 	app.views.CtxFile.Input.Focus()
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	result := model.(App)
 	if result.views.CtxFile.Input.Value() != "a" {
 		t.Errorf("expected 'a', got %q", result.views.CtxFile.Input.Value())
@@ -2102,7 +2102,7 @@ func TestCommsKeys_EscBack(t *testing.T) {
 	app.views.Comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.views.Comms.Input.Focus()
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	result := model.(App)
 	if result.view != ViewDossier {
 		t.Errorf("expected ViewDossier after esc in comms, got %d", result.view)
@@ -2120,7 +2120,7 @@ func TestCommsKeys_CtrlC(t *testing.T) {
 	app.views.Comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.views.Comms.Input.Focus()
 
-	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	_, cmd := app.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
 	if cmd == nil {
 		t.Error("expected quit cmd from ctrl+c in comms")
 	}
@@ -2137,7 +2137,7 @@ func TestCommsKeys_Typing(t *testing.T) {
 	app.views.Comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.views.Comms.Input.Focus()
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'h'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'h', Text: "h"})
 	result := model.(App)
 	if result.views.Comms.Input.Value() != "h" {
 		t.Errorf("expected 'h', got %q", result.views.Comms.Input.Value())
@@ -2157,7 +2157,7 @@ func TestCommsKeys_StreamingBlocked(t *testing.T) {
 	app.views.Comms.Input.Focus()
 	app.views.Comms.Input.SetValue("")
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	result := model.(App)
 	// Enter during streaming should do nothing
 	_ = result
@@ -2263,8 +2263,8 @@ func TestAgentColor_AllVariants(t *testing.T) {
 		"numbuh-5", "numbuh-0", "numbuh-274", "numbuh-362", "unknown"}
 	for _, name := range names {
 		c := agentColor(name)
-		if c == "" {
-			t.Errorf("expected non-empty color for %s", name)
+		if c == nil {
+			t.Errorf("expected non-nil color for %s", name)
 		}
 	}
 }
@@ -2601,7 +2601,7 @@ func TestCommsKeys_SnippetPicker_Enter(t *testing.T) {
 	// Empty list — enter should not crash
 	app.views.SnippetPick.List = nil
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	result := model.(App)
 	_ = result
 }
@@ -2615,7 +2615,7 @@ func TestCommsKeys_SnippetPicker_Esc(t *testing.T) {
 	app.views.Comms.State = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.views.SnippetPick.Active = true
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	result := model.(App)
 	if result.views.SnippetPick.Active {
 		t.Error("expected snippetPick.Active=false after esc")
@@ -2633,12 +2633,12 @@ func TestCommsKeys_SnippetPicker_Navigate(t *testing.T) {
 	app.views.SnippetPick.Cursor = 0
 
 	// Navigate down
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'j', Text: "j"})
 	result := model.(App)
 	_ = result
 
 	// Navigate up
-	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
+	model, _ = result.Update(tea.KeyPressMsg{Code: 'k', Text: "k"})
 	result = model.(App)
 	_ = result
 }
@@ -2656,7 +2656,7 @@ func TestCommsKeys_DoubleArrow_NoSpace(t *testing.T) {
 	app.views.Comms.Input.Focus()
 	app.views.Comms.Input.SetValue(">>numbuh-2") // no space = only 1 part
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	result := model.(App)
 	_ = result // should not relay — needs 2 parts
 }
@@ -2851,7 +2851,7 @@ func TestLoadDoc_NonexistentPath(t *testing.T) {
 	ds := &DocsState{
 		files:    []docs.Doc{{Name: "ghost.md", Path: "/nonexistent/ghost.md"}},
 		cursor:   0,
-		viewport: viewport.New(70, 30),
+		viewport: viewport.New(viewport.WithWidth(70), viewport.WithHeight(30)),
 	}
 	ds.loadDoc(0, 70)
 	// Should have error content
@@ -2941,7 +2941,7 @@ func TestCommsKeys_SnippetPicker_EnterWithItems(t *testing.T) {
 	// snippetPick.List is populated by ForAgent — just verify empty list path
 	app.views.SnippetPick.List = nil
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	result := model.(App)
 	_ = result
 }
@@ -2990,7 +2990,7 @@ func TestFileBrowserKeys_EditFile(t *testing.T) {
 		}
 	}
 
-	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	_, cmd := app.Update(tea.KeyPressMsg{Code: 'e', Text: "e"})
 	if cmd == nil {
 		t.Error("expected non-nil cmd for 'e' on file")
 	}
@@ -3041,7 +3041,7 @@ func TestAgentColor_Cases(t *testing.T) {
 	}
 	for name := range tests {
 		c := agentColor(name)
-		if c == "" {
+		if c == nil {
 			t.Errorf("expected color for %s", name)
 		}
 	}
@@ -3184,10 +3184,10 @@ func TestDocsView_EnterLoadsDoc(t *testing.T) {
 	app.views.Docs = &DocsState{
 		files:    []docs.Doc{{Name: "test.md", Path: tmpFile}},
 		cursor:   0,
-		viewport: viewport.New(70, 30),
+		viewport: viewport.New(viewport.WithWidth(70), viewport.WithHeight(30)),
 	}
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	result := model.(App)
 	if !result.views.Docs.loaded {
 		t.Error("expected loaded=true after enter on doc")
@@ -3264,7 +3264,7 @@ func TestDashboardKeys_QuitWithPipeline(t *testing.T) {
 	cancelled := false
 	app.views.Pipeline.Cancel = func() { cancelled = true }
 
-	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
+	_, cmd := app.Update(tea.KeyPressMsg{Code: 'q', Text: "q"})
 	if cmd == nil {
 		t.Error("expected quit cmd")
 	}
@@ -3288,7 +3288,7 @@ func TestDashboardKeys_DoubleEscAbort(t *testing.T) {
 	cancelled := false
 	app.views.Pipeline.Cancel = func() { cancelled = true }
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	result := model.(App)
 	if result.views.Pipeline.Running {
 		t.Error("expected pipelineRunning=false after double esc")
@@ -3312,7 +3312,7 @@ func TestDashboardKeys_C_CopyInDossier(t *testing.T) {
 	app.registry = newTestRegistry()
 	app.views.Dashboard.Selected = 0
 
-	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'c'}})
+	_, cmd := app.Update(tea.KeyPressMsg{Code: 'c', Text: "c"})
 	if cmd == nil {
 		t.Error("expected non-nil cmd for 'c' in dossier (copyPrompt)")
 	}
@@ -3365,7 +3365,7 @@ func TestFileBrowserKeys_EnterDir(t *testing.T) {
 		}
 	}
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	result := model.(App)
 	if result.views.Browser.FileBrowser.dir != subDir {
 		t.Logf("expected dir=%s, got %s", subDir, result.views.Browser.FileBrowser.dir)
@@ -3400,20 +3400,20 @@ func TestDocsKeys_NavigateMultiFile(t *testing.T) {
 			{Name: "c.md", Path: "/tmp/c.md"},
 		},
 		cursor:   1,
-		viewport: viewport.New(70, 30),
+		viewport: viewport.New(viewport.WithWidth(70), viewport.WithHeight(30)),
 		loaded:   true,
 		content:  "content",
 	}
 
 	// Navigate up from cursor=1 to cursor=0
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'k', Text: "k"})
 	result := model.(App)
 	if result.views.Docs.cursor != 0 {
 		t.Errorf("expected cursor=0 after k, got %d", result.views.Docs.cursor)
 	}
 
 	// Navigate down from cursor=0 to cursor=1
-	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	model, _ = result.Update(tea.KeyPressMsg{Code: 'j', Text: "j"})
 	result = model.(App)
 	if result.views.Docs.cursor != 1 {
 		t.Errorf("expected cursor=1 after j, got %d", result.views.Docs.cursor)
@@ -3434,7 +3434,7 @@ func TestProjectsKeys_NavigateDown(t *testing.T) {
 		cursor: 0,
 	}
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'j', Text: "j"})
 	result := model.(App)
 	if result.views.ProjectNav.cursor != 1 {
 		t.Errorf("expected cursor=1 after j in projects, got %d", result.views.ProjectNav.cursor)
@@ -3454,7 +3454,7 @@ func TestDashboardKeys_C_OpensComms(t *testing.T) {
 	app.width = 100
 	app.height = 40
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'C'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'C', Text: "C"})
 	result := model.(App)
 	if result.view != ViewComms {
 		t.Errorf("expected ViewComms after 'C', got %d", result.view)
@@ -3474,7 +3474,7 @@ func TestCommsKeys_DefaultTyping(t *testing.T) {
 	app.views.Comms.Input.Focus()
 
 	// Type a backspace (non-rune key that goes to default)
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyBackspace})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	result := model.(App)
 	_ = result
 }
@@ -3519,14 +3519,14 @@ func TestFileBrowserKeys_UpDown(t *testing.T) {
 	app.views.Browser.FileBrowser.cursor = 0
 
 	// Move down
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'j', Text: "j"})
 	result := model.(App)
 	if result.views.Browser.FileBrowser.cursor != 1 {
 		t.Errorf("expected cursor=1 after j, got %d", result.views.Browser.FileBrowser.cursor)
 	}
 
 	// Move up
-	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
+	model, _ = result.Update(tea.KeyPressMsg{Code: 'k', Text: "k"})
 	result = model.(App)
 	if result.views.Browser.FileBrowser.cursor != 0 {
 		t.Errorf("expected cursor=0 after k, got %d", result.views.Browser.FileBrowser.cursor)

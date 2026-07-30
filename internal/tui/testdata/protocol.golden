@@ -1,58 +1,58 @@
-[48;2;26;26;46m [0m[1;38;2;255;215;0;48;2;26;26;46m🌙 MOONBASE › Protocol                                                                12:00:00  [0m[48;2;26;26;46m [0m[48;2;26;26;46m  [0m
- [1;38;2;255;215;0m  ╔══════════════════════════════════════════════════════════════╗[0m                                 
- [1;38;2;255;215;0m  ║          K.N.D. MOONBASE — OPERATIONS PROTOCOL              ║[0m                                  
- [1;38;2;255;215;0m  ╚══════════════════════════════════════════════════════════════╝[0m                                 
+[48;2;26;26;46m [m[1;38;2;255;215;0;48;2;26;26;46m🌙 MOONBASE › Protocol                                                                12:00:00  [m[48;2;26;26;46m [m[48;2;26;26;46m  [m
+ [1;38;2;255;215;0m  ╔══════════════════════════════════════════════════════════════╗[m                                 
+ [1;38;2;255;215;0m  ║          K.N.D. MOONBASE — OPERATIONS PROTOCOL              ║[m                                  
+ [1;38;2;255;215;0m  ╚══════════════════════════════════════════════════════════════╝[m                                 
                                                                                                     
- [38;2;126;200;227m  ◆ MODES[0m                                                                                          
- [38;2;107;113;128m  ───────────────────────────────────────────────[0m                                                  
+ [38;2;126;200;227m  ◆ MODES[m                                                                                          
+ [38;2;107;114;128m  ───────────────────────────────────────────────[m                                                  
    KND (File Browser)    Default. Browse files, preview, edit.                                      
    Terminal              ` toggle. Run shell commands inline.                                       
    COMMS                 C key. Chat with AI agents, streaming.                                     
    Pipeline              m key. Multi-phase mission execution.                                      
    Dossier               enter. View operative details + deploy.                                    
                                                                                                     
- [38;2;126;200;227m  ◆ GLOBAL KEYS[0m                                                                                    
- [38;2;107;113;128m  ───────────────────────────────────────────────[0m                                                  
+ [38;2;126;200;227m  ◆ GLOBAL KEYS[m                                                                                    
+ [38;2;107;114;128m  ───────────────────────────────────────────────[m                                                  
    ?          Help overlay          F1    This protocol                                             
    q/ctrl+c   Quit                  esc   Back/close                                                
    tab        Cycle panel focus     T     Cycle theme                                               
    /          Search operatives     0-9   Jump to agent                                             
                                                                                                     
- [38;2;126;200;227m  ◆ KND FILE BROWSER[0m                                                                               
- [38;2;107;113;128m  ───────────────────────────────────────────────[0m                                                  
+ [38;2;126;200;227m  ◆ KND FILE BROWSER[m                                                                               
+ [38;2;107;114;128m  ───────────────────────────────────────────────[m                                                  
    j/k ↑↓     Navigate files        enter  Open directory                                           
    backspace  Parent directory       e      Edit in $EDITOR                                         
    `          Switch to terminal     .      Refresh                                                 
                                                                                                     
- [38;2;126;200;227m  ◆ TERMINAL[0m                                                                                       
- [38;2;107;113;128m  ───────────────────────────────────────────────[0m                                                  
+ [38;2;126;200;227m  ◆ TERMINAL[m                                                                                       
+ [38;2;107;114;128m  ───────────────────────────────────────────────[m                                                  
    enter      Execute command        cd     Change directory                                        
    clear      Clear output           `      Switch to KND                                           
    esc        Exit terminal mode                                                                    
                                                                                                     
- [38;2;126;200;227m  ◆ COMMS (AI CHAT)[0m                                                                                
- [38;2;107;113;128m  ───────────────────────────────────────────────[0m                                                  
+ [38;2;126;200;227m  ◆ COMMS (AI CHAT)[m                                                                                
+ [38;2;107;114;128m  ───────────────────────────────────────────────[m                                                  
    enter      Send message           ctrl+f  Attach file                                            
    ctrl+s     Snippet picker         @name   Switch agent                                           
    >name      Relay last response    >>name  Relay with message                                     
    esc        Back to dossier                                                                       
                                                                                                     
- [38;2;126;200;227m  ◆ VIEWS[0m                                                                                          
- [38;2;107;113;128m  ───────────────────────────────────────────────[0m                                                  
+ [38;2;126;200;227m  ◆ VIEWS[m                                                                                          
+ [38;2;107;114;128m  ───────────────────────────────────────────────[m                                                  
    p          Project navigator      W      Document viewer                                         
    H          Mission history        C      Open COMMS                                              
    m          New mission            enter  Dossier                                                 
                                                                                                     
- [38;2;126;200;227m  ◆ TOOLS & SYSTEM[0m                                                                                 
- [38;2;107;113;128m  ───────────────────────────────────────────────[0m                                                  
+ [38;2;126;200;227m  ◆ TOOLS & SYSTEM[m                                                                                 
+ [38;2;107;114;128m  ───────────────────────────────────────────────[m                                                  
    L          lazygit                B      btop                                                    
    V          nvim                   d      git diff                                                
    M          tmux (moonbase)        F      fish shell                                              
    g          git status             w      Toggle watcher                                          
    P          Create PR (personal)                                                                  
                                                                                                     
- [38;2;126;200;227m  ◆ CLI COMMANDS[0m                                                                                   
- [38;2;107;113;128m  ───────────────────────────────────────────────[0m                                                  
+ [38;2;126;200;227m  ◆ CLI COMMANDS[m                                                                                   
+ [38;2;107;114;128m  ───────────────────────────────────────────────[m                                                  
    moonbase              Launch TUI                                                                 
    moonbase list         Operative roster                                                           
    moonbase deploy <n>   Deploy agent by numbuh                                                     
@@ -61,11 +61,11 @@
    moonbase install      Symlink agents to ~/.kiro/agents                                           
    echo 'task' | moonbase   Pipe mode                                                               
                                                                                                     
- [38;2;126;200;227m  ◆ THEMES (T to cycle)[0m                                                                            
- [38;2;107;113;128m  ───────────────────────────────────────────────[0m                                                  
+ [38;2;126;200;227m  ◆ THEMES (T to cycle)[m                                                                            
+ [38;2;107;114;128m  ───────────────────────────────────────────────[m                                                  
    moonbase    Cyan/green/gold (default)                                                            
    treehouse   Forest green/brown                                                                   
    classified  Red/crimson                                                                          
    nerv        Orange/purple/magenta                                                                
                                                                                                     
-[48;2;26;26;46m [0m[38;2;156;163;175;48;2;26;26;46m  [1;38;2;227;227;231mesc[0m [38;2;156;163;175mback / close[0m[38;2;107;113;128m • [0m[1;38;2;227;227;231mF1[0m [38;2;156;163;175mprotocol view[0m                                                   ▲ 00:00:00[0m[48;2;26;26;46m [0m
+[48;2;26;26;46m [m[38;2;156;163;175;48;2;26;26;46m  [1;38;2;228;228;231mesc[m [38;2;156;163;175mback / close[m[38;2;107;114;128m • [m[1;38;2;228;228;231mF1[m [38;2;156;163;175mprotocol view[m                                                   ▲ 00:00:00[m[48;2;26;26;46m [m

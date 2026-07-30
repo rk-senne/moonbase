@@ -1,6 +1,6 @@
 package tui
 
-import "github.com/charmbracelet/bubbles/textinput"
+import "charm.land/bubbles/v2/textinput"
 
 // MissionModel holds the mission-briefing input and recent mission history
 // for the dashboard's right panel and the mission view. Extracted from App

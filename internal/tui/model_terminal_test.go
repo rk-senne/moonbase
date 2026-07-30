@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
 )
 
 func TestTerminalModel_Update(t *testing.T) {
@@ -18,28 +18,28 @@ func TestTerminalModel_Update(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		msg        tea.KeyMsg
+		msg        tea.KeyPressMsg
 		wantActive bool
 		wantReset  bool // input was reset (submit case)
 	}{
 		{
 			name:       "TerminalEsc deactivates",
-			msg:        tea.KeyMsg{Type: tea.KeyEscape},
+			msg:        tea.KeyPressMsg{Code: tea.KeyEscape},
 			wantActive: false,
 		},
 		{
 			name:       "TerminalToBrowser deactivates",
-			msg:        tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("`")},
+			msg:        tea.KeyPressMsg{Code: '`', Text: "`"},
 			wantActive: false,
 		},
 		{
 			name:       "TerminalSubmit with empty input does nothing",
-			msg:        tea.KeyMsg{Type: tea.KeyEnter},
+			msg:        tea.KeyPressMsg{Code: tea.KeyEnter},
 			wantActive: true,
 		},
 		{
 			name:       "Default key typing keeps active",
-			msg:        tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("a")},
+			msg:        tea.KeyPressMsg{Code: 'a', Text: "a"},
 			wantActive: true,
 		},
 	}
@@ -71,7 +71,7 @@ func TestTerminalModel_Update_SubmitWithInput(t *testing.T) {
 		Styles: NewStyles(moonbaseTheme),
 	}
 
-	result, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter}, ctx)
+	result, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter}, ctx)
 	if result.Input.Value() != "" {
 		t.Errorf("expected input reset after submit, got %q", result.Input.Value())
 	}
@@ -255,7 +255,7 @@ func TestTerminalModel_Update_EscBlursInput(t *testing.T) {
 	m.Input.Focus()
 
 	ctx := AppContext{Keys: DefaultKeyMap(), Styles: NewStyles(moonbaseTheme)}
-	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyEscape}, ctx)
+	result, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEscape}, ctx)
 
 	if result.Active {
 		t.Error("expected terminal to be inactive after esc")
@@ -272,7 +272,7 @@ func TestTerminalModel_Update_ToBrowserBlursInput(t *testing.T) {
 	m.Input.Focus()
 
 	ctx := AppContext{Keys: DefaultKeyMap(), Styles: NewStyles(moonbaseTheme)}
-	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("`")}, ctx)
+	result, _ := m.Update(tea.KeyPressMsg{Code: '`', Text: "`"}, ctx)
 
 	if result.Active {
 		t.Error("expected terminal to be inactive after browser switch")
@@ -334,7 +334,7 @@ func TestTerminalModel_Update_DefaultPassesThrough(t *testing.T) {
 	ctx := AppContext{Keys: DefaultKeyMap(), Styles: NewStyles(moonbaseTheme)}
 
 	// Type a character — should be passed to the textinput
-	result, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("x")}, ctx)
+	result, cmd := m.Update(tea.KeyPressMsg{Code: 'x', Text: "x"}, ctx)
 
 	if !result.Active {
 		t.Error("expected terminal to remain active")
@@ -390,17 +390,17 @@ func TestTerminalModel_Update_KeyMatchesIntegration(t *testing.T) {
 	ctx := AppContext{Keys: DefaultKeyMap(), Styles: NewStyles(moonbaseTheme)}
 
 	// Verify the keys are properly configured
-	escKey := tea.KeyMsg{Type: tea.KeyEscape}
+	escKey := tea.KeyPressMsg{Code: tea.KeyEscape}
 	if !key.Matches(escKey, ctx.Keys.TerminalEsc) {
 		t.Error("TerminalEsc should match escape key")
 	}
 
-	backtickKey := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("`")}
+	backtickKey := tea.KeyPressMsg{Code: '`', Text: "`"}
 	if !key.Matches(backtickKey, ctx.Keys.TerminalToBrowser) {
 		t.Error("TerminalToBrowser should match backtick key")
 	}
 
-	enterKey := tea.KeyMsg{Type: tea.KeyEnter}
+	enterKey := tea.KeyPressMsg{Code: tea.KeyEnter}
 	if !key.Matches(enterKey, ctx.Keys.TerminalSubmit) {
 		t.Error("TerminalSubmit should match enter key")
 	}

@@ -3,7 +3,7 @@ package tui
 import (
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 func TestDashboardModel_Update_Up(t *testing.T) {
@@ -15,7 +15,7 @@ func TestDashboardModel_Update_Up(t *testing.T) {
 	}
 
 	m := DashboardModel{Cursor: 2, Selected: 2}
-	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("k")}, ctx)
+	result, _ := m.Update(tea.KeyPressMsg{Code: 'k', Text: "k"}, ctx)
 
 	if result.Cursor != 1 {
 		t.Errorf("expected Cursor=1, got %d", result.Cursor)
@@ -32,7 +32,7 @@ func TestDashboardModel_Update_UpAtZero(t *testing.T) {
 	}
 
 	m := DashboardModel{Cursor: 0, Selected: 0}
-	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("k")}, ctx)
+	result, _ := m.Update(tea.KeyPressMsg{Code: 'k', Text: "k"}, ctx)
 
 	if result.Cursor != 0 {
 		t.Errorf("expected Cursor=0 (no underflow), got %d", result.Cursor)
@@ -48,7 +48,7 @@ func TestDashboardModel_Update_Down(t *testing.T) {
 	}
 
 	m := DashboardModel{Cursor: 0, Selected: 0}
-	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")}, ctx)
+	result, _ := m.Update(tea.KeyPressMsg{Code: 'j', Text: "j"}, ctx)
 
 	if result.Cursor != 1 {
 		t.Errorf("expected Cursor=1, got %d", result.Cursor)
@@ -68,7 +68,7 @@ func TestDashboardModel_Update_DownAtMax(t *testing.T) {
 	}
 
 	m := DashboardModel{Cursor: max, Selected: max}
-	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")}, ctx)
+	result, _ := m.Update(tea.KeyPressMsg{Code: 'j', Text: "j"}, ctx)
 
 	if result.Cursor != max {
 		t.Errorf("expected Cursor=%d (no overflow), got %d", max, result.Cursor)
@@ -82,7 +82,7 @@ func TestDashboardModel_Update_UnhandledKey(t *testing.T) {
 	}
 
 	m := DashboardModel{Cursor: 3, Selected: 3}
-	result, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("x")}, ctx)
+	result, cmd := m.Update(tea.KeyPressMsg{Code: 'x', Text: "x"}, ctx)
 
 	if result.Cursor != 3 {
 		t.Errorf("expected Cursor=3 (unchanged), got %d", result.Cursor)
@@ -172,7 +172,7 @@ func TestDashboardModel_Update_DownNilRegistry(t *testing.T) {
 	}
 
 	m := DashboardModel{Cursor: 0, Selected: 0}
-	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")}, ctx)
+	result, _ := m.Update(tea.KeyPressMsg{Code: 'j', Text: "j"}, ctx)
 
 	// With nil registry, should not advance (Count-1 would panic)
 	if result.Cursor != 0 {

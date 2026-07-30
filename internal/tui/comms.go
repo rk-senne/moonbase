@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/viewport"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/viewport"
+	"charm.land/lipgloss/v2"
 	"github.com/rk-senne/moonbase/internal/chat"
 )
 
@@ -28,7 +28,7 @@ func newCommsState(agent, systemPrompt string, width, height int) *CommsState {
 	if vpHeight < 4 {
 		vpHeight = 4
 	}
-	vp := viewport.New(vpWidth, vpHeight)
+	vp := viewport.New(viewport.WithWidth(vpWidth), viewport.WithHeight(vpHeight))
 	vp.SetContent("  Awaiting transmission...\n")
 
 	return &CommsState{
@@ -74,7 +74,7 @@ func (c *CommsState) rebuildContent(t Theme) {
 			}
 		} else {
 			b.WriteString(dimStyle.Render(ts) + " " + nameStyle.Render(c.agent) + "\n")
-			rendered := renderMarkdown(msg.Content, c.viewport.Width-4)
+			rendered := renderMarkdown(msg.Content, c.viewport.Width()-4)
 			b.WriteString(rendered)
 		}
 		b.WriteString("\n")

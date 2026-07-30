@@ -5,15 +5,20 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
 	"github.com/rk-senne/moonbase/internal/docs"
 	"github.com/rk-senne/moonbase/internal/projects"
 )
 
-// wheel builds a mouse-wheel event for the given button.
-func wheel(btn tea.MouseButton) tea.MouseMsg {
-	return tea.MouseMsg{Action: tea.MouseActionPress, Button: btn}
+// wheelDown builds a mouse-wheel-down event.
+func wheelDown() tea.MouseWheelMsg {
+	return tea.MouseWheelMsg{Button: tea.MouseWheelDown}
+}
+
+// wheelUp builds a mouse-wheel-up event.
+func wheelUp() tea.MouseWheelMsg {
+	return tea.MouseWheelMsg{Button: tea.MouseWheelUp}
 }
 
 // firstRunes returns the first n runes of s (or all of s if shorter).
@@ -28,7 +33,7 @@ func firstRunes(s string, n int) string {
 func TestMouse_BootSkip(t *testing.T) {
 	app := NewApp()
 	app.view = ViewBoot
-	m, _ := app.Update(wheel(tea.MouseButtonWheelDown))
+	m, _ := app.Update(wheelDown())
 	if got := m.(App); got.view != ViewDashboard {
 		t.Errorf("expected mouse on boot to skip to Dashboard, got view %v", got.view)
 	}
@@ -47,7 +52,7 @@ func TestMouse_DashboardWheelMovesCursor(t *testing.T) {
 		t.Skip("need >=2 agents for cursor movement")
 	}
 
-	m, _ := app.Update(wheel(tea.MouseButtonWheelDown))
+	m, _ := app.Update(wheelDown())
 	down := m.(App)
 	if down.views.Dashboard.Cursor != 1 {
 		t.Errorf("wheel down: expected cursor 1, got %d", down.views.Dashboard.Cursor)
@@ -56,7 +61,7 @@ func TestMouse_DashboardWheelMovesCursor(t *testing.T) {
 		t.Errorf("wheel down: expected Selected to track cursor (1), got %d", down.views.Dashboard.Selected)
 	}
 
-	m2, _ := down.Update(wheel(tea.MouseButtonWheelUp))
+	m2, _ := down.Update(wheelUp())
 	up := m2.(App)
 	if up.views.Dashboard.Cursor != 0 {
 		t.Errorf("wheel up: expected cursor 0, got %d", up.views.Dashboard.Cursor)
@@ -71,7 +76,7 @@ func TestMouse_DashboardWheelIgnoredInBrowserMode(t *testing.T) {
 	app.views.Browser.Active = true // file-browser owns the panel
 	app.views.Dashboard.Cursor = 0
 
-	m, _ := app.Update(wheel(tea.MouseButtonWheelDown))
+	m, _ := app.Update(wheelDown())
 	if got := m.(App); got.views.Dashboard.Cursor != 0 {
 		t.Errorf("expected roster cursor unchanged in browser mode, got %d", got.views.Dashboard.Cursor)
 	}
@@ -86,14 +91,14 @@ func TestMouse_ProjectsWheelMovesCursor(t *testing.T) {
 		cursor: 0,
 	}
 
-	m, _ := app.Update(wheel(tea.MouseButtonWheelDown))
+	m, _ := app.Update(wheelDown())
 	if got := m.(App); got.views.ProjectNav.cursor != 1 {
 		t.Errorf("wheel down: expected projects cursor 1, got %d", got.views.ProjectNav.cursor)
 	}
 }
 
 func TestMouse_CommsWheelScrollsViewport(t *testing.T) {
-	vp := viewport.New(40, 5)
+	vp := viewport.New(viewport.WithWidth(40), viewport.WithHeight(5))
 	vp.SetContent(strings.Repeat("transmission line\n", 20))
 
 	app := NewApp()
@@ -101,20 +106,20 @@ func TestMouse_CommsWheelScrollsViewport(t *testing.T) {
 	app.view = ViewComms
 	app.views.Comms.State = &CommsState{viewport: vp}
 
-	m, _ := app.Update(wheel(tea.MouseButtonWheelDown))
+	m, _ := app.Update(wheelDown())
 	down := m.(App)
-	if down.views.Comms.State.viewport.YOffset != mouseWheelLines {
-		t.Errorf("wheel down: expected YOffset %d, got %d", mouseWheelLines, down.views.Comms.State.viewport.YOffset)
+	if down.views.Comms.State.viewport.YOffset() != mouseWheelLines {
+		t.Errorf("wheel down: expected YOffset %d, got %d", mouseWheelLines, down.views.Comms.State.viewport.YOffset())
 	}
 
-	m2, _ := down.Update(wheel(tea.MouseButtonWheelUp))
-	if up := m2.(App); up.views.Comms.State.viewport.YOffset != 0 {
-		t.Errorf("wheel up: expected YOffset 0, got %d", up.views.Comms.State.viewport.YOffset)
+	m2, _ := down.Update(wheelUp())
+	if up := m2.(App); up.views.Comms.State.viewport.YOffset() != 0 {
+		t.Errorf("wheel up: expected YOffset 0, got %d", up.views.Comms.State.viewport.YOffset())
 	}
 }
 
 func TestMouse_DocsWheelScrollsViewport(t *testing.T) {
-	vp := viewport.New(50, 5)
+	vp := viewport.New(viewport.WithWidth(50), viewport.WithHeight(5))
 	vp.SetContent(strings.Repeat("doc line\n", 20))
 
 	app := NewApp()
@@ -127,9 +132,9 @@ func TestMouse_DocsWheelScrollsViewport(t *testing.T) {
 		content:  strings.Repeat("doc line\n", 20),
 	}
 
-	m, _ := app.Update(wheel(tea.MouseButtonWheelDown))
-	if got := m.(App); got.views.Docs.viewport.YOffset != mouseWheelLines {
-		t.Errorf("wheel down: expected docs YOffset %d, got %d", mouseWheelLines, got.views.Docs.viewport.YOffset)
+	m, _ := app.Update(wheelDown())
+	if got := m.(App); got.views.Docs.viewport.YOffset() != mouseWheelLines {
+		t.Errorf("wheel down: expected docs YOffset %d, got %d", mouseWheelLines, got.views.Docs.viewport.YOffset())
 	}
 }
 
@@ -144,8 +149,8 @@ func TestMouse_NilStatesNoPanic(t *testing.T) {
 		app.views.Docs = nil
 		app.views.ProjectNav = nil
 		// Should not panic.
-		_, _ = app.Update(wheel(tea.MouseButtonWheelDown))
-		_, _ = app.Update(wheel(tea.MouseButtonWheelUp))
+		_, _ = app.Update(wheelDown())
+		_, _ = app.Update(wheelUp())
 	}
 }
 
@@ -224,7 +229,7 @@ func TestMouse_ClickSelectsOperative(t *testing.T) {
 	prefix := firstRunes(want, 4)
 
 	// Offset validation against the actual render.
-	vlines := strings.Split(app.View(), "\n")
+	vlines := strings.Split(app.renderFrame(), "\n")
 	if clickY >= len(vlines) {
 		t.Fatalf("clickY %d beyond rendered view (%d lines)", clickY, len(vlines))
 	}
@@ -233,7 +238,7 @@ func TestMouse_ClickSelectsOperative(t *testing.T) {
 	}
 
 	// Click that roster row.
-	res, _ := app.Update(tea.MouseMsg{Action: tea.MouseActionPress, Button: tea.MouseButtonLeft, X: 3, Y: clickY})
+	res, _ := app.Update(tea.MouseClickMsg{Button: tea.MouseLeft, X: 3, Y: clickY})
 	got := res.(App)
 	if got.views.Dashboard.Selected != idx {
 		t.Errorf("expected Selected=%d after click, got %d", idx, got.views.Dashboard.Selected)
@@ -254,13 +259,13 @@ func TestMouse_ClickOutsideSidebarIgnored(t *testing.T) {
 	app.registry = newTestRegistry()
 
 	// Click far to the right, in the main panel.
-	res, _ := app.Update(tea.MouseMsg{Action: tea.MouseActionPress, Button: tea.MouseButtonLeft, X: 100, Y: 5})
+	res, _ := app.Update(tea.MouseClickMsg{Button: tea.MouseLeft, X: 100, Y: 5})
 	if got := res.(App); got.view != ViewDashboard {
 		t.Errorf("click in main panel should not open dossier, got view %v", got.view)
 	}
 
 	// Click on the very top row (a group header, not an operative).
-	res2, _ := app.Update(tea.MouseMsg{Action: tea.MouseActionPress, Button: tea.MouseButtonLeft, X: 3, Y: sidebarContentTopY})
+	res2, _ := app.Update(tea.MouseClickMsg{Button: tea.MouseLeft, X: 3, Y: sidebarContentTopY})
 	if got := res2.(App); got.view != ViewDashboard {
 		t.Errorf("click on group header should not open dossier, got view %v", got.view)
 	}

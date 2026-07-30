@@ -1,25 +1,26 @@
 package tui
 
 import (
+	"image/color"
 	"os"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 )
 
 // Theme is an immutable value representing a complete colour palette.
 // Themes are never mutated after construction — cycling swaps the whole value.
 type Theme struct {
 	Name    string
-	Active  lipgloss.Color
-	Warning lipgloss.Color
-	Error   lipgloss.Color
-	Info    lipgloss.Color
-	Brand   lipgloss.Color
-	Text    lipgloss.Color
-	Muted   lipgloss.Color
-	Dim     lipgloss.Color
-	Bg      lipgloss.Color
-	Header  lipgloss.Color // header accent (often == Brand)
+	Active  color.Color
+	Warning color.Color
+	Error   color.Color
+	Info    color.Color
+	Brand   color.Color
+	Text    color.Color
+	Muted   color.Color
+	Dim     color.Color
+	Bg      color.Color
+	Header  color.Color // header accent (often == Brand)
 }
 
 // Styles holds pre-computed lipgloss styles derived from a Theme.

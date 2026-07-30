@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 )
 
 func TestNewStyles_Pure(t *testing.T) {
@@ -112,7 +112,7 @@ func TestCycleTheme_RaceSafe(t *testing.T) {
 			app := NewApp()
 			for j := 0; j < 20; j++ {
 				app.cycleTheme()
-				_ = app.View()
+				_ = app.renderFrame()
 			}
 		}()
 	}

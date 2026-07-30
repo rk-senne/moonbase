@@ -5,14 +5,14 @@ import (
 	"os"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 	"github.com/rk-senne/moonbase/internal/snippets"
 )
 
 // handleCommsKeys handles key messages when the view is ViewComms.
-func (a App) handleCommsKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (a App) handleCommsKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	// Context file input mode
 	if a.views.CtxFile.Active {
 		switch {

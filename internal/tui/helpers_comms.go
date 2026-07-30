@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
 	"github.com/rk-senne/moonbase/internal/agents"
 	"github.com/rk-senne/moonbase/internal/chat"
 )
@@ -28,7 +28,7 @@ func (a *App) openComms() {
 	if conv != nil {
 		a.views.Comms.State = &CommsState{
 			conv:     conv,
-			viewport: viewport.New(vpWidth, vpHeight),
+			viewport: viewport.New(viewport.WithWidth(vpWidth), viewport.WithHeight(vpHeight)),
 			agent:    agent.Name,
 		}
 		a.views.Comms.State.rebuildContent(a.theme.Data)
@@ -37,9 +37,9 @@ func (a *App) openComms() {
 	}
 	a.view = ViewComms
 	a.views.Comms.Input.Focus()
-	a.views.Comms.Input.Width = a.width - 8
-	if a.views.Comms.Input.Width < 10 {
-		a.views.Comms.Input.Width = 10
+	a.views.Comms.Input.SetWidth(a.width - 8)
+	if a.views.Comms.Input.Width() < 10 {
+		a.views.Comms.Input.SetWidth(10)
 	}
 }
 
@@ -118,7 +118,7 @@ func (a *App) relayToAgent(targetName, msg string) tea.Cmd {
 	}
 	a.views.Comms.State = &CommsState{
 		conv:     conv,
-		viewport: viewport.New(a.width-6, a.height-6),
+		viewport: viewport.New(viewport.WithWidth(a.width-6), viewport.WithHeight(a.height-6)),
 		agent:    target.Name,
 	}
 	a.views.Comms.State.rebuildContent(a.theme.Data)

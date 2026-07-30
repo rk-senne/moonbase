@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/rk-senne/moonbase/internal/pipeline"
 )
 
@@ -16,7 +16,7 @@ func TestApp_ViewRendering_Dashboard(t *testing.T) {
 	app.height = 40
 	app.registry = newTestRegistry()
 
-	output := app.View()
+	output := app.renderFrame()
 	if output == "" {
 		t.Error("expected non-empty dashboard view")
 	}
@@ -33,7 +33,7 @@ func TestApp_ViewRendering_Dashboard2Col(t *testing.T) {
 	app.height = 40
 	app.registry = newTestRegistry()
 
-	output := app.View()
+	output := app.renderFrame()
 	if output == "" {
 		t.Error("expected non-empty dashboard view at 100 width")
 	}
@@ -47,7 +47,7 @@ func TestApp_ViewRendering_Dashboard1Col(t *testing.T) {
 	app.height = 40
 	app.registry = newTestRegistry()
 
-	output := app.View()
+	output := app.renderFrame()
 	if output == "" {
 		t.Error("expected non-empty dashboard view at 60 width")
 	}
@@ -60,7 +60,7 @@ func TestApp_ViewRendering_Help(t *testing.T) {
 	app.width = 100
 	app.height = 40
 
-	output := app.View()
+	output := app.renderFrame()
 	if output == "" {
 		t.Error("expected non-empty help view")
 	}
@@ -79,7 +79,7 @@ func TestApp_ViewRendering_Mission(t *testing.T) {
 	app.width = 100
 	app.height = 40
 
-	output := app.View()
+	output := app.renderFrame()
 	if output == "" {
 		t.Error("expected non-empty mission view")
 	}
@@ -96,7 +96,7 @@ func TestApp_ViewRendering_Pipeline_NoState(t *testing.T) {
 	app.height = 40
 	app.views.Pipeline.State = nil
 
-	output := app.View()
+	output := app.renderFrame()
 	if output == "" {
 		t.Error("expected non-empty pipeline view")
 	}
@@ -118,7 +118,7 @@ func TestApp_ViewRendering_Pipeline_WithState(t *testing.T) {
 		{"Numbuh 1", "Starting analysis..."},
 	}
 
-	output := app.View()
+	output := app.renderFrame()
 	if output == "" {
 		t.Error("expected non-empty pipeline view with state")
 	}
@@ -137,7 +137,7 @@ func TestApp_ViewRendering_Pipeline_RiskDisplay(t *testing.T) {
 	app.views.Pipeline.State.Context.RiskLevel = "MEDIUM"
 	app.views.Pipeline.State.Context.ReworkCount = 1
 
-	output := app.View()
+	output := app.renderFrame()
 	if !strings.Contains(output, "MEDIUM") {
 		t.Error("expected pipeline view to show risk level")
 	}
@@ -152,7 +152,7 @@ func TestApp_ViewRendering_Dossier(t *testing.T) {
 	app.registry = newTestRegistry()
 	app.views.Dashboard.Selected = 0
 
-	output := app.View()
+	output := app.renderFrame()
 	if output == "" {
 		t.Error("expected non-empty dossier view")
 	}
@@ -169,7 +169,7 @@ func TestApp_ViewRendering_Boot(t *testing.T) {
 	app.height = 40
 	app.boot.Step = 2
 
-	output := app.View()
+	output := app.renderFrame()
 	if output == "" {
 		t.Error("expected non-empty boot view")
 	}
@@ -179,7 +179,7 @@ func TestApp_ViewRendering_NotReady(t *testing.T) {
 	app := NewApp()
 	app.boot.Ready = false
 
-	output := app.View()
+	output := app.renderFrame()
 	if output != "  Initializing..." {
 		t.Errorf("expected 'Initializing...' when not ready, got %q", output)
 	}
@@ -299,7 +299,7 @@ func TestPipelineKeys_Advance(t *testing.T) {
 	app.views.Pipeline.State = pipeline.New("test")
 	app.views.Pipeline.State.Phases[0].Status = pipeline.StatusRunning
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'n', Text: "n"})
 	result := model.(App)
 
 	// Should advance to next phase
@@ -333,7 +333,7 @@ func TestApp_HelpToggleFromDossier(t *testing.T) {
 	app.views.Browser.Active = false
 	app.views.Terminal.Active = false
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: '?', Text: "?"})
 	result := model.(App)
 	if result.view != ViewHelp {
 		t.Errorf("expected ViewHelp after '?' from dossier, got %d", result.view)

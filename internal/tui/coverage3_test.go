@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/rk-senne/moonbase/internal/snippets"
 )
 
@@ -174,7 +174,7 @@ func TestTerminalKeys_EnterWithCommand(t *testing.T) {
 	app.views.Terminal.Input.Focus()
 	app.views.Terminal.Input.SetValue("echo hello")
 
-	model, cmd := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, cmd := app.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	result := model.(App)
 	if result.views.Terminal.Input.Value() != "" {
 		t.Error("expected term input reset after enter")
@@ -196,7 +196,7 @@ func TestFileBrowserKeys_Enter(t *testing.T) {
 	app.views.Browser.Active = true
 	app.views.Terminal.Active = false
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	_ = model.(App)
 }
 
@@ -210,7 +210,7 @@ func TestFileBrowserKeys_Backspace(t *testing.T) {
 	app.views.Browser.Active = true
 	app.views.Terminal.Active = false
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyBackspace})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	_ = model.(App)
 }
 
@@ -221,7 +221,7 @@ func TestFileBrowserKeys_Dot(t *testing.T) {
 	app.views.Browser.Active = true
 	app.views.Terminal.Active = false
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'.'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: '.', Text: "."})
 	_ = model.(App)
 }
 
@@ -232,7 +232,7 @@ func TestFileBrowserKeys_E(t *testing.T) {
 	app.views.Browser.Active = true
 	app.views.Terminal.Active = false
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'e', Text: "e"})
 	_ = model.(App)
 }
 
@@ -262,7 +262,7 @@ func TestDashboardKeys_D_GitDiff(t *testing.T) {
 	app.views.Browser.Active = false
 	app.views.Terminal.Active = false
 
-	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
+	_, cmd := app.Update(tea.KeyPressMsg{Code: 'd', Text: "d"})
 	if cmd == nil {
 		t.Error("expected non-nil cmd for 'd' (git diff)")
 	}
@@ -275,7 +275,7 @@ func TestDashboardKeys_G_GitStatus(t *testing.T) {
 	app.views.Browser.Active = false
 	app.views.Terminal.Active = false
 
-	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}})
+	_, cmd := app.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
 	if cmd == nil {
 		t.Error("expected non-nil cmd for 'g' (git status)")
 	}
@@ -291,7 +291,7 @@ func TestDossierKeys_C_Comms(t *testing.T) {
 	app.views.Terminal.Active = false
 	app.registry = newTestRegistry()
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'C'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'C', Text: "C"})
 	result := model.(App)
 	if result.view != ViewComms {
 		t.Errorf("expected ViewComms after 'C', got %d", result.view)
@@ -309,7 +309,7 @@ func TestView_MainPanel_FileBrowser(t *testing.T) {
 	app.views.Browser.Active = true
 	app.registry = newTestRegistry()
 
-	output := app.View()
+	output := app.renderFrame()
 	if output == "" {
 		t.Error("expected non-empty view with file browser")
 	}
@@ -325,7 +325,7 @@ func TestView_MainPanel_Terminal(t *testing.T) {
 	app.views.Terminal.Active = true
 	app.registry = newTestRegistry()
 
-	output := app.View()
+	output := app.renderFrame()
 	if output == "" {
 		t.Error("expected non-empty view with terminal")
 	}
@@ -353,8 +353,8 @@ func TestAgentColor_AllBranches(t *testing.T) {
 	colors := []string{"1", "2", "3", "4", "5", "0", "274", "362", "unknown"}
 	for _, name := range colors {
 		c := agentColor(name)
-		if c == "" {
-			t.Errorf("expected non-empty color for %s", name)
+		if c == nil {
+			t.Errorf("expected non-nil color for %s", name)
 		}
 	}
 }

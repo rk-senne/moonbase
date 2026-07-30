@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/rk-senne/moonbase/internal/agents"
 	"github.com/rk-senne/moonbase/internal/pipeline"
 	"github.com/rk-senne/moonbase/internal/projects"
@@ -21,7 +21,7 @@ func TestView_Comms(t *testing.T) {
 	app.view = ViewComms
 	app.views.Comms.State = newCommsState("numbuh-1", "system prompt", 80, 40)
 
-	output := app.View()
+	output := app.renderFrame()
 	if output == "" {
 		t.Error("expected non-empty comms view")
 	}
@@ -34,7 +34,7 @@ func TestView_Protocol(t *testing.T) {
 	app.height = 40
 	app.view = ViewProtocol
 
-	output := app.View()
+	output := app.renderFrame()
 	if output == "" {
 		t.Error("expected non-empty protocol view")
 	}
@@ -48,7 +48,7 @@ func TestView_Docs(t *testing.T) {
 	app.view = ViewDocs
 	app.views.Docs = newDocsState(120, 40)
 
-	output := app.View()
+	output := app.renderFrame()
 	if output == "" {
 		t.Error("expected non-empty docs view")
 	}
@@ -62,7 +62,7 @@ func TestView_Projects(t *testing.T) {
 	app.view = ViewProjects
 	app.views.ProjectNav = newProjectsState()
 
-	output := app.View()
+	output := app.renderFrame()
 	if output == "" {
 		t.Error("expected non-empty projects view")
 	}
@@ -75,7 +75,7 @@ func TestView_History(t *testing.T) {
 	app.height = 40
 	app.view = ViewHistory
 
-	output := app.View()
+	output := app.renderFrame()
 	if output == "" {
 		t.Error("expected non-empty history view")
 	}
@@ -93,21 +93,21 @@ func TestProjectsKeys_Navigation(t *testing.T) {
 	}
 
 	// Down
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'j', Text: "j"})
 	result := model.(App)
 	if result.views.ProjectNav.cursor != 1 {
 		t.Errorf("expected cursor=1, got %d", result.views.ProjectNav.cursor)
 	}
 
 	// Up
-	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
+	model, _ = result.Update(tea.KeyPressMsg{Code: 'k', Text: "k"})
 	result = model.(App)
 	if result.views.ProjectNav.cursor != 0 {
 		t.Errorf("expected cursor=0, got %d", result.views.ProjectNav.cursor)
 	}
 
 	// Esc
-	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyEscape})
+	model, _ = result.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	result = model.(App)
 	if result.view != ViewDashboard {
 		t.Errorf("expected ViewDashboard after esc, got %d", result.view)
@@ -121,7 +121,7 @@ func TestProjectsKeys_NilState(t *testing.T) {
 	app.views.ProjectNav = nil
 
 	// Should not panic
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'j', Text: "j"})
 	_ = model.(App)
 }
 
@@ -138,14 +138,14 @@ func TestDocsKeys_Navigation(t *testing.T) {
 	}
 
 	// Down
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'j', Text: "j"})
 	result := model.(App)
 	if result.views.Docs.cursor != 1 && len(result.views.Docs.files) > 1 {
 		t.Errorf("expected cursor=1, got %d", result.views.Docs.cursor)
 	}
 
 	// Esc
-	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyEscape})
+	model, _ = result.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	result = model.(App)
 	if result.view != ViewDashboard {
 		t.Errorf("expected ViewDashboard after esc, got %d", result.view)
@@ -158,7 +158,7 @@ func TestDocsKeys_NilState(t *testing.T) {
 	app.boot.Ready = true
 	app.views.Docs = nil
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'j', Text: "j"})
 	_ = model.(App)
 }
 
@@ -278,16 +278,16 @@ func TestDashboardKeys_F1Protocol(t *testing.T) {
 	app.views.Browser.Active = false
 	app.views.Terminal.Active = false
 
-	// F1 in bubbletea - the key string is "F1" when using tea.KeyMsg with string matching
+	// F1 in bubbletea - the key string is "F1" when using tea.KeyPressMsg with string matching
 	// The handler uses msg.String() == "F1"
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{0}}) // dummy
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyF1}) // F1 key
 	result := model.(App)
 	// Actually test via the correct approach - the handleDashboardKeys checks for "F1"
 	// which corresponds to tea.KeyF1 type
 	result.view = ViewDashboard
 	result.views.Browser.Active = false
 	result.views.Terminal.Active = false
-	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyF1})
+	model, _ = result.Update(tea.KeyPressMsg{Code: tea.KeyF1})
 	result = model.(App)
 	if result.view != ViewProtocol {
 		// F1 might map differently - just verify it doesn't crash
@@ -304,7 +304,7 @@ func TestDashboardKeys_P_Projects(t *testing.T) {
 	app.views.Browser.Active = false
 	app.views.Terminal.Active = false
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'p', Text: "p"})
 	result := model.(App)
 	if result.view != ViewProjects {
 		t.Errorf("expected ViewProjects after 'p', got %d", result.view)
@@ -320,7 +320,7 @@ func TestDashboardKeys_W_Docs(t *testing.T) {
 	app.views.Browser.Active = false
 	app.views.Terminal.Active = false
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'W'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'W', Text: "W"})
 	result := model.(App)
 	if result.view != ViewDocs {
 		t.Errorf("expected ViewDocs after 'W', got %d", result.view)
@@ -340,7 +340,7 @@ func TestPipelineDoubleEsc_Abort(t *testing.T) {
 	app.views.Pipeline.AbortPending = true
 	app.views.Pipeline.AbortAt = time.Now() // within 3s window
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	result := model.(App)
 	if result.views.Pipeline.Running {
 		t.Error("expected pipelineRunning=false after double-esc abort")

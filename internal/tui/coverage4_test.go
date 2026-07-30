@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/rk-senne/moonbase/internal/agents"
 	"github.com/rk-senne/moonbase/internal/chat"
 	"github.com/rk-senne/moonbase/internal/discovery"
@@ -454,7 +454,7 @@ func TestHandleDocsKeys_Esc(t *testing.T) {
 	app.boot.Ready = true
 	app.views.Docs = newDocsState(100, 40)
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	result := model.(App)
 	if result.view != ViewDashboard {
 		t.Errorf("expected ViewDashboard after esc, got %d", result.view)
@@ -467,7 +467,7 @@ func TestHandleDocsKeys_NilDocs(t *testing.T) {
 	app.boot.Ready = true
 	app.views.Docs = nil
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'j', Text: "j"})
 	result := model.(App)
 	_ = result // should not panic
 }
@@ -479,7 +479,7 @@ func TestHandleDocsKeys_Navigate(t *testing.T) {
 	app.views.Docs = newDocsState(100, 40)
 
 	// Navigate down
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'j', Text: "j"})
 	result := model.(App)
 	if result.views.Docs != nil && len(result.views.Docs.files) > 1 {
 		if result.views.Docs.cursor != 1 {
@@ -488,7 +488,7 @@ func TestHandleDocsKeys_Navigate(t *testing.T) {
 	}
 
 	// Navigate up
-	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
+	model, _ = result.Update(tea.KeyPressMsg{Code: 'k', Text: "k"})
 	result = model.(App)
 	if result.views.Docs != nil {
 		if result.views.Docs.cursor != 0 {
@@ -505,7 +505,7 @@ func TestHandleDocsKeys_Enter(t *testing.T) {
 	app.height = 40
 	app.views.Docs = newDocsState(100, 40)
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	result := model.(App)
 	// Should load the doc (or not crash if no files)
 	_ = result
@@ -517,7 +517,7 @@ func TestHandleDocsKeys_PageDown(t *testing.T) {
 	app.boot.Ready = true
 	app.views.Docs = newDocsState(100, 40)
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: ' ', Text: " "})
 	result := model.(App)
 	_ = result // should not panic
 }
@@ -528,7 +528,7 @@ func TestHandleDocsKeys_PageUp(t *testing.T) {
 	app.boot.Ready = true
 	app.views.Docs = newDocsState(100, 40)
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyPgUp})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyPgUp})
 	result := model.(App)
 	_ = result
 }
@@ -861,7 +861,7 @@ func TestRelayToAgent_TargetNotFound(t *testing.T) {
 	app.views.Comms.Input.Focus()
 	app.views.Comms.Input.SetValue(">>nonexistent-agent-xyz hello")
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	result := model.(App)
 	// Should not crash, agent stays numbuh-1
 	if result.views.Comms.State.agent != "numbuh-1" {
@@ -879,7 +879,7 @@ func TestRelayToAgent_WithExplicitMessage(t *testing.T) {
 	app.views.Comms.Input.Focus()
 	app.views.Comms.Input.SetValue(">>numbuh-2 analyze this code")
 
-	model, cmd := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, cmd := app.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	result := model.(App)
 
 	// If registry failed to load agents (e.g., fd exhaustion), skip assertions
@@ -908,7 +908,7 @@ func TestRelayToAgent_EmptyMsgNoHistory(t *testing.T) {
 	app.views.Comms.Input.Focus()
 	app.views.Comms.Input.SetValue(">numbuh-2")
 
-	model, cmd := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, cmd := app.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	result := model.(App)
 	_ = result
 	// With no assistant message to relay, cmd should be nil
@@ -927,7 +927,7 @@ func TestRelayToAgent_EmptyMsgWithHistory(t *testing.T) {
 	app.views.Comms.Input.Focus()
 	app.views.Comms.Input.SetValue(">numbuh-2")
 
-	model, cmd := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, cmd := app.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	result := model.(App)
 
 	// If registry failed to load agents (e.g., fd exhaustion), skip assertions
@@ -1224,7 +1224,7 @@ func TestIsSafeHookCommand(t *testing.T) {
 func TestView_NotReady(t *testing.T) {
 	app := NewApp()
 	app.boot.Ready = false
-	result := app.View()
+	result := app.renderFrame()
 	if result == "" {
 		t.Error("expected non-empty output for not-ready state")
 	}
@@ -1238,7 +1238,7 @@ func TestView_BootView(t *testing.T) {
 	app.view = ViewBoot
 	app.boot.Step = 3
 
-	result := app.View()
+	result := app.renderFrame()
 	if result == "" {
 		t.Error("expected non-empty boot view")
 	}
@@ -1251,7 +1251,7 @@ func TestView_HistoryView(t *testing.T) {
 	app.height = 40
 	app.view = ViewHistory
 
-	result := app.View()
+	result := app.renderFrame()
 	if result == "" {
 		t.Error("expected non-empty history view")
 	}
@@ -1265,7 +1265,7 @@ func TestView_DocsView(t *testing.T) {
 	app.view = ViewDocs
 	app.views.Docs = newDocsState(100, 40)
 
-	result := app.View()
+	result := app.renderFrame()
 	if result == "" {
 		t.Error("expected non-empty docs view")
 	}
@@ -1279,7 +1279,7 @@ func TestView_ProjectsView(t *testing.T) {
 	app.view = ViewProjects
 	app.views.ProjectNav = newProjectsState()
 
-	result := app.View()
+	result := app.renderFrame()
 	if result == "" {
 		t.Error("expected non-empty projects view")
 	}
@@ -1292,7 +1292,7 @@ func TestView_ProtocolView(t *testing.T) {
 	app.height = 40
 	app.view = ViewProtocol
 
-	result := app.View()
+	result := app.renderFrame()
 	if result == "" {
 		t.Error("expected non-empty protocol view")
 	}
@@ -1305,7 +1305,7 @@ func TestView_MissionView(t *testing.T) {
 	app.height = 40
 	app.view = ViewMission
 
-	result := app.View()
+	result := app.renderFrame()
 	if result == "" {
 		t.Error("expected non-empty mission view")
 	}
@@ -1383,7 +1383,7 @@ func TestCommsKeys_RelayPrefix_NoHistory(t *testing.T) {
 	app.views.Comms.Input.Focus()
 	app.views.Comms.Input.SetValue(">numbuh-3")
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	result := model.(App)
 	// Should reset input even if relay fails (no history to relay)
 	if result.views.Comms.Input.Value() != "" {
@@ -1402,7 +1402,7 @@ func TestDossierKeys_T_SpawnHook(t *testing.T) {
 	app.registry = newTestRegistry()
 	app.views.Dashboard.Selected = 0
 
-	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}})
+	_, cmd := app.Update(tea.KeyPressMsg{Code: 't', Text: "t"})
 	if cmd == nil {
 		t.Error("expected non-nil cmd for 't' (spawn hook)")
 	}
@@ -1419,7 +1419,7 @@ func TestDashboardKeys_LaunchTools(t *testing.T) {
 
 	keys := []rune{'L', 'B', 'V', 'M', 'F'}
 	for _, k := range keys {
-		_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{k}})
+		_, cmd := app.Update(tea.KeyPressMsg{Code: k, Text: string(k)})
 		if cmd == nil {
 			t.Errorf("expected non-nil cmd for key '%c'", k)
 		}
@@ -1438,7 +1438,7 @@ func TestDashboardKeys_ViewSwitching(t *testing.T) {
 	app.height = 40
 
 	// H -> History
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'H'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'H', Text: "H"})
 	result := model.(App)
 	if result.view != ViewHistory {
 		t.Errorf("expected ViewHistory after 'H', got %d", result.view)
@@ -1446,7 +1446,7 @@ func TestDashboardKeys_ViewSwitching(t *testing.T) {
 
 	// W -> Docs
 	app.view = ViewDashboard
-	model, _ = app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'W'}})
+	model, _ = app.Update(tea.KeyPressMsg{Code: 'W', Text: "W"})
 	result = model.(App)
 	if result.view != ViewDocs {
 		t.Errorf("expected ViewDocs after 'W', got %d", result.view)
@@ -1454,7 +1454,7 @@ func TestDashboardKeys_ViewSwitching(t *testing.T) {
 
 	// p -> Projects
 	app.view = ViewDashboard
-	model, _ = app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
+	model, _ = app.Update(tea.KeyPressMsg{Code: 'p', Text: "p"})
 	result = model.(App)
 	if result.view != ViewProjects {
 		t.Errorf("expected ViewProjects after 'p', got %d", result.view)

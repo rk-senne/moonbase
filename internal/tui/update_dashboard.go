@@ -4,9 +4,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 	"github.com/rk-senne/moonbase/internal/watcher"
 )
 
@@ -14,7 +14,7 @@ import (
 // general dashboard/dossier default case (after all specific views have
 // been checked). This covers ViewDashboard, ViewDossier, ViewPipeline,
 // ViewHelp, ViewHistory, and other non-specific key handling.
-func (a App) handleDashboardKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (a App) handleDashboardKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, a.keys.Quit):
 		if a.views.Pipeline.Cancel != nil {

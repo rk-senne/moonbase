@@ -2,15 +2,16 @@ package tui
 
 import (
 	"fmt"
+	"image/color"
 	"os/exec"
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/rk-senne/moonbase/internal/backend"
 )
 
@@ -62,7 +63,7 @@ func (a App) handleSpinnerTick(msg spinner.TickMsg) (tea.Model, tea.Cmd) {
 }
 
 // handleSearchKeys handles key messages when in search mode.
-func (a App) handleSearchKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (a App) handleSearchKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, a.keys.SearchCancel):
 		a.views.Search.Active = false
@@ -89,7 +90,7 @@ func (a App) handleSearchKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 // handleTerminalKeys handles key messages when the embedded terminal is active.
-func (a App) handleTerminalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (a App) handleTerminalKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	wasBrowserSwitch := key.Matches(msg, a.keys.TerminalToBrowser)
 	var cmd tea.Cmd
 	a.views.Terminal, cmd = a.views.Terminal.Update(msg, a.appContext())
@@ -101,7 +102,7 @@ func (a App) handleTerminalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 // handleFileBrowserKeys handles key messages when the file browser is active.
-func (a App) handleFileBrowserKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (a App) handleFileBrowserKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, a.keys.BrowserToTerminal):
 		a.views.Browser.Active = false
@@ -340,7 +341,7 @@ func parseShortstat(out string) int {
 }
 
 // agentColor returns a unique color for each pipeline agent
-func agentColor(name string) lipgloss.Color {
+func agentColor(name string) color.Color {
 	switch {
 	case strings.Contains(name, "1"):
 		return lipgloss.Color("#FF6B6B") // red

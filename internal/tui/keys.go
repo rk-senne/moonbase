@@ -1,6 +1,6 @@
 package tui
 
-import "github.com/charmbracelet/bubbles/key"
+import "charm.land/bubbles/v2/key"
 
 // KeyMap defines all key bindings for the TUI. It is the single source of truth
 // for what keys do in each view. Implements help.KeyMap for generated help.
@@ -324,7 +324,7 @@ func DefaultKeyMap() KeyMap {
 
 		// Docs view
 		DocsPageDown: key.NewBinding(
-			key.WithKeys("pgdown", " "),
+			key.WithKeys("pgdown", "space"),
 			key.WithHelp("pgdn/space", "page down"),
 		),
 		DocsPageUp: key.NewBinding(
