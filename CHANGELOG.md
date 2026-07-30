@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- deps: clear all `govulncheck` findings that were failing CI — bump `golang.org/x/text` v0.30.0→v0.39.0 (GO-2026-5970, infinite loop on invalid input), `github.com/yuin/goldmark` v1.7.13→v1.7.17 (GO-2026-5320, XSS in rendered markdown), and the Go toolchain to 1.26.5 (GO-2026-5856, crypto/tls Encrypted Client Hello privacy leak). `govulncheck ./...` now reports 0 vulnerabilities affecting the code.
+
 ### Added
 - MIT `LICENSE` — moonbase is now MIT-licensed (Copyright (c) 2026 Senne), so anyone can use, modify, and distribute it once the repository is public. Referenced from the README.
 - `install.sh` — one-line installer (`curl -fsSL https://raw.githubusercontent.com/rk-senne/moonbase/main/install.sh | sh`) that detects your OS/arch, downloads the latest release, verifies its checksum, installs the binary to `~/.local/bin`, and runs `moonbase setup`. README now documents installation via the script, `go install`, release download, or source. (Requires the repository/releases to be publicly accessible.)
