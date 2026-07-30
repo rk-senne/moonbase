@@ -200,3 +200,28 @@ func TestGolden_Dossier(t *testing.T) {
 	got := app.View()
 	goldenAssert(t, "dossier", got)
 }
+
+// TestGolden_Help captures the operations manual, which is generated entirely
+// from the central key map — this snapshot guards against help/keybinding drift.
+func TestGolden_Help(t *testing.T) {
+	lipgloss.SetColorProfile(termenv.TrueColor)
+	lipgloss.SetHasDarkBackground(true)
+
+	app := newGoldenApp(t)
+	app.view = ViewHelp
+
+	got := app.View()
+	goldenAssert(t, "help", got)
+}
+
+// TestGolden_Protocol captures the static operations-protocol reference view.
+func TestGolden_Protocol(t *testing.T) {
+	lipgloss.SetColorProfile(termenv.TrueColor)
+	lipgloss.SetHasDarkBackground(true)
+
+	app := newGoldenApp(t)
+	app.view = ViewProtocol
+
+	got := app.View()
+	goldenAssert(t, "protocol", got)
+}
