@@ -11,7 +11,7 @@ import (
 func TestPhaseResultMsg_Success(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
-	app.ready = true
+	app.boot.Ready = true
 	app.pipeline.State = pipeline.New("test task")
 	app.pipeline.State.Phases[0].Status = pipeline.StatusRunning
 	app.pipeline.Running = true
@@ -42,7 +42,7 @@ func TestPhaseResultMsg_Success(t *testing.T) {
 func TestPhaseResultMsg_Error(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
-	app.ready = true
+	app.boot.Ready = true
 	app.pipeline.State = pipeline.New("test task")
 	app.pipeline.State.Phases[0].Status = pipeline.StatusRunning
 	app.pipeline.Running = true
@@ -85,7 +85,7 @@ func TestPhaseResultMsg_Error(t *testing.T) {
 func TestPhaseResultMsg_RiskGate_Low(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
-	app.ready = true
+	app.boot.Ready = true
 	app.pipeline.State = pipeline.New("test task")
 	// Advance to phase 4 (QA) — set phases 0-3 as complete
 	for i := 0; i < 3; i++ {
@@ -117,7 +117,7 @@ func TestPhaseResultMsg_RiskGate_Low(t *testing.T) {
 func TestPhaseResultMsg_RiskGate_Medium(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
-	app.ready = true
+	app.boot.Ready = true
 	app.pipeline.State = pipeline.New("test task")
 	for i := 0; i < 3; i++ {
 		app.pipeline.State.Advance()
@@ -147,7 +147,7 @@ func TestPhaseResultMsg_RiskGate_Medium(t *testing.T) {
 func TestPhaseResultMsg_RiskGate_Critical(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
-	app.ready = true
+	app.boot.Ready = true
 	app.pipeline.State = pipeline.New("test task")
 	for i := 0; i < 3; i++ {
 		app.pipeline.State.Advance()

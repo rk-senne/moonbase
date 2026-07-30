@@ -10,7 +10,7 @@ import (
 func TestCommsKeys_SnippetPicker(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
-	app.ready = true
+	app.boot.Ready = true
 	app.comms = newCommsState("test-agent", "system prompt", 80, 40)
 	app.commsInput.Focus()
 	app.snippetPick.Active = true
@@ -32,7 +32,7 @@ func TestCommsKeys_SnippetPicker(t *testing.T) {
 func TestCommsKeys_ContextFile(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
-	app.ready = true
+	app.boot.Ready = true
 	app.comms = newCommsState("test-agent", "system prompt", 80, 40)
 	app.commsInput.Focus()
 	app.ctxFile.Active = true
@@ -49,7 +49,7 @@ func TestCommsKeys_ContextFile(t *testing.T) {
 func TestCommsKeys_ContextFileEnter(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
-	app.ready = true
+	app.boot.Ready = true
 	app.comms = newCommsState("test-agent", "system prompt", 80, 40)
 	app.commsInput.Focus()
 	app.ctxFile.Active = true
@@ -67,7 +67,7 @@ func TestCommsKeys_ContextFileEnter(t *testing.T) {
 func TestCommsKeys_AtSwitch(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
-	app.ready = true
+	app.boot.Ready = true
 	app.comms = newCommsState("test-agent", "system prompt", 80, 40)
 	app.commsInput.Focus()
 	app.commsInput.SetValue("@numbuh-1")
@@ -83,7 +83,7 @@ func TestCommsKeys_AtSwitch(t *testing.T) {
 func TestFileBrowserKeys_Esc(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = true
 	app.terminal.Active = false
 
@@ -97,7 +97,7 @@ func TestFileBrowserKeys_Esc(t *testing.T) {
 func TestFileBrowserKeys_Navigate(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = true
 	app.terminal.Active = false
 
@@ -110,7 +110,7 @@ func TestFileBrowserKeys_Navigate(t *testing.T) {
 func TestTerminalKeys_Esc(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = true
 	app.terminal.Input.Focus()
@@ -125,7 +125,7 @@ func TestTerminalKeys_Esc(t *testing.T) {
 func TestTerminalKeys_Backtick(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = true
 	app.terminal.Input.Focus()
@@ -143,7 +143,7 @@ func TestTerminalKeys_Backtick(t *testing.T) {
 func TestFileBrowserKeys_Backtick(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = true
 	app.terminal.Active = false
 
@@ -159,7 +159,7 @@ func TestFileBrowserKeys_Backtick(t *testing.T) {
 
 func TestApp_StreamChunkMsg_NilComms(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.comms = nil
 
 	msg := streamChunkMsg{text: "hello", done: false}
@@ -171,7 +171,7 @@ func TestApp_StreamChunkMsg_NilComms(t *testing.T) {
 
 func TestApp_StreamChunkMsg_Done(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.comms = newCommsState("test-agent", "system prompt", 80, 40)
 	app.comms.streaming = true
 
@@ -185,7 +185,7 @@ func TestApp_StreamChunkMsg_Done(t *testing.T) {
 
 func TestApp_StreamChunkMsg_Error(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.comms = newCommsState("test-agent", "system prompt", 80, 40)
 	app.comms.streaming = true
 

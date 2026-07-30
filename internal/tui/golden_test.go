@@ -111,18 +111,22 @@ func newGoldenApp(t *testing.T) App {
 		dashboard:     DashboardModel{Cursor: 0, Selected: 0},
 		width:         100,
 		height:        30,
-		ready:         true,
+		boot:          BootModel{Ready: true},
 		theme:         "moonbase",
 		themeData:     moonbaseTheme,
 		styles:        NewStyles(moonbaseTheme),
-		clock:         "12:00:00",
-		startTime:     time.Now(), // uptime() = time.Since(startTime) ≈ 0 → "00:00:00"
-		focus:         FocusSidebar,
-		blink:         false,
+		chrome: ChromeModel{
+			Clock:     "12:00:00",
+			StartTime: time.Now(),
+			Focus:     FocusSidebar,
+			Blink:     false,
+		},
 		intel:         []IntelEntry{},
 		mission:       MissionModel{History: []MissionEntry{{Name: "init scaffold", Status: "✅"}, {Name: "tui views", Status: "✅"}, {Name: "pipeline+deploy", Status: "✅"}}},
-		toolCache:     toolCache,
-		toolCacheTime: time.Now(),
+		infra: InfraModel{
+			ToolCache:     toolCache,
+			ToolCacheTime: time.Now(),
+		},
 		fileBrowser:   nil,      // avoid real FS reads
 		browsing:      false,    // show terminal panel (deterministic with empty state)
 		system:        SystemModel{Branch: "main", Clean: true},

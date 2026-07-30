@@ -15,7 +15,7 @@ import (
 
 func TestView_Comms(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 120
 	app.height = 40
 	app.view = ViewComms
@@ -29,7 +29,7 @@ func TestView_Comms(t *testing.T) {
 
 func TestView_Protocol(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 120
 	app.height = 40
 	app.view = ViewProtocol
@@ -42,7 +42,7 @@ func TestView_Protocol(t *testing.T) {
 
 func TestView_Docs(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 120
 	app.height = 40
 	app.view = ViewDocs
@@ -56,7 +56,7 @@ func TestView_Docs(t *testing.T) {
 
 func TestView_Projects(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 120
 	app.height = 40
 	app.view = ViewProjects
@@ -70,7 +70,7 @@ func TestView_Projects(t *testing.T) {
 
 func TestView_History(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 120
 	app.height = 40
 	app.view = ViewHistory
@@ -86,7 +86,7 @@ func TestView_History(t *testing.T) {
 func TestProjectsKeys_Navigation(t *testing.T) {
 	app := NewApp()
 	app.view = ViewProjects
-	app.ready = true
+	app.boot.Ready = true
 	app.projectNav = &ProjectsState{
 		list:   make([]projects.Project, 3),
 		cursor: 0,
@@ -117,7 +117,7 @@ func TestProjectsKeys_Navigation(t *testing.T) {
 func TestProjectsKeys_NilState(t *testing.T) {
 	app := NewApp()
 	app.view = ViewProjects
-	app.ready = true
+	app.boot.Ready = true
 	app.projectNav = nil
 
 	// Should not panic
@@ -130,7 +130,7 @@ func TestProjectsKeys_NilState(t *testing.T) {
 func TestDocsKeys_Navigation(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDocs
-	app.ready = true
+	app.boot.Ready = true
 	app.docs = newDocsState(120, 40)
 
 	if app.docs == nil || len(app.docs.files) == 0 {
@@ -155,7 +155,7 @@ func TestDocsKeys_Navigation(t *testing.T) {
 func TestDocsKeys_NilState(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDocs
-	app.ready = true
+	app.boot.Ready = true
 	app.docs = nil
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
@@ -166,7 +166,7 @@ func TestDocsKeys_NilState(t *testing.T) {
 
 func TestHandleAgentsLoaded(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 
 	msg := AgentsLoadedMsg{
 		Agents: []agents.Agent{{Name: "numbuh-1"}},
@@ -182,7 +182,7 @@ func TestHandleAgentsLoaded(t *testing.T) {
 
 func TestHandleSpinnerTick(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 
 	// Spinner tick message
 	model, _ := app.Update(app.spinner.Tick())
@@ -193,7 +193,7 @@ func TestHandleSpinnerTick(t *testing.T) {
 
 func TestHandleSystemInfo(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 
 	msg := systemInfoMsg{
 		branch:      "main",
@@ -222,7 +222,7 @@ func TestHandleSystemInfo(t *testing.T) {
 
 func TestHandleTermOutput(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 
 	msg := termOutputMsg{cmd: "ls", output: "file1.go\nfile2.go"}
 	model, _ := app.Update(msg)
@@ -236,7 +236,7 @@ func TestHandleTermOutput(t *testing.T) {
 
 func TestHandleFileChange(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 
 	msg := fileChangeMsg{path: "main.go"}
 	model, _ := app.Update(msg)
@@ -257,7 +257,7 @@ func TestHandleFileChange(t *testing.T) {
 
 func TestHandlePipelineAborted(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.pipeline.State = pipeline.New("test task")
 	app.pipeline.Running = true
 
@@ -274,7 +274,7 @@ func TestHandlePipelineAborted(t *testing.T) {
 func TestDashboardKeys_F1Protocol(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 
@@ -300,7 +300,7 @@ func TestDashboardKeys_F1Protocol(t *testing.T) {
 func TestDashboardKeys_P_Projects(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 
@@ -316,7 +316,7 @@ func TestDashboardKeys_P_Projects(t *testing.T) {
 func TestDashboardKeys_W_Docs(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 
@@ -332,7 +332,7 @@ func TestDashboardKeys_W_Docs(t *testing.T) {
 func TestPipelineDoubleEsc_Abort(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 	app.pipeline.Running = true

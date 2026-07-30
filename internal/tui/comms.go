@@ -115,7 +115,7 @@ func (a App) renderComms() string {
 	} else if a.snippetPick.Active {
 		inputBar = a.renderSnippetPicker()
 	} else if a.comms.streaming {
-		typingAnim := lipgloss.NewStyle().Foreground(a.themeData.Active).Render(a.anim.RenderTyping())
+		typingAnim := lipgloss.NewStyle().Foreground(a.themeData.Active).Render(a.chrome.Anim.RenderTyping())
 		inputBar = inputPrefix + typingAnim + lipgloss.NewStyle().Foreground(a.themeData.Dim).Render(" streaming...")
 	} else {
 		inputBar = inputPrefix + a.commsInput.View()

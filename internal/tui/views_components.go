@@ -26,7 +26,7 @@ func (a App) renderHeader(breadcrumb string) string {
 	right := strings.Join(rightParts, " │ ")
 
 	// Time
-	clock := a.clock
+	clock := a.chrome.Clock
 	if clock != "" {
 		right = clock + "  " + right
 	}
@@ -157,7 +157,7 @@ func (a App) renderSidebar(width int, maxH int) string {
 		if b.Available() {
 			mark = "●"
 			st = lipgloss.NewStyle().Foreground(a.themeData.Active)
-			if a.blink {
+			if a.chrome.Blink {
 				mark = "◉"
 			}
 		}
@@ -178,7 +178,7 @@ func (a App) renderMainPanel(width int, maxH int) string {
 
 	// Terminal/Intel mode
 	borderColor := a.themeData.Info
-	if a.focus == FocusMain {
+	if a.chrome.Focus == FocusMain {
 		borderColor = a.themeData.Active
 	}
 
@@ -255,7 +255,7 @@ func (a App) renderMainPanel(width int, maxH int) string {
 
 func (a App) renderRightPanel(width int, maxH int) string {
 	borderColor := a.themeData.Dim
-	if a.focus == FocusRight {
+	if a.chrome.Focus == FocusRight {
 		borderColor = a.themeData.Active
 	}
 
@@ -264,7 +264,7 @@ func (a App) renderRightPanel(width int, maxH int) string {
 	dimStyle := lipgloss.NewStyle().Foreground(a.themeData.Dim)
 
 	// System Status
-	radar := lipgloss.NewStyle().Foreground(a.themeData.Active).Render(a.anim.RenderRadar())
+	radar := lipgloss.NewStyle().Foreground(a.themeData.Active).Render(a.chrome.Anim.RenderRadar())
 	sysLabel := labelStyle.Render("─ SYSTEM STATUS ")
 	sysLabelW := lipgloss.Width(sysLabel)
 	radarW := lipgloss.Width(radar)
@@ -319,8 +319,8 @@ func (a App) renderRightPanel(width int, maxH int) string {
 	s.WriteString("\n")
 	recentLabel := labelStyle.Render("─ RECENT FILES ")
 	s.WriteString(recentLabel + strings.Repeat("─", max(1, width-lipgloss.Width(recentLabel))) + "\n")
-	if a.fileWatcher != nil && a.fileWatcher.Running() {
-		recent := a.fileWatcher.Recent()
+	if a.infra.Watcher != nil && a.infra.Watcher.Running() {
+		recent := a.infra.Watcher.Recent()
 		if len(recent) == 0 {
 			s.WriteString(dimStyle.Render(" watching...") + "\n")
 		}

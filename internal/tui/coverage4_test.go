@@ -160,7 +160,7 @@ func TestPollAgentDir_ReturnsCmd(t *testing.T) {
 
 func TestPollWatcher_NilWatcher(t *testing.T) {
 	app := NewApp()
-	app.fileWatcher = nil
+	app.infra.Watcher = nil
 	cmd := app.pollWatcher()
 	if cmd != nil {
 		t.Error("expected nil cmd when fileWatcher is nil")
@@ -373,7 +373,7 @@ func TestStartNextPhase_RealBackendExecutes(t *testing.T) {
 func TestHandlePhaseResult_RiskGate_High(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
-	app.ready = true
+	app.boot.Ready = true
 	app.pipeline.State = pipeline.New("test task")
 	for i := 0; i < 3; i++ {
 		app.pipeline.State.Advance()
@@ -399,7 +399,7 @@ func TestHandlePhaseResult_RiskGate_High(t *testing.T) {
 func TestHandlePhaseResult_PipelineComplete(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
-	app.ready = true
+	app.boot.Ready = true
 	app.pipeline.State = pipeline.New("test task")
 	// Advance to the last mandatory phase (Review = phase 5, index 4)
 	for i := 0; i < 4; i++ {
@@ -451,7 +451,7 @@ func TestHandlePhaseResult_ErrorSetsFailedStatus(t *testing.T) {
 func TestHandleDocsKeys_Esc(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDocs
-	app.ready = true
+	app.boot.Ready = true
 	app.docs = newDocsState(100, 40)
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
@@ -464,7 +464,7 @@ func TestHandleDocsKeys_Esc(t *testing.T) {
 func TestHandleDocsKeys_NilDocs(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDocs
-	app.ready = true
+	app.boot.Ready = true
 	app.docs = nil
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
@@ -475,7 +475,7 @@ func TestHandleDocsKeys_NilDocs(t *testing.T) {
 func TestHandleDocsKeys_Navigate(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDocs
-	app.ready = true
+	app.boot.Ready = true
 	app.docs = newDocsState(100, 40)
 
 	// Navigate down
@@ -500,7 +500,7 @@ func TestHandleDocsKeys_Navigate(t *testing.T) {
 func TestHandleDocsKeys_Enter(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDocs
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.docs = newDocsState(100, 40)
@@ -514,7 +514,7 @@ func TestHandleDocsKeys_Enter(t *testing.T) {
 func TestHandleDocsKeys_PageDown(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDocs
-	app.ready = true
+	app.boot.Ready = true
 	app.docs = newDocsState(100, 40)
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
@@ -525,7 +525,7 @@ func TestHandleDocsKeys_PageDown(t *testing.T) {
 func TestHandleDocsKeys_PageUp(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDocs
-	app.ready = true
+	app.boot.Ready = true
 	app.docs = newDocsState(100, 40)
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyPgUp})
@@ -537,7 +537,7 @@ func TestHandleDocsKeys_PageUp(t *testing.T) {
 
 func TestRenderDocs_NilDocs(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.view = ViewDocs
@@ -551,7 +551,7 @@ func TestRenderDocs_NilDocs(t *testing.T) {
 
 func TestRenderDocs_EmptyFiles(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.view = ViewDocs
@@ -565,7 +565,7 @@ func TestRenderDocs_EmptyFiles(t *testing.T) {
 
 func TestRenderDocs_WithFiles(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.view = ViewDocs
@@ -946,7 +946,7 @@ func TestRelayToAgent_EmptyMsgWithHistory(t *testing.T) {
 
 func TestRenderHistory_Full(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.view = ViewHistory
@@ -961,7 +961,7 @@ func TestRenderHistory_Full(t *testing.T) {
 
 func TestRenderPipeline_WithState(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.view = ViewPipeline
@@ -979,7 +979,7 @@ func TestRenderPipeline_WithState(t *testing.T) {
 
 func TestRenderPipeline_NilState(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.view = ViewPipeline
@@ -993,7 +993,7 @@ func TestRenderPipeline_NilState(t *testing.T) {
 
 func TestRenderPipeline_AbortPending(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.view = ViewPipeline
@@ -1024,48 +1024,48 @@ func TestSelectProject_WithDocs(t *testing.T) {
 
 func TestUpdate_ClockTickMsg(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.view = ViewDashboard
 
 	msg := clockTickMsg(time.Now())
 	model, _ := app.Update(msg)
 	result := model.(App)
-	if result.clock == "" {
+	if result.chrome.Clock == "" {
 		t.Error("expected clock to be updated")
 	}
 }
 
 func TestUpdate_BlinkTickMsg(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.view = ViewDashboard
-	app.blink = false
+	app.chrome.Blink = false
 
 	msg := blinkTickMsg(time.Now())
 	model, _ := app.Update(msg)
 	result := model.(App)
-	if !result.blink {
+	if !result.chrome.Blink {
 		t.Error("expected blink to toggle to true")
 	}
 }
 
 func TestUpdate_AnimTickMsg(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.view = ViewDashboard
-	initialFrame := app.anim.frame
+	initialFrame := app.chrome.Anim.frame
 
 	msg := animTickMsg(time.Now())
 	model, _ := app.Update(msg)
 	result := model.(App)
-	if result.anim.frame != initialFrame+1 {
-		t.Errorf("expected frame=%d, got %d", initialFrame+1, result.anim.frame)
+	if result.chrome.Anim.frame != initialFrame+1 {
+		t.Errorf("expected frame=%d, got %d", initialFrame+1, result.chrome.Anim.frame)
 	}
 }
 
 func TestUpdate_CopyDoneMsg(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.view = ViewDossier
 
 	msg := copyDoneMsg{agent: "numbuh-1"}
@@ -1078,7 +1078,7 @@ func TestUpdate_CopyDoneMsg(t *testing.T) {
 
 func TestUpdate_DeployDoneMsg(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.view = ViewDashboard
 
 	msg := deployDoneMsg{agent: "numbuh-3"}
@@ -1099,7 +1099,7 @@ func TestUpdate_DeployDoneMsg(t *testing.T) {
 
 func TestUpdate_GitOutputMsg(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.view = ViewDashboard
 
 	msg := gitOutputMsg{output: "M internal/tui/app.go\nM internal/tui/views.go"}
@@ -1112,7 +1112,7 @@ func TestUpdate_GitOutputMsg(t *testing.T) {
 
 func TestUpdate_SpawnHookMsg(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 
 	msg := spawnHookMsg{agent: "numbuh-4", output: "hook ran ok"}
 	model, _ := app.Update(msg)
@@ -1124,7 +1124,7 @@ func TestUpdate_SpawnHookMsg(t *testing.T) {
 
 func TestUpdate_ToolExitMsg(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 
 	msg := toolExitMsg{tool: "lazygit"}
 	model, _ := app.Update(msg)
@@ -1136,7 +1136,7 @@ func TestUpdate_ToolExitMsg(t *testing.T) {
 
 func TestUpdate_PRCreatedMsg(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 
 	msg := prCreatedMsg{output: "https://github.com/example/pr/1"}
 	model, _ := app.Update(msg)
@@ -1148,7 +1148,7 @@ func TestUpdate_PRCreatedMsg(t *testing.T) {
 
 func TestUpdate_AgentReloadMsg(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.registry = newTestRegistry()
 
 	msg := agentReloadMsg{}
@@ -1159,7 +1159,7 @@ func TestUpdate_AgentReloadMsg(t *testing.T) {
 
 func TestUpdate_TermOutputMsg(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 
 	msg := termOutputMsg{cmd: "ls", output: "file1.go\nfile2.go"}
 	model, _ := app.Update(msg)
@@ -1171,7 +1171,7 @@ func TestUpdate_TermOutputMsg(t *testing.T) {
 
 func TestUpdate_PipelineAbortedMsg(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.pipeline.State = pipeline.New("test")
 	app.pipeline.Running = true
 	ctx, cancel := context.WithCancel(context.Background())
@@ -1223,7 +1223,7 @@ func TestIsSafeHookCommand(t *testing.T) {
 
 func TestView_NotReady(t *testing.T) {
 	app := NewApp()
-	app.ready = false
+	app.boot.Ready = false
 	result := app.View()
 	if result == "" {
 		t.Error("expected non-empty output for not-ready state")
@@ -1232,11 +1232,11 @@ func TestView_NotReady(t *testing.T) {
 
 func TestView_BootView(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 80
 	app.height = 30
 	app.view = ViewBoot
-	app.bootStep = 3
+	app.boot.Step = 3
 
 	result := app.View()
 	if result == "" {
@@ -1246,7 +1246,7 @@ func TestView_BootView(t *testing.T) {
 
 func TestView_HistoryView(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.view = ViewHistory
@@ -1259,7 +1259,7 @@ func TestView_HistoryView(t *testing.T) {
 
 func TestView_DocsView(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.view = ViewDocs
@@ -1273,7 +1273,7 @@ func TestView_DocsView(t *testing.T) {
 
 func TestView_ProjectsView(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.view = ViewProjects
@@ -1287,7 +1287,7 @@ func TestView_ProjectsView(t *testing.T) {
 
 func TestView_ProtocolView(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.view = ViewProtocol
@@ -1300,7 +1300,7 @@ func TestView_ProtocolView(t *testing.T) {
 
 func TestView_MissionView(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.view = ViewMission
@@ -1315,7 +1315,7 @@ func TestView_MissionView(t *testing.T) {
 
 func TestRenderHeader_Wide(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 200
 	app.height = 40
 	app.registry = newTestRegistry()
@@ -1328,7 +1328,7 @@ func TestRenderHeader_Wide(t *testing.T) {
 
 func TestRenderSidebar_WithFiltered(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 120
 	app.height = 40
 	app.registry = newTestRegistry()
@@ -1343,7 +1343,7 @@ func TestRenderSidebar_WithFiltered(t *testing.T) {
 
 func TestRenderMainPanel_DossierView(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 120
 	app.height = 40
 	app.view = ViewDossier
@@ -1358,7 +1358,7 @@ func TestRenderMainPanel_DossierView(t *testing.T) {
 
 func TestRenderRightPanel_Pipeline(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 120
 	app.height = 40
 	app.pipeline.State = pipeline.New("test")
@@ -1375,7 +1375,7 @@ func TestRenderRightPanel_Pipeline(t *testing.T) {
 func TestCommsKeys_RelayPrefix_NoHistory(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.registry = newTestRegistry()
@@ -1396,7 +1396,7 @@ func TestCommsKeys_RelayPrefix_NoHistory(t *testing.T) {
 func TestDossierKeys_T_SpawnHook(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDossier
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 	app.registry = newTestRegistry()
@@ -1413,7 +1413,7 @@ func TestDossierKeys_T_SpawnHook(t *testing.T) {
 func TestDashboardKeys_LaunchTools(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 
@@ -1431,7 +1431,7 @@ func TestDashboardKeys_LaunchTools(t *testing.T) {
 func TestDashboardKeys_ViewSwitching(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 	app.width = 100
@@ -1466,7 +1466,7 @@ func TestDashboardKeys_ViewSwitching(t *testing.T) {
 func TestBootTick_NonBootView(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 
 	model, _ := app.Update(bootTickMsg{})
 	result := model.(App)

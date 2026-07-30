@@ -69,7 +69,7 @@ func (a App) handleDashboardKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				a.dashboard.Cursor--
 			}
 			a.dashboard.Selected = a.dashboard.Cursor
-			a.anim.TriggerSelectPulse()
+			a.chrome.Anim.TriggerSelectPulse()
 		}
 	case key.Matches(msg, a.keys.Down):
 		if a.view == ViewDashboard || a.view == ViewDossier {
@@ -77,12 +77,12 @@ func (a App) handleDashboardKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				a.dashboard.Cursor++
 			}
 			a.dashboard.Selected = a.dashboard.Cursor
-			a.anim.TriggerSelectPulse()
+			a.chrome.Anim.TriggerSelectPulse()
 		}
 	case key.Matches(msg, a.keys.Enter):
 		if a.view == ViewDashboard {
 			a.view = ViewDossier
-			a.anim.TriggerReveal()
+			a.chrome.Anim.TriggerReveal()
 		} else if a.view == ViewDossier {
 			return a, a.deployAgent()
 		}
@@ -111,7 +111,7 @@ func (a App) handleDashboardKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, a.keys.GitStatus):
 		return a, a.runGitCmd("git status --short")
 	case key.Matches(msg, a.keys.Tab):
-		a.focus = (a.focus + 1) % 3
+		a.chrome.Focus = (a.chrome.Focus + 1) % 3
 	case key.Matches(msg, a.keys.LaunchLazygit):
 		return a, a.launchTool("lazygit")
 	case key.Matches(msg, a.keys.LaunchBtop):
@@ -123,22 +123,22 @@ func (a App) handleDashboardKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, a.keys.LaunchFish):
 		return a, a.launchTool("fish")
 	case key.Matches(msg, a.keys.ToggleWatcher):
-		if a.fileWatcher != nil {
-			if a.fileWatcher.Running() {
-				a.fileWatcher.Stop()
+		if a.infra.Watcher != nil {
+			if a.infra.Watcher.Running() {
+				a.infra.Watcher.Stop()
 				a.addIntel("File watcher stopped.")
 			} else {
 				cwd, _ := os.Getwd()
 				fw, _ := watcher.New()
 				if fw != nil {
 					fw.Start(cwd)
-					a.fileWatcher = fw
+					a.infra.Watcher = fw
 					a.addIntel("File watcher started: %s", cwd)
 				}
 			}
 		}
 	case key.Matches(msg, a.keys.CreatePR):
-		if a.ctx.IsPersonal() {
+		if a.infra.Ctx.IsPersonal() {
 			return a, a.createPR()
 		}
 		a.addIntel("PR: not available in this context.")

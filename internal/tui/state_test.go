@@ -10,37 +10,37 @@ import (
 func TestApp_FocusCycle(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 
-	if app.focus != FocusSidebar {
-		t.Fatalf("expected initial focus=FocusSidebar, got %d", app.focus)
+	if app.chrome.Focus != FocusSidebar {
+		t.Fatalf("expected initial focus=FocusSidebar, got %d", app.chrome.Focus)
 	}
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyTab})
 	result := model.(App)
-	if result.focus != FocusMain {
-		t.Errorf("expected FocusMain after first tab, got %d", result.focus)
+	if result.chrome.Focus != FocusMain {
+		t.Errorf("expected FocusMain after first tab, got %d", result.chrome.Focus)
 	}
 
 	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyTab})
 	result = model.(App)
-	if result.focus != FocusRight {
-		t.Errorf("expected FocusRight after second tab, got %d", result.focus)
+	if result.chrome.Focus != FocusRight {
+		t.Errorf("expected FocusRight after second tab, got %d", result.chrome.Focus)
 	}
 
 	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyTab})
 	result = model.(App)
-	if result.focus != FocusSidebar {
-		t.Errorf("expected FocusSidebar after third tab (wrap), got %d", result.focus)
+	if result.chrome.Focus != FocusSidebar {
+		t.Errorf("expected FocusSidebar after third tab (wrap), got %d", result.chrome.Focus)
 	}
 }
 
 func TestApp_ThemeCycleAll(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 
@@ -58,7 +58,7 @@ func TestApp_ThemeCycleAll(t *testing.T) {
 func TestApp_SearchFilter(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 	app.registry = newTestRegistry()
@@ -99,7 +99,7 @@ func TestApp_SearchFilter(t *testing.T) {
 func TestApp_SearchEnter(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 	app.registry = newTestRegistry()
@@ -131,7 +131,7 @@ func TestApp_SearchEnter(t *testing.T) {
 func TestApp_CursorBounds(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 	app.registry = newTestRegistry()
@@ -169,12 +169,12 @@ func TestApp_CursorBounds(t *testing.T) {
 
 func TestApp_WindowResize(t *testing.T) {
 	app := NewApp()
-	app.ready = false
+	app.boot.Ready = false
 
 	model, _ := app.Update(tea.WindowSizeMsg{Width: 200, Height: 50})
 	result := model.(App)
 
-	if !result.ready {
+	if !result.boot.Ready {
 		t.Error("expected ready=true after WindowSizeMsg")
 	}
 	if result.width != 200 {

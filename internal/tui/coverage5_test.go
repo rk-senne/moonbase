@@ -22,7 +22,7 @@ import (
 
 func TestRenderDocs_WithLoadedContent(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 120
 	app.height = 40
 	app.view = ViewDocs
@@ -43,7 +43,7 @@ func TestRenderDocs_WithLoadedContent(t *testing.T) {
 
 func TestRenderDocs_CursorAtZero(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 80
 	app.height = 30
 	app.view = ViewDocs
@@ -65,7 +65,7 @@ func TestRenderDocs_CursorAtZero(t *testing.T) {
 
 func TestRenderPipeline_AllPhaseStatuses(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 120
 	app.height = 50
 	app.view = ViewPipeline
@@ -107,7 +107,7 @@ func TestRenderPipeline_AllPhaseStatuses(t *testing.T) {
 
 func TestRenderPipeline_RiskCritical(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.view = ViewPipeline
@@ -125,7 +125,7 @@ func TestRenderPipeline_RiskCritical(t *testing.T) {
 
 func TestRenderPipeline_RiskLow(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.view = ViewPipeline
@@ -143,7 +143,7 @@ func TestRenderPipeline_RiskLow(t *testing.T) {
 
 func TestRenderPipeline_RiskHigh(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.view = ViewPipeline
@@ -162,7 +162,7 @@ func TestRenderPipeline_RiskHigh(t *testing.T) {
 
 func TestRenderPipeline_ManyMessages(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 20 // small height to trigger scroll
 	app.view = ViewPipeline
@@ -183,14 +183,14 @@ func TestRenderPipeline_ManyMessages(t *testing.T) {
 
 func TestRenderHeader_WithBackendAndProject(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 120
 	app.height = 40
 	app.activeBackend = &mockBackend{name: "kiro-cli", available: true}
 	app.projectCtx = &discovery.ProjectContext{
 		Stack: discovery.StackInfo{Language: "Go", BuildTool: "make"},
 	}
-	app.clock = "14:30:22"
+	app.chrome.Clock = "14:30:22"
 
 	result := app.renderHeader("Test Breadcrumb")
 	if result == "" {
@@ -200,14 +200,14 @@ func TestRenderHeader_WithBackendAndProject(t *testing.T) {
 
 func TestRenderHeader_NarrowWidth(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 30 // Very narrow
 	app.height = 40
 	app.activeBackend = &mockBackend{name: "kiro-cli", available: true}
 	app.projectCtx = &discovery.ProjectContext{
 		Stack: discovery.StackInfo{Language: "Go", BuildTool: "make"},
 	}
-	app.clock = "14:30:22"
+	app.chrome.Clock = "14:30:22"
 
 	result := app.renderHeader("Very Long Breadcrumb That Will Exceed Width")
 	if result == "" {
@@ -217,7 +217,7 @@ func TestRenderHeader_NarrowWidth(t *testing.T) {
 
 func TestRenderHeader_PipelineRunning(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.pipeline.Running = true
@@ -233,7 +233,7 @@ func TestRenderHeader_PipelineRunning(t *testing.T) {
 
 func TestRenderSidebar_NarrowWidth(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 60
 	app.height = 40
 	app.registry = newTestRegistry()
@@ -247,7 +247,7 @@ func TestRenderSidebar_NarrowWidth(t *testing.T) {
 
 func TestRenderSidebar_DossierView(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 120
 	app.height = 40
 	app.registry = newTestRegistry()
@@ -263,7 +263,7 @@ func TestRenderSidebar_DossierView(t *testing.T) {
 
 func TestRenderSidebar_WithMissions(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 120
 	app.height = 40
 	app.registry = newTestRegistry()
@@ -284,7 +284,7 @@ func TestRenderSidebar_WithMissions(t *testing.T) {
 
 func TestRenderMainPanel_BrowsingMode(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 120
 	app.height = 40
 	app.browsing = true
@@ -298,12 +298,12 @@ func TestRenderMainPanel_BrowsingMode(t *testing.T) {
 
 func TestRenderMainPanel_TermActive(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.browsing = false
 	app.terminal.Active = true
-	app.focus = FocusMain
+	app.chrome.Focus = FocusMain
 	app.intel = []IntelEntry{
 		{Time: "14:00", Message: "System online"},
 		{Time: "14:01", Message: "Agent deployed"},
@@ -318,7 +318,7 @@ func TestRenderMainPanel_TermActive(t *testing.T) {
 
 func TestRenderMainPanel_EmptyIntel(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.browsing = false
@@ -334,7 +334,7 @@ func TestRenderMainPanel_EmptyIntel(t *testing.T) {
 
 func TestRenderMainPanel_ManyLines(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 20
 	app.browsing = false
@@ -355,10 +355,10 @@ func TestRenderMainPanel_ManyLines(t *testing.T) {
 
 func TestRenderRightPanel_FocusRight(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 120
 	app.height = 40
-	app.focus = FocusRight
+	app.chrome.Focus = FocusRight
 	app.registry = newTestRegistry()
 	app.system.Branch = "feature/test"
 	app.system.Clean = false
@@ -381,7 +381,7 @@ func TestRenderRightPanel_FocusRight(t *testing.T) {
 
 func TestRenderRightPanel_HighDiffLines(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 120
 	app.height = 40
 	app.registry = newTestRegistry()
@@ -395,7 +395,7 @@ func TestRenderRightPanel_HighDiffLines(t *testing.T) {
 
 func TestRenderRightPanel_MediumDiffLines(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 120
 	app.height = 40
 	app.registry = newTestRegistry()
@@ -409,7 +409,7 @@ func TestRenderRightPanel_MediumDiffLines(t *testing.T) {
 
 func TestRenderRightPanel_HighDiff(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 120
 	app.height = 40
 	app.registry = newTestRegistry()
@@ -423,7 +423,7 @@ func TestRenderRightPanel_HighDiff(t *testing.T) {
 
 func TestRenderRightPanel_NoMissions(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 120
 	app.height = 40
 	app.registry = newTestRegistry()
@@ -450,7 +450,7 @@ func TestRenderHistory_WithContent(t *testing.T) {
 	}
 
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.view = ViewHistory
@@ -475,7 +475,7 @@ func TestRenderHistory_WithContent(t *testing.T) {
 
 func TestRender3Col_NarrowWidth(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 55 // mainW would be < 20, falls back to 2col
 	app.height = 40
 	app.registry = newTestRegistry()
@@ -488,7 +488,7 @@ func TestRender3Col_NarrowWidth(t *testing.T) {
 
 func TestRender3Col_WideWidth(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 160
 	app.height = 40
 	app.registry = newTestRegistry()
@@ -503,7 +503,7 @@ func TestRender3Col_WideWidth(t *testing.T) {
 
 func TestRender2Col_NarrowWidth(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 40 // mainW calc goes below 20
 	app.height = 40
 	app.registry = newTestRegistry()
@@ -516,7 +516,7 @@ func TestRender2Col_NarrowWidth(t *testing.T) {
 
 func TestRender2Col_WideWidth(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 120
 	app.height = 40
 	app.registry = newTestRegistry()
@@ -532,7 +532,7 @@ func TestRender2Col_WideWidth(t *testing.T) {
 
 func TestRenderDossier_AgentWithHooks(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 120
 	app.height = 40
 	app.view = ViewDossier
@@ -556,7 +556,7 @@ func TestRenderDossier_AgentWithHooks(t *testing.T) {
 
 func TestRenderDossier_AgentWithShortcut(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 120
 	app.height = 40
 	app.view = ViewDossier
@@ -580,7 +580,7 @@ func TestRenderDossier_AgentWithShortcut(t *testing.T) {
 
 func TestRenderDossier_NarrowWidth(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 60
 	app.height = 30
 	app.view = ViewDossier
@@ -966,7 +966,7 @@ func TestLoadDoc_WithTempFile(t *testing.T) {
 func TestHandlePhaseResult_RiskMedium(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
-	app.ready = true
+	app.boot.Ready = true
 	app.pipeline.State = pipeline.New("medium risk test")
 	for i := 0; i < 3; i++ {
 		app.pipeline.State.Advance()
@@ -994,7 +994,7 @@ func TestHandlePhaseResult_RiskMedium(t *testing.T) {
 func TestHandlePipelineAdvance_WithState(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 	app.pipeline.State = pipeline.New("advance test")
@@ -1019,7 +1019,7 @@ func TestHandleProjectsKeys_Enter(t *testing.T) {
 	tmpDir := t.TempDir()
 	app := NewApp()
 	app.view = ViewProjects
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.projectNav = &ProjectsState{
@@ -1037,7 +1037,7 @@ func TestHandleProjectsKeys_Enter(t *testing.T) {
 func TestHandleProjectsKeys_M(t *testing.T) {
 	app := NewApp()
 	app.view = ViewProjects
-	app.ready = true
+	app.boot.Ready = true
 	app.projectNav = &ProjectsState{
 		list:   []projects.Project{{Name: "test", Path: "/tmp", Type: "go"}},
 		cursor: 0,
@@ -1052,7 +1052,7 @@ func TestHandleProjectsKeys_M(t *testing.T) {
 func TestHandleProjectsKeys_F(t *testing.T) {
 	app := NewApp()
 	app.view = ViewProjects
-	app.ready = true
+	app.boot.Ready = true
 	app.projectNav = &ProjectsState{
 		list:   []projects.Project{{Name: "test", Path: "/tmp", Type: "go"}},
 		cursor: 0,
@@ -1069,7 +1069,7 @@ func TestHandleProjectsKeys_F(t *testing.T) {
 func TestHandleDocsKeys_PgDown(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDocs
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.docs = &DocsState{
@@ -1089,7 +1089,7 @@ func TestHandleDocsKeys_PgDown(t *testing.T) {
 func TestHandleDocsKeys_PgUp(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDocs
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.docs = &DocsState{
@@ -1111,10 +1111,10 @@ func TestHandleDocsKeys_PgUp(t *testing.T) {
 func TestDashboardKeys_W_FileWatcher(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
-	app.fileWatcher = nil // nil watcher, should not panic
+	app.infra.Watcher = nil // nil watcher, should not panic
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'w'}})
 	result := model.(App)
@@ -1124,10 +1124,10 @@ func TestDashboardKeys_W_FileWatcher(t *testing.T) {
 func TestDashboardKeys_P_NotPersonal(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
-	app.ctx = platform.Context(1) // Work context
+	app.infra.Ctx = platform.Context(1) // Work context
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'P'}})
 	result := model.(App)
@@ -1146,10 +1146,10 @@ func TestDashboardKeys_P_NotPersonal(t *testing.T) {
 func TestDashboardKeys_P_Personal(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
-	app.ctx = platform.Context(0) // Personal context
+	app.infra.Ctx = platform.Context(0) // Personal context
 
 	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'P'}})
 	if cmd == nil {
@@ -1160,7 +1160,7 @@ func TestDashboardKeys_P_Personal(t *testing.T) {
 func TestDashboardKeys_NumberKeys(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 	app.registry = newTestRegistry()
@@ -1178,7 +1178,7 @@ func TestDashboardKeys_NumberKeys(t *testing.T) {
 func TestDashboardKeys_G_GitStatusCmd(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 
@@ -1191,7 +1191,7 @@ func TestDashboardKeys_G_GitStatusCmd(t *testing.T) {
 func TestDashboardKeys_D_GitDiffCmd(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 
@@ -1204,7 +1204,7 @@ func TestDashboardKeys_D_GitDiffCmd(t *testing.T) {
 func TestDashboardKeys_F1_Protocol(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 
@@ -1219,16 +1219,16 @@ func TestDashboardKeys_F1_Protocol(t *testing.T) {
 
 func TestBootTick_AdvancesToTypewriter(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.view = ViewBoot
-	app.bootStep = len(bootMessages) - 2
+	app.boot.Step = len(bootMessages) - 2
 
 	model, cmd := app.Update(bootTickMsg{})
 	result := model.(App)
-	if result.bootStep != len(bootMessages)-1 {
-		t.Errorf("expected bootStep=%d, got %d", len(bootMessages)-1, result.bootStep)
+	if result.boot.Step != len(bootMessages)-1 {
+		t.Errorf("expected bootStep=%d, got %d", len(bootMessages)-1, result.boot.Step)
 	}
-	if result.anim.typewriterAt == 0 {
+	if result.chrome.Anim.typewriterAt == 0 {
 		t.Error("expected typewriter to be triggered")
 	}
 	// Should return bootDone cmd since this is the last message
@@ -1237,14 +1237,14 @@ func TestBootTick_AdvancesToTypewriter(t *testing.T) {
 
 func TestBootTick_CompletesBootSequence(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.view = ViewBoot
-	app.bootStep = len(bootMessages) - 1
+	app.boot.Step = len(bootMessages) - 1
 
 	model, cmd := app.Update(bootTickMsg{})
 	result := model.(App)
-	if result.bootStep != len(bootMessages) {
-		t.Errorf("expected bootStep=%d, got %d", len(bootMessages), result.bootStep)
+	if result.boot.Step != len(bootMessages) {
+		t.Errorf("expected bootStep=%d, got %d", len(bootMessages), result.boot.Step)
 	}
 	if cmd == nil {
 		t.Error("expected bootDone cmd")
@@ -1325,7 +1325,7 @@ func Test_generateCascade(t *testing.T) {
 
 func TestRenderDashboard_WideLayout(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 160
 	app.height = 40
 	app.view = ViewDashboard
@@ -1341,7 +1341,7 @@ func TestRenderDashboard_WideLayout(t *testing.T) {
 
 func TestRenderDashboard_MediumLayout(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.view = ViewDashboard
@@ -1356,7 +1356,7 @@ func TestRenderDashboard_MediumLayout(t *testing.T) {
 
 func TestRenderDashboard_NarrowLayout(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 60
 	app.height = 40
 	app.view = ViewDashboard
@@ -1371,7 +1371,7 @@ func TestRenderDashboard_NarrowLayout(t *testing.T) {
 
 func TestRenderDashboard_Searching(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.view = ViewDashboard
@@ -1387,7 +1387,7 @@ func TestRenderDashboard_Searching(t *testing.T) {
 
 func TestRenderDashboard_Browsing(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.view = ViewDashboard
@@ -1403,7 +1403,7 @@ func TestRenderDashboard_Browsing(t *testing.T) {
 
 func TestRenderDashboard_TermActive(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.view = ViewDashboard
@@ -1461,7 +1461,7 @@ func TestRenderThreatGauge_VeryNarrow(t *testing.T) {
 
 func TestRenderComms_StreamingMode(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.view = ViewComms
@@ -1479,7 +1479,7 @@ func TestRenderComms_StreamingMode(t *testing.T) {
 
 func TestHandleStreamChunk_NilComms(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.comms = nil
 
 	model, _ := app.Update(streamChunkMsg{text: "hello"})
@@ -1489,7 +1489,7 @@ func TestHandleStreamChunk_NilComms(t *testing.T) {
 
 func TestHandleStreamChunk_Error(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.comms.streaming = true
 
@@ -1502,7 +1502,7 @@ func TestHandleStreamChunk_Error(t *testing.T) {
 
 func TestHandleStreamChunk_Done(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.comms.streaming = true
 	app.comms.buffer = "completed response"
@@ -1530,7 +1530,7 @@ func TestAddIntel_Overflow(t *testing.T) {
 
 func TestRenderProjects_WithList(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.view = ViewProjects
@@ -1553,7 +1553,7 @@ func TestRenderProjects_WithList(t *testing.T) {
 
 func TestRenderProjects_NilNav(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.view = ViewProjects
@@ -1595,7 +1595,7 @@ func TestExtractPersonality_NotFound(t *testing.T) {
 func TestHandleSearchKeys_Esc(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.search.Active = true
 	app.search.Input.Focus()
 	app.search.Input.SetValue("test")
@@ -1615,7 +1615,7 @@ func TestHandleSearchKeys_Esc(t *testing.T) {
 func TestHandleSearchKeys_EnterWithResults(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.search.Active = true
 	app.search.Input.Focus()
 	app.search.Input.SetValue("numbuh")
@@ -1638,7 +1638,7 @@ func TestHandleSearchKeys_EnterWithResults(t *testing.T) {
 func TestHandleSearchKeys_EnterNoResults(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.search.Active = true
 	app.search.Input.Focus()
 	app.search.Filtered = nil
@@ -1654,7 +1654,7 @@ func TestHandleSearchKeys_EnterNoResults(t *testing.T) {
 func TestHandleSearchKeys_Typing(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.search.Active = true
 	app.search.Input.Focus()
 	app.registry = newTestRegistry()
@@ -1708,7 +1708,7 @@ func TestFileBrowser_SelectedIsFile_OutOfBounds(t *testing.T) {
 
 func TestRenderHistory_WithMissions(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.view = ViewHistory
@@ -1779,7 +1779,7 @@ func Test_portraitFor_Various(t *testing.T) {
 
 func TestRenderComms_ContextFile(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.view = ViewComms
@@ -1797,7 +1797,7 @@ func TestRenderComms_ContextFile(t *testing.T) {
 
 func TestRenderComms_SnippetPicker(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.view = ViewComms
@@ -1852,7 +1852,7 @@ func TestCommsKeys_ContextFile_EnterValid(t *testing.T) {
 
 	app := NewApp()
 	app.view = ViewComms
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
@@ -1870,7 +1870,7 @@ func TestCommsKeys_ContextFile_EnterValid(t *testing.T) {
 func TestCommsKeys_ContextFile_EnterInvalid(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
@@ -1893,7 +1893,7 @@ func TestCommsKeys_AtAgent(t *testing.T) {
 
 	app := NewApp()
 	app.view = ViewComms
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.registry = newTestRegistry()
@@ -1917,7 +1917,7 @@ func TestCommsKeys_AtAgent(t *testing.T) {
 
 func TestUptime(t *testing.T) {
 	app := NewApp()
-	app.startTime = time.Now().Add(-time.Hour - 2*time.Minute - 30*time.Second)
+	app.chrome.StartTime = time.Now().Add(-time.Hour - 2*time.Minute - 30*time.Second)
 	result := app.uptime()
 	if result == "" {
 		t.Error("expected non-empty uptime")
@@ -1929,7 +1929,7 @@ func TestUptime(t *testing.T) {
 func TestTerminalKeys_BacktickToFB(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = true
 	app.terminal.Input.Focus()
@@ -1949,7 +1949,7 @@ func TestTerminalKeys_BacktickToFB(t *testing.T) {
 func TestTerminalKeys_DefaultChar(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = true
 	app.terminal.Input.Focus()
@@ -1966,7 +1966,7 @@ func TestTerminalKeys_DefaultChar(t *testing.T) {
 func TestFileBrowserKeys_BacktickToTerm(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = true
 	app.terminal.Active = false
 	app.fileBrowser = newFileBrowser()
@@ -1986,7 +1986,7 @@ func TestFileBrowserKeys_BacktickToTerm(t *testing.T) {
 func TestFileBrowserKeys_Edit(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = true
 	app.fileBrowser = newFileBrowser()
 
@@ -2008,7 +2008,7 @@ func TestFileBrowserKeys_Edit(t *testing.T) {
 func TestFileBrowserKeys_DotRefresh(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = true
 	app.fileBrowser = newFileBrowser()
 
@@ -2022,7 +2022,7 @@ func TestFileBrowserKeys_DotRefresh(t *testing.T) {
 func TestCommsKeys_CtrlS(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
@@ -2040,7 +2040,7 @@ func TestCommsKeys_CtrlS(t *testing.T) {
 func TestCommsKeys_CtrlF(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
@@ -2058,7 +2058,7 @@ func TestCommsKeys_CtrlF(t *testing.T) {
 func TestCommsKeys_ContextFile_Esc(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
@@ -2077,7 +2077,7 @@ func TestCommsKeys_ContextFile_Esc(t *testing.T) {
 func TestCommsKeys_ContextFile_Typing(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
@@ -2096,7 +2096,7 @@ func TestCommsKeys_ContextFile_Typing(t *testing.T) {
 func TestCommsKeys_EscBack(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
@@ -2114,7 +2114,7 @@ func TestCommsKeys_EscBack(t *testing.T) {
 func TestCommsKeys_CtrlC(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
@@ -2131,7 +2131,7 @@ func TestCommsKeys_CtrlC(t *testing.T) {
 func TestCommsKeys_Typing(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
@@ -2149,7 +2149,7 @@ func TestCommsKeys_Typing(t *testing.T) {
 func TestCommsKeys_StreamingBlocked(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
@@ -2244,11 +2244,11 @@ func TestFileIcon_AllTypes(t *testing.T) {
 
 func TestRenderRightPanel_WatcherNoEvents(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 120
 	app.height = 40
 	app.registry = newTestRegistry()
-	app.fileWatcher = nil // no watcher
+	app.infra.Watcher = nil // no watcher
 
 	result := app.renderRightPanel(30, 30)
 	if result == "" {
@@ -2296,11 +2296,11 @@ func TestCycleTheme_FullCycle(t *testing.T) {
 
 func TestRenderBoot_Step0(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 80
 	app.height = 30
 	app.view = ViewBoot
-	app.bootStep = 0
+	app.boot.Step = 0
 
 	result := app.renderBoot()
 	if result == "" {
@@ -2310,11 +2310,11 @@ func TestRenderBoot_Step0(t *testing.T) {
 
 func TestRenderBoot_Step2_Cascade(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 80
 	app.height = 30
 	app.view = ViewBoot
-	app.bootStep = 2
+	app.boot.Step = 2
 
 	result := app.renderBoot()
 	if result == "" {
@@ -2324,11 +2324,11 @@ func TestRenderBoot_Step2_Cascade(t *testing.T) {
 
 func TestRenderBoot_Step5_NoMoreCascade(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 80
 	app.height = 30
 	app.view = ViewBoot
-	app.bootStep = 5
+	app.boot.Step = 5
 
 	result := app.renderBoot()
 	if result == "" {
@@ -2338,12 +2338,12 @@ func TestRenderBoot_Step5_NoMoreCascade(t *testing.T) {
 
 func TestRenderBoot_LastStep_Typewriter(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 80
 	app.height = 30
 	app.view = ViewBoot
-	app.bootStep = len(bootMessages)
-	app.anim.TriggerTypewriter()
+	app.boot.Step = len(bootMessages)
+	app.chrome.Anim.TriggerTypewriter()
 
 	result := app.renderBoot()
 	if result == "" {
@@ -2444,12 +2444,12 @@ func TestSwitchCommsAgent_FoundReal(t *testing.T) {
 
 func TestRenderSidebar_BlinkTrue(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 120
 	app.height = 40
 	app.registry = newTestRegistry()
 	app.view = ViewDashboard
-	app.blink = true
+	app.chrome.Blink = true
 	app.backends = nil
 
 	result := app.renderSidebar(24, 30)
@@ -2462,7 +2462,7 @@ func TestRenderSidebar_BlinkTrue(t *testing.T) {
 
 func TestRenderRightPanel_DockerRunning(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 120
 	app.height = 40
 	app.registry = newTestRegistry()
@@ -2481,7 +2481,7 @@ func TestRenderRightPanel_DockerRunning(t *testing.T) {
 
 func TestRender1Col(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 60
 	app.height = 40
 	app.registry = newTestRegistry()
@@ -2497,7 +2497,7 @@ func TestRender1Col(t *testing.T) {
 
 func TestRenderPipeline_SmallHeight(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 14 // maxLines = height-12 = 2 < 5, so maxLines becomes 5
 	app.view = ViewPipeline
@@ -2523,7 +2523,7 @@ func TestRenderPipeline_SmallHeight(t *testing.T) {
 
 func TestRenderPipeline_RiskGateMessages(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 50
 	app.view = ViewPipeline
@@ -2553,7 +2553,7 @@ func TestRenderPipeline_RiskGateMessages(t *testing.T) {
 
 func TestRenderHeader_WithSpecs(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 120
 	app.height = 40
 	app.activeBackend = &mockBackend{name: "test", available: true}
@@ -2561,7 +2561,7 @@ func TestRenderHeader_WithSpecs(t *testing.T) {
 		Stack: discovery.StackInfo{Language: "Go", BuildTool: "make"},
 		Specs: []discovery.SpecFile{{Feature: "test", Type: "requirements", Path: "/tmp/spec.md"}},
 	}
-	app.clock = "15:00:00"
+	app.chrome.Clock = "15:00:00"
 
 	result := app.renderHeader("With Specs")
 	if result == "" {
@@ -2573,7 +2573,7 @@ func TestRenderHeader_WithSpecs(t *testing.T) {
 
 func TestRenderDossier_LongHookCommand(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 80 // narrow to trigger truncation
 	app.height = 40
 	app.view = ViewDossier
@@ -2592,7 +2592,7 @@ func TestRenderDossier_LongHookCommand(t *testing.T) {
 func TestCommsKeys_SnippetPicker_Enter(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
@@ -2609,7 +2609,7 @@ func TestCommsKeys_SnippetPicker_Enter(t *testing.T) {
 func TestCommsKeys_SnippetPicker_Esc(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
@@ -2625,7 +2625,7 @@ func TestCommsKeys_SnippetPicker_Esc(t *testing.T) {
 func TestCommsKeys_SnippetPicker_Navigate(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
@@ -2648,7 +2648,7 @@ func TestCommsKeys_SnippetPicker_Navigate(t *testing.T) {
 func TestCommsKeys_DoubleArrow_NoSpace(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.registry = newTestRegistry()
@@ -2681,7 +2681,7 @@ func TestFileBrowser_UpdatePreview(t *testing.T) {
 
 func TestRenderProjects_EmptyList(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.view = ViewProjects
@@ -2815,7 +2815,7 @@ func TestFileBrowser_CursorOverflow(t *testing.T) {
 
 func TestRenderFileBrowser_ManyEntries(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 20
 	app.browsing = true
@@ -2867,7 +2867,7 @@ func TestLoadDoc_NonexistentPath(t *testing.T) {
 
 func TestRenderDashboard_AllStatusModes(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.registry = newTestRegistry()
@@ -2903,7 +2903,7 @@ func TestRenderDashboard_AllStatusModes(t *testing.T) {
 
 func TestHandleSystemInfo_Coverage(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 
 	msg := systemInfoMsg{
 		branch:      "feature/test",
@@ -2932,7 +2932,7 @@ func TestHandleSystemInfo_Coverage(t *testing.T) {
 func TestCommsKeys_SnippetPicker_EnterWithItems(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
@@ -2955,7 +2955,7 @@ func TestRenderFileBrowser_WithDirs(t *testing.T) {
 	os.WriteFile(filepath.Join(tmpDir, "main.go"), []byte("package main"), 0644)
 
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 30
 	app.browsing = true
@@ -2977,7 +2977,7 @@ func TestFileBrowserKeys_EditFile(t *testing.T) {
 
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = true
 	app.fileBrowser = &FileBrowser{dir: tmpDir}
 	app.fileBrowser.refresh()
@@ -3060,7 +3060,7 @@ func Test_renderMarkdown_EmptyString(t *testing.T) {
 func TestRenderStatusBar_Narrow(t *testing.T) {
 	app := NewApp()
 	app.width = 20 // very narrow
-	app.startTime = time.Now()
+	app.chrome.StartTime = time.Now()
 
 	result := app.renderStatusBar("keys")
 	if result == "" {
@@ -3098,7 +3098,7 @@ func TestRenderFileBrowser_TinyHeight(t *testing.T) {
 	os.Mkdir(filepath.Join(tmpDir, "src"), 0755)
 
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 80
 	app.height = 10
 	app.browsing = true
@@ -3127,7 +3127,7 @@ func TestRenderFileBrowser_LongPreview(t *testing.T) {
 	os.WriteFile(filepath.Join(tmpDir, "long.txt"), []byte(content), 0644)
 
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 60
 	app.height = 10
 	app.browsing = true
@@ -3156,7 +3156,7 @@ func TestRenderFileBrowser_LongFileName(t *testing.T) {
 	os.WriteFile(filepath.Join(tmpDir, longName), []byte("package x"), 0644)
 
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 60
 	app.height = 20
 	app.browsing = true
@@ -3178,7 +3178,7 @@ func TestDocsView_EnterLoadsDoc(t *testing.T) {
 
 	app := NewApp()
 	app.view = ViewDocs
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.docs = &DocsState{
@@ -3256,7 +3256,7 @@ func TestNewApp_WithHistoryData(t *testing.T) {
 func TestDashboardKeys_QuitWithPipeline(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 	app.pipeline.State = pipeline.New("test")
@@ -3278,7 +3278,7 @@ func TestDashboardKeys_QuitWithPipeline(t *testing.T) {
 func TestDashboardKeys_DoubleEscAbort(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 	app.pipeline.State = pipeline.New("abort test")
@@ -3306,7 +3306,7 @@ func TestDashboardKeys_DoubleEscAbort(t *testing.T) {
 func TestDashboardKeys_C_CopyInDossier(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDossier
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 	app.registry = newTestRegistry()
@@ -3325,7 +3325,7 @@ func TestDashboardKeys_C_CopyInDossier(t *testing.T) {
 
 func TestRenderProjects_EmptyNav(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.view = ViewProjects
@@ -3352,7 +3352,7 @@ func TestFileBrowserKeys_EnterDir(t *testing.T) {
 
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = true
 	app.fileBrowser = &FileBrowser{dir: tmpDir}
 	app.fileBrowser.refresh()
@@ -3390,7 +3390,7 @@ func TestFileBrowser_RefreshCursorOverflow(t *testing.T) {
 func TestDocsKeys_NavigateMultiFile(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDocs
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.docs = &DocsState{
@@ -3425,7 +3425,7 @@ func TestDocsKeys_NavigateMultiFile(t *testing.T) {
 func TestProjectsKeys_NavigateDown(t *testing.T) {
 	app := NewApp()
 	app.view = ViewProjects
-	app.ready = true
+	app.boot.Ready = true
 	app.projectNav = &ProjectsState{
 		list: []projects.Project{
 			{Name: "a", Path: "/tmp/a", Type: "go"},
@@ -3446,7 +3446,7 @@ func TestProjectsKeys_NavigateDown(t *testing.T) {
 func TestDashboardKeys_C_OpensComms(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 	app.registry = newTestRegistry()
@@ -3466,7 +3466,7 @@ func TestDashboardKeys_C_OpensComms(t *testing.T) {
 func TestCommsKeys_DefaultTyping(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
@@ -3486,7 +3486,7 @@ func TestHandleStreamChunk_TextContent(t *testing.T) {
 	ch <- chat.StreamChunk{Text: "next chunk", Done: false}
 
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.comms = newCommsState("numbuh-1", "prompt", 80, 40)
 	app.comms.streaming = true
 	app.pipeline.StreamCh = ch
@@ -3511,7 +3511,7 @@ func TestFileBrowserKeys_UpDown(t *testing.T) {
 
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = true
 	app.terminal.Active = false
 	app.fileBrowser = &FileBrowser{dir: tmpDir}

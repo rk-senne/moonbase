@@ -27,11 +27,11 @@ func TestNewApp_Initializes(t *testing.T) {
 	if app.view != ViewBoot {
 		t.Errorf("expected initial view=ViewBoot (%d), got %d", ViewBoot, app.view)
 	}
-	if app.ready {
+	if app.boot.Ready {
 		t.Error("expected ready=false on new app")
 	}
-	if app.bootStep != 0 {
-		t.Errorf("expected bootStep=0, got %d", app.bootStep)
+	if app.boot.Step != 0 {
+		t.Errorf("expected bootStep=0, got %d", app.boot.Step)
 	}
 	if app.dashboard.Cursor != 0 {
 		t.Errorf("expected cursor=0, got %d", app.dashboard.Cursor)
@@ -39,14 +39,14 @@ func TestNewApp_Initializes(t *testing.T) {
 	if app.theme != "moonbase" {
 		t.Errorf("expected theme=moonbase, got %s", app.theme)
 	}
-	if app.focus != FocusSidebar {
-		t.Errorf("expected focus=FocusSidebar, got %d", app.focus)
+	if app.chrome.Focus != FocusSidebar {
+		t.Errorf("expected focus=FocusSidebar, got %d", app.chrome.Focus)
 	}
 }
 
 func TestApp_BootSequence(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 
 	if app.view != ViewBoot {
 		t.Fatalf("expected ViewBoot, got %d", app.view)
@@ -54,8 +54,8 @@ func TestApp_BootSequence(t *testing.T) {
 
 	model, _ := app.Update(bootTickMsg{})
 	result := model.(App)
-	if result.bootStep != 1 {
-		t.Errorf("expected bootStep=1 after first tick, got %d", result.bootStep)
+	if result.boot.Step != 1 {
+		t.Errorf("expected bootStep=1 after first tick, got %d", result.boot.Step)
 	}
 	if result.view != ViewBoot {
 		t.Errorf("expected still in ViewBoot during sequence, got %d", result.view)
@@ -65,14 +65,14 @@ func TestApp_BootSequence(t *testing.T) {
 		model, _ = result.Update(bootTickMsg{})
 		result = model.(App)
 	}
-	if result.bootStep != 4 {
-		t.Errorf("expected bootStep=4 after 4 ticks total, got %d", result.bootStep)
+	if result.boot.Step != 4 {
+		t.Errorf("expected bootStep=4 after 4 ticks total, got %d", result.boot.Step)
 	}
 }
 
 func TestApp_BootSkipOnKeyPress(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
 	result := model.(App)
@@ -83,7 +83,7 @@ func TestApp_BootSkipOnKeyPress(t *testing.T) {
 
 func TestApp_BootDoneMsg(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.view = ViewBoot
 
 	model, _ := app.Update(bootDoneMsg{})
@@ -96,7 +96,7 @@ func TestApp_BootDoneMsg(t *testing.T) {
 func TestApp_KeyNavigation_MissionView(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 
@@ -110,7 +110,7 @@ func TestApp_KeyNavigation_MissionView(t *testing.T) {
 func TestApp_KeyNavigation_HelpToggle(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 
@@ -130,7 +130,7 @@ func TestApp_KeyNavigation_HelpToggle(t *testing.T) {
 func TestApp_KeyNavigation_CursorUpDown(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 	app.registry = newTestRegistry()
@@ -154,7 +154,7 @@ func TestApp_KeyNavigation_CursorUpDown(t *testing.T) {
 func TestApp_KeyNavigation_DossierView(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 
@@ -168,7 +168,7 @@ func TestApp_KeyNavigation_DossierView(t *testing.T) {
 func TestApp_KeyNavigation_HistoryView(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 
@@ -182,7 +182,7 @@ func TestApp_KeyNavigation_HistoryView(t *testing.T) {
 func TestApp_MissionInput(t *testing.T) {
 	app := NewApp()
 	app.view = ViewMission
-	app.ready = true
+	app.boot.Ready = true
 	app.mission.Input.Focus()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'h'}})
@@ -198,7 +198,7 @@ func TestApp_MissionInput(t *testing.T) {
 func TestApp_MissionInput_EscReturns(t *testing.T) {
 	app := NewApp()
 	app.view = ViewMission
-	app.ready = true
+	app.boot.Ready = true
 	app.mission.Input.Focus()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
@@ -211,7 +211,7 @@ func TestApp_MissionInput_EscReturns(t *testing.T) {
 func TestApp_MissionInput_Submit(t *testing.T) {
 	app := NewApp()
 	app.view = ViewMission
-	app.ready = true
+	app.boot.Ready = true
 	app.mission.Input.Focus()
 	app.mission.Input.SetValue("add pagination")
 
@@ -231,7 +231,7 @@ func TestApp_MissionInput_Submit(t *testing.T) {
 func TestApp_QuitKey(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 
@@ -248,7 +248,7 @@ func TestApp_QuitKey(t *testing.T) {
 func TestApp_CtrlC_Quit(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 
@@ -264,11 +264,11 @@ func TestApp_CtrlC_Quit(t *testing.T) {
 
 func TestApp_WindowSizeMsg(t *testing.T) {
 	app := NewApp()
-	app.ready = false
+	app.boot.Ready = false
 
 	model, _ := app.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 	result := model.(App)
-	if !result.ready {
+	if !result.boot.Ready {
 		t.Error("expected ready=true after WindowSizeMsg")
 	}
 	if result.width != 120 {
@@ -282,33 +282,33 @@ func TestApp_WindowSizeMsg(t *testing.T) {
 func TestApp_TabCyclesFocus(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyTab})
 	result := model.(App)
-	if result.focus != FocusMain {
-		t.Errorf("expected focus=FocusMain after first tab, got %d", result.focus)
+	if result.chrome.Focus != FocusMain {
+		t.Errorf("expected focus=FocusMain after first tab, got %d", result.chrome.Focus)
 	}
 
 	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyTab})
 	result = model.(App)
-	if result.focus != FocusRight {
-		t.Errorf("expected focus=FocusRight after second tab, got %d", result.focus)
+	if result.chrome.Focus != FocusRight {
+		t.Errorf("expected focus=FocusRight after second tab, got %d", result.chrome.Focus)
 	}
 
 	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyTab})
 	result = model.(App)
-	if result.focus != FocusSidebar {
-		t.Errorf("expected focus=FocusSidebar after third tab (wrap), got %d", result.focus)
+	if result.chrome.Focus != FocusSidebar {
+		t.Errorf("expected focus=FocusSidebar after third tab (wrap), got %d", result.chrome.Focus)
 	}
 }
 
 func TestApp_ThemeCycle(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 
@@ -340,7 +340,7 @@ func TestApp_ThemeCycle(t *testing.T) {
 func TestApp_PipelineEscAbort(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 	app.pipeline.Running = true
@@ -354,7 +354,7 @@ func TestApp_PipelineEscAbort(t *testing.T) {
 	// When pipeline is NOT running, esc returns to dashboard
 	app2 := NewApp()
 	app2.view = ViewPipeline
-	app2.ready = true
+	app2.boot.Ready = true
 	app2.browsing = false
 	app2.terminal.Active = false
 	app2.pipeline.Running = false
@@ -368,7 +368,7 @@ func TestApp_PipelineEscAbort(t *testing.T) {
 
 func TestApp_View_ReturnsInitializing(t *testing.T) {
 	app := NewApp()
-	app.ready = false
+	app.boot.Ready = false
 
 	output := app.View()
 	if output != "  Initializing..." {
@@ -379,7 +379,7 @@ func TestApp_View_ReturnsInitializing(t *testing.T) {
 func TestApp_CursorBoundsCheck(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 	app.dashboard.Cursor = 0
@@ -397,19 +397,17 @@ func TestApp_CursorBoundsCheck(t *testing.T) {
 //
 // Remaining groups that could be extracted in future phases:
 //   - Comms-related (comms, commsInput) → CommsModel
-//   - Boot state (bootStep, ready) → BootModel
-//   - Visual state (clock, startTime, focus, blink, anim) → part of rendering context
-//   - Infra (fileWatcher, toolCache, toolCacheTime, ctx) → infra/platform grouping
 //
 // Extracted so far: TerminalModel, DashboardModel, PipelineModel, SystemModel,
-// SearchModel, SnippetPickerModel, ContextFileModel, and MissionModel.
+// SearchModel, SnippetPickerModel, ContextFileModel, MissionModel, ChromeModel,
+// BootModel, and InfraModel.
 // Each remaining extraction is its own task; this test
 // ratchets the count down so it can only shrink, never silently grow.
 func TestApp_FieldCountBounded(t *testing.T) {
 	count := reflect.TypeOf(App{}).NumField()
 	// Ratchet: lower this only when an extraction reduces the count. Never raise it
 	// to accommodate new loose fields — extract a sub-model instead.
-	const maxFields = 38
+	const maxFields = 30
 	if count > maxFields {
 		t.Errorf("App has %d fields, expected ≤ %d — did you add fields without extracting? See comment above.", count, maxFields)
 	}

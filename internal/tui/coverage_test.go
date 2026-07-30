@@ -161,7 +161,7 @@ func Test_newProjectsState(t *testing.T) {
 func TestCommsKeys_SnippetPickerNav(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
-	app.ready = true
+	app.boot.Ready = true
 	app.comms = newCommsState("test", "prompt", 80, 40)
 	app.commsInput.Focus()
 	app.snippetPick.Active = true
@@ -201,7 +201,7 @@ func TestCommsKeys_SnippetPickerNav(t *testing.T) {
 func TestCommsKeys_RelayCommand(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
-	app.ready = true
+	app.boot.Ready = true
 	app.comms = newCommsState("test", "prompt", 80, 40)
 	app.commsInput.Focus()
 	app.commsInput.SetValue(">>numbuh-1 hello there")
@@ -216,7 +216,7 @@ func TestCommsKeys_RelayCommand(t *testing.T) {
 func TestCommsKeys_RelayLastResponse(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
-	app.ready = true
+	app.boot.Ready = true
 	app.comms = newCommsState("test", "prompt", 80, 40)
 	app.commsInput.Focus()
 	app.commsInput.SetValue(">numbuh-2")
@@ -231,7 +231,7 @@ func TestCommsKeys_RelayLastResponse(t *testing.T) {
 func TestCommsKeys_CtrlS_SnippetPicker(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
-	app.ready = true
+	app.boot.Ready = true
 	app.comms = newCommsState("test", "prompt", 80, 40)
 	app.commsInput.Focus()
 
@@ -245,7 +245,7 @@ func TestCommsKeys_CtrlS_SnippetPicker(t *testing.T) {
 func TestCommsKeys_CtrlF_ContextFile(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
-	app.ready = true
+	app.boot.Ready = true
 	app.comms = newCommsState("test", "prompt", 80, 40)
 	app.commsInput.Focus()
 

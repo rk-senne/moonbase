@@ -121,7 +121,7 @@ func TestSwitchCommsAgent_NotFound(t *testing.T) {
 
 func TestRenderComms(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.view = ViewComms
@@ -135,7 +135,7 @@ func TestRenderComms(t *testing.T) {
 
 func TestRenderComms_Streaming(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 	app.view = ViewComms
@@ -153,7 +153,7 @@ func TestRenderComms_Streaming(t *testing.T) {
 
 func TestRenderProtocol(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
 
@@ -168,7 +168,7 @@ func TestRenderProtocol(t *testing.T) {
 func TestTerminalKeys_EnterWithCommand(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = true
 	app.terminal.Input.Focus()
@@ -192,7 +192,7 @@ func TestFileBrowserKeys_Enter(t *testing.T) {
 
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = true
 	app.terminal.Active = false
 
@@ -206,7 +206,7 @@ func TestFileBrowserKeys_Backspace(t *testing.T) {
 
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = true
 	app.terminal.Active = false
 
@@ -217,7 +217,7 @@ func TestFileBrowserKeys_Backspace(t *testing.T) {
 func TestFileBrowserKeys_Dot(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = true
 	app.terminal.Active = false
 
@@ -228,7 +228,7 @@ func TestFileBrowserKeys_Dot(t *testing.T) {
 func TestFileBrowserKeys_E(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = true
 	app.terminal.Active = false
 
@@ -258,7 +258,7 @@ func TestSelectProject_ValidProject(t *testing.T) {
 func TestDashboardKeys_D_GitDiff(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 
@@ -271,7 +271,7 @@ func TestDashboardKeys_D_GitDiff(t *testing.T) {
 func TestDashboardKeys_G_GitStatus(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 
@@ -286,7 +286,7 @@ func TestDashboardKeys_G_GitStatus(t *testing.T) {
 func TestDossierKeys_C_Comms(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDossier
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 	app.registry = newTestRegistry()
@@ -302,7 +302,7 @@ func TestDossierKeys_C_Comms(t *testing.T) {
 
 func TestView_MainPanel_FileBrowser(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 120
 	app.height = 40
 	app.view = ViewDashboard
@@ -317,7 +317,7 @@ func TestView_MainPanel_FileBrowser(t *testing.T) {
 
 func TestView_MainPanel_Terminal(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 120
 	app.height = 40
 	app.view = ViewDashboard
@@ -336,14 +336,14 @@ func TestView_MainPanel_Terminal(t *testing.T) {
 func TestHandleBootTick_TriggerTypewriter(t *testing.T) {
 	app := NewApp()
 	app.view = ViewBoot
-	app.ready = true
+	app.boot.Ready = true
 	// Set bootStep to len(bootMessages)-2 so next tick triggers typewriter
-	app.bootStep = len(bootMessages) - 2
+	app.boot.Step = len(bootMessages) - 2
 
 	model, _ := app.Update(bootTickMsg{})
 	result := model.(App)
-	if result.anim.typewriterAt != 1 {
-		t.Errorf("expected typewriter triggered, got typewriterAt=%d", result.anim.typewriterAt)
+	if result.chrome.Anim.typewriterAt != 1 {
+		t.Errorf("expected typewriter triggered, got typewriterAt=%d", result.chrome.Anim.typewriterAt)
 	}
 }
 

@@ -11,7 +11,7 @@ import (
 func TestDashboardKeys_Mission(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 
@@ -25,7 +25,7 @@ func TestDashboardKeys_Mission(t *testing.T) {
 func TestDashboardKeys_Search(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 
@@ -39,7 +39,7 @@ func TestDashboardKeys_Search(t *testing.T) {
 func TestDashboardKeys_NumberJump(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 
@@ -56,7 +56,7 @@ func TestDashboardKeys_NumberJump(t *testing.T) {
 func TestDashboardKeys_History(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 
@@ -70,7 +70,7 @@ func TestDashboardKeys_History(t *testing.T) {
 func TestDossierKeys_EscBack(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDossier
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 
@@ -84,7 +84,7 @@ func TestDossierKeys_EscBack(t *testing.T) {
 func TestDossierKeys_Enter(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDossier
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 	app.registry = newTestRegistry()
@@ -98,7 +98,7 @@ func TestDossierKeys_Enter(t *testing.T) {
 func TestPipelineKeys_EscAbort(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 	app.pipeline.Running = true
@@ -114,7 +114,7 @@ func TestPipelineKeys_EscAbort(t *testing.T) {
 func TestPipelineKeys_EscBackWhenIdle(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 	app.pipeline.Running = false
@@ -129,7 +129,7 @@ func TestPipelineKeys_EscBackWhenIdle(t *testing.T) {
 func TestPipelineKeys_Retry(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 	app.pipeline.Running = false
@@ -146,7 +146,7 @@ func TestPipelineKeys_Retry(t *testing.T) {
 func TestPipelineKeys_Skip(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 	app.pipeline.Running = false
@@ -166,7 +166,7 @@ func TestPipelineKeys_Skip(t *testing.T) {
 func TestMissionKeys_Esc(t *testing.T) {
 	app := NewApp()
 	app.view = ViewMission
-	app.ready = true
+	app.boot.Ready = true
 	app.mission.Input.Focus()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
@@ -179,7 +179,7 @@ func TestMissionKeys_Esc(t *testing.T) {
 func TestMissionKeys_EnterSubmit(t *testing.T) {
 	app := NewApp()
 	app.view = ViewMission
-	app.ready = true
+	app.boot.Ready = true
 	app.mission.Input.Focus()
 	app.mission.Input.SetValue("deploy the fleet")
 
@@ -199,7 +199,7 @@ func TestMissionKeys_EnterSubmit(t *testing.T) {
 func TestMissionKeys_EnterEmpty(t *testing.T) {
 	app := NewApp()
 	app.view = ViewMission
-	app.ready = true
+	app.boot.Ready = true
 	app.mission.Input.Focus()
 	app.mission.Input.SetValue("")
 
@@ -217,7 +217,7 @@ func TestMissionKeys_EnterEmpty(t *testing.T) {
 func TestCommsKeys_Esc(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
-	app.ready = true
+	app.boot.Ready = true
 	app.comms = newCommsState("test-agent", "system prompt", 80, 40)
 	app.commsInput.Focus()
 
@@ -231,7 +231,7 @@ func TestCommsKeys_Esc(t *testing.T) {
 func TestCommsKeys_MessageInput(t *testing.T) {
 	app := NewApp()
 	app.view = ViewComms
-	app.ready = true
+	app.boot.Ready = true
 	app.comms = newCommsState("test-agent", "system prompt", 80, 40)
 	app.commsInput.Focus()
 

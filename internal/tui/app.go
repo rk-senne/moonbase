@@ -72,8 +72,7 @@ type App struct {
 	pipeline       PipelineModel
 	width          int
 	height         int
-	ready          bool
-	bootStep       int
+	boot           BootModel
 	spinner        spinner.Model
 	intel          []IntelEntry
 	system         SystemModel
@@ -82,15 +81,10 @@ type App struct {
 	theme          string
 	themeData      Theme
 	styles         Styles
-	clock          string
-	startTime      time.Time
-	focus          FocusPanel
-	blink          bool
+	chrome         ChromeModel
 	comms          *CommsState
 	commsInput     textinput.Model
-	anim           AnimState
-	fileWatcher    *watcher.Watcher
-	ctx            platform.Context
+	infra          InfraModel
 	projectCtx     *discovery.ProjectContext
 	activeBackend  backend.Backend
 	snippetPick    SnippetPickerModel
@@ -100,8 +94,6 @@ type App struct {
 	terminal       TerminalModel
 	fileBrowser     *FileBrowser
 	browsing        bool // true = file browser mode, false = terminal mode
-	toolCache       map[string]bool // cached exec.LookPath results (refreshed on timer)
-	toolCacheTime   time.Time       // last time toolCache was refreshed
 }
 
 type MissionEntry struct {
@@ -197,16 +189,20 @@ func NewApp() App {
 		theme:        "moonbase",
 		themeData:    initialTheme,
 		styles:       initialStyles,
-		clock:        time.Now().Format("15:04:05"),
-		startTime:    time.Now(),
-		focus:        FocusSidebar,
-		fileWatcher:  fw,
-		ctx:          platform.Detect(),
+		chrome: ChromeModel{
+			Clock:     time.Now().Format("15:04:05"),
+			StartTime: time.Now(),
+			Focus:     FocusSidebar,
+		},
+		infra: InfraModel{
+			Watcher:       fw,
+			Ctx:           platform.Detect(),
+			ToolCache:     refreshToolCache(),
+			ToolCacheTime: time.Now(),
+		},
 		terminal:     term,
 		fileBrowser:  newFileBrowser(),
 		browsing:     true, // start in file browser mode
-		toolCache:    refreshToolCache(),
-		toolCacheTime: time.Now(),
 	}
 }
 
@@ -249,20 +245,20 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a.handleSystemInfo(msg)
 
 	case clockTickMsg:
-		a.clock = time.Time(msg).Format("15:04:05")
+		a.chrome.Clock = time.Time(msg).Format("15:04:05")
 		// Refresh tool cache every 30 seconds
-		if time.Since(a.toolCacheTime) > 30*time.Second {
-			a.toolCache = refreshToolCache()
-			a.toolCacheTime = time.Now()
+		if time.Since(a.infra.ToolCacheTime) > 30*time.Second {
+			a.infra.ToolCache = refreshToolCache()
+			a.infra.ToolCacheTime = time.Now()
 		}
 		return a, nil
 
 	case blinkTickMsg:
-		a.blink = !a.blink
+		a.chrome.Blink = !a.chrome.Blink
 		return a, nil
 
 	case animTickMsg:
-		a.anim.Advance()
+		a.chrome.Anim.Advance()
 		return a, nil
 
 	case spinner.TickMsg:
@@ -360,7 +356,7 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (a App) View() string {
-	if !a.ready {
+	if !a.boot.Ready {
 		return "  Initializing..."
 	}
 	switch a.view {

@@ -16,7 +16,7 @@ func (a *App) addIntel(format string, args ...any) {
 	if len(a.intel) > maxIntelEntries {
 		a.intel = a.intel[len(a.intel)-maxIntelEntries:]
 	}
-	a.anim.TriggerIntelFlash()
+	a.chrome.Anim.TriggerIntelFlash()
 }
 
 func (a *App) filterAgents() {
@@ -64,7 +64,7 @@ func (a App) gitStatus() string {
 }
 
 func (a App) uptime() string {
-	d := time.Since(a.startTime)
+	d := time.Since(a.chrome.StartTime)
 	h := int(d.Hours())
 	m := int(d.Minutes()) % 60
 	s := int(d.Seconds()) % 60

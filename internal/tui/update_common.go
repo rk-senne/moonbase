@@ -18,19 +18,19 @@ import (
 func (a App) handleWindowSize(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
 	a.width = msg.Width
 	a.height = msg.Height
-	a.ready = true
+	a.boot.Ready = true
 	return a, nil
 }
 
 // handleBootTick processes boot animation steps.
 func (a App) handleBootTick() (tea.Model, tea.Cmd) {
 	if a.view == ViewBoot {
-		a.bootStep++
-		if a.bootStep >= len(bootMessages) {
+		a.boot.Step++
+		if a.boot.Step >= len(bootMessages) {
 			return a, bootDone()
 		}
-		if a.bootStep == len(bootMessages)-1 {
-			a.anim.TriggerTypewriter()
+		if a.boot.Step == len(bootMessages)-1 {
+			a.chrome.Anim.TriggerTypewriter()
 		}
 		return a, bootTick()
 	}
@@ -184,7 +184,7 @@ func (a App) handleTermOutput(msg termOutputMsg) (tea.Model, tea.Cmd) {
 // ringBell sends terminal bell and triggers animation.
 func (a App) ringBell() {
 	fmt.Print("\a")
-	a.anim.TriggerIntelFlash()
+	a.chrome.Anim.TriggerIntelFlash()
 }
 
 // abortPendingTimedOut checks if the abort pending is within the 3s window.
@@ -198,12 +198,12 @@ type fileChangeMsg struct{ path string }
 type agentReloadMsg struct{}
 
 func (a App) pollWatcher() tea.Cmd {
-	if a.fileWatcher == nil {
+	if a.infra.Watcher == nil {
 		return nil
 	}
 	return func() tea.Msg {
 		select {
-		case ev, ok := <-a.fileWatcher.Events:
+		case ev, ok := <-a.infra.Watcher.Events:
 			if !ok {
 				// Watcher closed, stop polling
 				return nil

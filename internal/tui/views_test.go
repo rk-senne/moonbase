@@ -10,7 +10,7 @@ import (
 
 func TestApp_ViewRendering_Dashboard(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.view = ViewDashboard
 	app.width = 140
 	app.height = 40
@@ -27,7 +27,7 @@ func TestApp_ViewRendering_Dashboard(t *testing.T) {
 
 func TestApp_ViewRendering_Dashboard2Col(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.view = ViewDashboard
 	app.width = 100
 	app.height = 40
@@ -41,7 +41,7 @@ func TestApp_ViewRendering_Dashboard2Col(t *testing.T) {
 
 func TestApp_ViewRendering_Dashboard1Col(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.view = ViewDashboard
 	app.width = 60
 	app.height = 40
@@ -55,7 +55,7 @@ func TestApp_ViewRendering_Dashboard1Col(t *testing.T) {
 
 func TestApp_ViewRendering_Help(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.view = ViewHelp
 	app.width = 100
 	app.height = 40
@@ -74,7 +74,7 @@ func TestApp_ViewRendering_Help(t *testing.T) {
 
 func TestApp_ViewRendering_Mission(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.view = ViewMission
 	app.width = 100
 	app.height = 40
@@ -90,7 +90,7 @@ func TestApp_ViewRendering_Mission(t *testing.T) {
 
 func TestApp_ViewRendering_Pipeline_NoState(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.view = ViewPipeline
 	app.width = 100
 	app.height = 40
@@ -107,7 +107,7 @@ func TestApp_ViewRendering_Pipeline_NoState(t *testing.T) {
 
 func TestApp_ViewRendering_Pipeline_WithState(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.view = ViewPipeline
 	app.width = 100
 	app.height = 40
@@ -129,7 +129,7 @@ func TestApp_ViewRendering_Pipeline_WithState(t *testing.T) {
 
 func TestApp_ViewRendering_Pipeline_RiskDisplay(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.view = ViewPipeline
 	app.width = 100
 	app.height = 40
@@ -145,7 +145,7 @@ func TestApp_ViewRendering_Pipeline_RiskDisplay(t *testing.T) {
 
 func TestApp_ViewRendering_Dossier(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.view = ViewDossier
 	app.width = 120
 	app.height = 40
@@ -163,11 +163,11 @@ func TestApp_ViewRendering_Dossier(t *testing.T) {
 
 func TestApp_ViewRendering_Boot(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.view = ViewBoot
 	app.width = 100
 	app.height = 40
-	app.bootStep = 2
+	app.boot.Step = 2
 
 	output := app.View()
 	if output == "" {
@@ -177,7 +177,7 @@ func TestApp_ViewRendering_Boot(t *testing.T) {
 
 func TestApp_ViewRendering_NotReady(t *testing.T) {
 	app := NewApp()
-	app.ready = false
+	app.boot.Ready = false
 
 	output := app.View()
 	if output != "  Initializing..." {
@@ -189,38 +189,38 @@ func TestApp_ViewRendering_NotReady(t *testing.T) {
 
 func TestApp_ClockTickMsg(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.view = ViewDashboard
 
 	model, _ := app.Update(clockTickMsg{})
 	result := model.(App)
 	// Clock should be updated (non-empty)
-	if result.clock == "" {
+	if result.chrome.Clock == "" {
 		t.Error("expected clock to be set after clockTickMsg")
 	}
 }
 
 func TestApp_BlinkTickMsg(t *testing.T) {
 	app := NewApp()
-	app.ready = true
-	app.blink = false
+	app.boot.Ready = true
+	app.chrome.Blink = false
 
 	model, _ := app.Update(blinkTickMsg{})
 	result := model.(App)
-	if !result.blink {
+	if !result.chrome.Blink {
 		t.Error("expected blink to toggle to true")
 	}
 
 	model, _ = result.Update(blinkTickMsg{})
 	result = model.(App)
-	if result.blink {
+	if result.chrome.Blink {
 		t.Error("expected blink to toggle back to false")
 	}
 }
 
 func TestApp_SystemInfoMsg(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 
 	model, _ := app.Update(systemInfoMsg{
 		branch:      "main",
@@ -245,7 +245,7 @@ func TestApp_SystemInfoMsg(t *testing.T) {
 
 func TestApp_PipelineAbortedMsg(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 	app.view = ViewPipeline
 	app.pipeline.State = pipeline.New("abort test")
 	app.pipeline.State.Phases[0].Status = pipeline.StatusRunning
@@ -263,7 +263,7 @@ func TestApp_PipelineAbortedMsg(t *testing.T) {
 
 func TestApp_TermOutputMsg(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 
 	model, _ := app.Update(termOutputMsg{cmd: "ls", output: "file1\nfile2"})
 	result := model.(App)
@@ -275,7 +275,7 @@ func TestApp_TermOutputMsg(t *testing.T) {
 
 func TestApp_TermOutputMsg_MaxLines(t *testing.T) {
 	app := NewApp()
-	app.ready = true
+	app.boot.Ready = true
 
 	// Fill terminal to max
 	for i := 0; i < maxTerminalLines+10; i++ {
@@ -292,7 +292,7 @@ func TestApp_TermOutputMsg_MaxLines(t *testing.T) {
 func TestPipelineKeys_Advance(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 	app.pipeline.Running = false
@@ -314,7 +314,7 @@ func TestPipelineKeys_Advance(t *testing.T) {
 func TestDashboardKeys_Protocol(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 
@@ -329,7 +329,7 @@ func TestDashboardKeys_Protocol(t *testing.T) {
 func TestApp_HelpToggleFromDossier(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDossier
-	app.ready = true
+	app.boot.Ready = true
 	app.browsing = false
 	app.terminal.Active = false
 

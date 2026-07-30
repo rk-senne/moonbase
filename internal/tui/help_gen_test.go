@@ -10,7 +10,7 @@ import (
 func TestHelpView_ContainsEveryBinding(t *testing.T) {
 	app := NewApp()
 	app.view = ViewHelp
-	app.ready = true
+	app.boot.Ready = true
 	app.width = 120
 	app.height = 50
 
@@ -158,7 +158,7 @@ func TestFooterShowsOnlyActiveViewKeys(t *testing.T) {
 			app.browsing = tc.browsing
 			app.width = 120
 			app.height = 40
-			app.ready = true
+			app.boot.Ready = true
 
 			footer := app.renderContextualStatusBar()
 			for _, b := range tc.mustNotHave {
@@ -232,7 +232,7 @@ func TestContextualStatusBar_RendersWithoutPanic(t *testing.T) {
 			app.browsing = v.browsing
 			app.width = 100
 			app.height = 40
-			app.ready = true
+			app.boot.Ready = true
 
 			result := app.renderContextualStatusBar()
 			if result == "" {
