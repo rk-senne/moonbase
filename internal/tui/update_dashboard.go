@@ -103,8 +103,8 @@ func (a App) handleDashboardKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		a.cycleTheme()
 		a.addIntel("Theme: %s", a.theme)
 	case key.Matches(msg, a.keys.Search):
-		a.searching = true
-		a.searchInput.Focus()
+		a.search.Active = true
+		a.search.Input.Focus()
 		return a, textinput.Blink
 	case key.Matches(msg, a.keys.GitDiff):
 		return a, a.runGitCmd("git diff --stat")

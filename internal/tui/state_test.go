@@ -70,28 +70,28 @@ func TestApp_SearchFilter(t *testing.T) {
 	// Enter search mode
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
 	result := model.(App)
-	if !result.searching {
+	if !result.search.Active {
 		t.Fatal("expected searching=true")
 	}
 
 	// Simulate typing by setting the search input value and calling filterAgents.
 	// We use a query that matches the agent naming pattern "numbuh-"
-	result.searchInput.SetValue("numbuh")
+	result.search.Input.SetValue("numbuh")
 	result.filterAgents()
 
 	// Should have filtered results
-	if result.filtered == nil || len(result.filtered) == 0 {
+	if result.search.Filtered == nil || len(result.search.Filtered) == 0 {
 		// Try with the searchInput value to confirm it's set
-		t.Skipf("no agents matched query 'numbuh' (searchInput.Value()=%q, registry count=%d)", result.searchInput.Value(), result.registry.Count())
+		t.Skipf("no agents matched query 'numbuh' (searchInput.Value()=%q, registry count=%d)", result.search.Input.Value(), result.registry.Count())
 	}
 
 	// Exit search with esc
 	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyEscape})
 	result = model.(App)
-	if result.searching {
+	if result.search.Active {
 		t.Error("expected searching=false after esc")
 	}
-	if result.filtered != nil {
+	if result.search.Filtered != nil {
 		t.Error("expected filtered=nil after esc")
 	}
 }
@@ -109,10 +109,10 @@ func TestApp_SearchEnter(t *testing.T) {
 	result := model.(App)
 
 	// Simulate typing by setting the search input value directly
-	result.searchInput.SetValue("1")
+	result.search.Input.SetValue("1")
 	result.filterAgents()
 
-	if result.filtered == nil || len(result.filtered) == 0 {
+	if result.search.Filtered == nil || len(result.search.Filtered) == 0 {
 		t.Skip("no agents matched search query '1'")
 	}
 
@@ -120,7 +120,7 @@ func TestApp_SearchEnter(t *testing.T) {
 	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result = model.(App)
 
-	if result.searching {
+	if result.search.Active {
 		t.Error("expected searching=false after enter")
 	}
 	if result.view != ViewDossier {

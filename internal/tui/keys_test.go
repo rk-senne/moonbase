@@ -31,7 +31,7 @@ func TestDashboardKeys_Search(t *testing.T) {
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
 	result := model.(App)
-	if !result.searching {
+	if !result.search.Active {
 		t.Error("expected searching=true after '/'")
 	}
 }

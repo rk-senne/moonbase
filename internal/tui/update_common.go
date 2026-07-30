@@ -65,23 +65,23 @@ func (a App) handleSpinnerTick(msg spinner.TickMsg) (tea.Model, tea.Cmd) {
 func (a App) handleSearchKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, a.keys.SearchCancel):
-		a.searching = false
-		a.searchInput.Reset()
-		a.searchInput.Blur()
-		a.filtered = nil
+		a.search.Active = false
+		a.search.Input.Reset()
+		a.search.Input.Blur()
+		a.search.Filtered = nil
 	case key.Matches(msg, a.keys.SearchConfirm):
-		a.searching = false
-		a.searchInput.Blur()
-		if len(a.filtered) > 0 {
-			a.dashboard.Cursor = a.filtered[0]
+		a.search.Active = false
+		a.search.Input.Blur()
+		if len(a.search.Filtered) > 0 {
+			a.dashboard.Cursor = a.search.Filtered[0]
 			a.dashboard.Selected = a.dashboard.Cursor
 			a.view = ViewDossier
 		}
-		a.searchInput.Reset()
-		a.filtered = nil
+		a.search.Input.Reset()
+		a.search.Filtered = nil
 	default:
 		var cmd tea.Cmd
-		a.searchInput, cmd = a.searchInput.Update(msg)
+		a.search.Input, cmd = a.search.Input.Update(msg)
 		a.filterAgents()
 		return a, cmd
 	}

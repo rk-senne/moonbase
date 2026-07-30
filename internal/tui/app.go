@@ -79,9 +79,7 @@ type App struct {
 	intel          []IntelEntry
 	system         SystemModel
 	missionInput   textinput.Model
-	searchInput    textinput.Model
-	searching      bool
-	filtered       []int
+	search         SearchModel
 	theme          string
 	themeData      Theme
 	styles         Styles
@@ -198,7 +196,7 @@ func NewApp() App {
 		projectCtx:    projectCtx,
 		activeBackend: activeBackend,
 		missionInput: ti,
-		searchInput:  si,
+		search:       SearchModel{Input: si},
 		commsInput:   ci,
 		contextInput: fi,
 		theme:        "moonbase",
@@ -338,7 +336,7 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return a, nil
 		}
 		// Search mode
-		if a.searching {
+		if a.search.Active {
 			return a.handleSearchKeys(msg)
 		}
 		// Embedded terminal

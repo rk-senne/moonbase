@@ -682,12 +682,12 @@ func TestFilterAgents_ByDescription(t *testing.T) {
 	}
 
 	// Search by a description keyword (agents should have descriptions)
-	app.searchInput.SetValue("security")
+	app.search.Input.SetValue("security")
 	app.filterAgents()
 	// Should find at least numbuh-274 (security agent)
-	if len(app.filtered) == 0 {
+	if len(app.search.Filtered) == 0 {
 		// Try another keyword
-		app.searchInput.SetValue("qa")
+		app.search.Input.SetValue("qa")
 		app.filterAgents()
 	}
 	// At minimum, no crash
@@ -696,11 +696,11 @@ func TestFilterAgents_ByDescription(t *testing.T) {
 func TestFilterAgents_EmptyQuery(t *testing.T) {
 	app := NewApp()
 	app.registry = newTestRegistry()
-	app.filtered = []int{1, 2, 3}
+	app.search.Filtered = []int{1, 2, 3}
 
-	app.searchInput.SetValue("")
+	app.search.Input.SetValue("")
 	app.filterAgents()
-	if app.filtered != nil {
+	if app.search.Filtered != nil {
 		t.Error("expected nil filtered for empty query")
 	}
 }
@@ -709,10 +709,10 @@ func TestFilterAgents_NoMatch(t *testing.T) {
 	app := NewApp()
 	app.registry = newTestRegistry()
 
-	app.searchInput.SetValue("zzzznonexistentzzzz")
+	app.search.Input.SetValue("zzzznonexistentzzzz")
 	app.filterAgents()
-	if len(app.filtered) != 0 {
-		t.Errorf("expected no matches, got %d", len(app.filtered))
+	if len(app.search.Filtered) != 0 {
+		t.Errorf("expected no matches, got %d", len(app.search.Filtered))
 	}
 }
 
@@ -1376,7 +1376,7 @@ func TestRenderDashboard_Searching(t *testing.T) {
 	app.height = 40
 	app.view = ViewDashboard
 	app.registry = newTestRegistry()
-	app.searching = true
+	app.search.Active = true
 	app.browsing = false
 
 	result := app.renderDashboard()
@@ -1596,18 +1596,18 @@ func TestHandleSearchKeys_Esc(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.ready = true
-	app.searching = true
-	app.searchInput.Focus()
-	app.searchInput.SetValue("test")
-	app.filtered = []int{1, 2}
+	app.search.Active = true
+	app.search.Input.Focus()
+	app.search.Input.SetValue("test")
+	app.search.Filtered = []int{1, 2}
 	app.registry = newTestRegistry()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
 	result := model.(App)
-	if result.searching {
+	if result.search.Active {
 		t.Error("expected searching=false after esc")
 	}
-	if result.filtered != nil {
+	if result.search.Filtered != nil {
 		t.Error("expected filtered=nil after esc")
 	}
 }
@@ -1616,15 +1616,15 @@ func TestHandleSearchKeys_EnterWithResults(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.ready = true
-	app.searching = true
-	app.searchInput.Focus()
-	app.searchInput.SetValue("numbuh")
+	app.search.Active = true
+	app.search.Input.Focus()
+	app.search.Input.SetValue("numbuh")
 	app.registry = newTestRegistry()
-	app.filtered = []int{2, 3, 5}
+	app.search.Filtered = []int{2, 3, 5}
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
-	if result.searching {
+	if result.search.Active {
 		t.Error("expected searching=false after enter")
 	}
 	if result.dashboard.Cursor != 2 {
@@ -1639,14 +1639,14 @@ func TestHandleSearchKeys_EnterNoResults(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.ready = true
-	app.searching = true
-	app.searchInput.Focus()
-	app.filtered = nil
+	app.search.Active = true
+	app.search.Input.Focus()
+	app.search.Filtered = nil
 	app.registry = newTestRegistry()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
-	if result.searching {
+	if result.search.Active {
 		t.Error("expected searching=false")
 	}
 }
@@ -1655,14 +1655,14 @@ func TestHandleSearchKeys_Typing(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.ready = true
-	app.searching = true
-	app.searchInput.Focus()
+	app.search.Active = true
+	app.search.Input.Focus()
 	app.registry = newTestRegistry()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
 	result := model.(App)
-	if result.searchInput.Value() != "n" {
-		t.Errorf("expected search input='n', got %q", result.searchInput.Value())
+	if result.search.Input.Value() != "n" {
+		t.Errorf("expected search input='n', got %q", result.search.Input.Value())
 	}
 }
 
@@ -2413,9 +2413,9 @@ func TestFilterAgents_ByDescriptionMatch(t *testing.T) {
 	words := []rune(agent.Description)
 	query := string(words[:min(6, len(words))])
 
-	app.searchInput.SetValue(query)
+	app.search.Input.SetValue(query)
 	app.filterAgents()
-	if len(app.filtered) == 0 {
+	if len(app.search.Filtered) == 0 {
 		t.Logf("no match for description query %q (desc: %q)", query, agent.Description)
 	}
 }
@@ -2873,7 +2873,7 @@ func TestRenderDashboard_AllStatusModes(t *testing.T) {
 	app.registry = newTestRegistry()
 
 	// Test searching mode status bar
-	app.searching = true
+	app.search.Active = true
 	app.browsing = false
 	app.terminal.Active = false
 	result := app.renderDashboard()
@@ -2882,7 +2882,7 @@ func TestRenderDashboard_AllStatusModes(t *testing.T) {
 	}
 
 	// Test browsing mode
-	app.searching = false
+	app.search.Active = false
 	app.browsing = true
 	app.fileBrowser = newFileBrowser()
 	result = app.renderDashboard()

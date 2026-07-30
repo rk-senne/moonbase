@@ -402,7 +402,7 @@ func (a App) renderStatusBar(keys string) string {
 // renderContextualStatusBar renders a footer with only the keys valid for the current
 // view and sub-mode, generated from the KeyMap (never hand-duplicated).
 func (a App) renderContextualStatusBar() string {
-	bindings := a.keys.keysFor(a.view, a.searching, a.terminal.Active, a.browsing)
+	bindings := a.keys.keysFor(a.view, a.search.Active, a.terminal.Active, a.browsing)
 	h := newHelpModel(a.width-4, a.themeData)
 	footer := h.ShortHelpView(bindings)
 	return a.renderStatusBar(footer)

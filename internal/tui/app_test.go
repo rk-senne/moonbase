@@ -396,21 +396,21 @@ func TestApp_CursorBoundsCheck(t *testing.T) {
 // is higher because several field groups have not yet been extracted into sub-models:
 //
 // Remaining groups that could be extracted in future phases:
-//   - Search state (searchInput, searching, filtered) → SearchModel
 //   - Comms-related (comms, commsInput, snippetPicker, snippetList, snippetCursor, contextFile, contextInput) → CommsModel
 //   - Mission input (missionInput, missions) → MissionModel
 //   - Boot state (bootStep, ready) → BootModel
 //   - Visual state (clock, startTime, focus, blink, anim) → part of rendering context
 //   - Infra (fileWatcher, toolCache, toolCacheTime, ctx) → infra/platform grouping
 //
-// Extracted so far: TerminalModel, DashboardModel, PipelineModel, and SystemModel
-// (git/docker/threat state). Each remaining extraction is its own task; this test
+// Extracted so far: TerminalModel, DashboardModel, PipelineModel, SystemModel,
+// and SearchModel (git/docker/threat state, operative search/filter).
+// Each remaining extraction is its own task; this test
 // ratchets the count down so it can only shrink, never silently grow.
 func TestApp_FieldCountBounded(t *testing.T) {
 	count := reflect.TypeOf(App{}).NumField()
 	// Ratchet: lower this only when an extraction reduces the count. Never raise it
 	// to accommodate new loose fields — extract a sub-model instead.
-	const maxFields = 44
+	const maxFields = 42
 	if count > maxFields {
 		t.Errorf("App has %d fields, expected ≤ %d — did you add fields without extracting? See comment above.", count, maxFields)
 	}

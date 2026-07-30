@@ -153,7 +153,7 @@ func TestFooterShowsOnlyActiveViewKeys(t *testing.T) {
 			// Also verify the rendered footer does not contain keys from mustNotHave
 			app := NewApp()
 			app.view = tc.view
-			app.searching = tc.searching
+			app.search.Active = tc.searching
 			app.terminal.Active = tc.termActive
 			app.browsing = tc.browsing
 			app.width = 120
@@ -227,7 +227,7 @@ func TestContextualStatusBar_RendersWithoutPanic(t *testing.T) {
 		t.Run(v.name, func(t *testing.T) {
 			app := NewApp()
 			app.view = v.view
-			app.searching = v.searching
+			app.search.Active = v.searching
 			app.terminal.Active = v.termActive
 			app.browsing = v.browsing
 			app.width = 100

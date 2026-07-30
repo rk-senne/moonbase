@@ -1332,8 +1332,8 @@ func TestRenderSidebar_WithFiltered(t *testing.T) {
 	app.width = 120
 	app.height = 40
 	app.registry = newTestRegistry()
-	app.filtered = []int{0, 1, 2}
-	app.searching = true
+	app.search.Filtered = []int{0, 1, 2}
+	app.search.Active = true
 
 	result := app.renderSidebar(30, 30)
 	if result == "" {
