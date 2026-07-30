@@ -110,6 +110,7 @@ func init() {
 	rootCmd.AddCommand(guideCmd)
 	rootCmd.AddCommand(updateCmd)
 	rootCmd.AddCommand(flywheelCmd)
+	rootCmd.AddCommand(compileCmd)
 
 	// Custom grouped help for root only
 	defaultHelp := rootCmd.HelpFunc()
@@ -154,6 +155,7 @@ Project Setup:
   init        Scaffold .kiro/ in any project
   setup       Install agents globally (~/.moonbase/agents/)
   install     Install agents to .kiro/agents/
+  compile     Compile agents to Kiro-native JSON    (alias: install --native)
   status      Show environment health check         (aliases: s, check)
 
 Utilities:
