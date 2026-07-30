@@ -59,14 +59,17 @@ var phaseInputSpecs = map[int]PhaseInputSpec{
 		},
 	},
 	5: {
-		// Reviewer: summary of everything.
-		RequiresPhases: []int{1, 2, 3, 4},
-		MaxPerPhase:    map[int]int{1: 1500, 2: 1500, 3: 2000, 4: 0},
+		// Reviewer: summary of everything including specialist outputs.
+		RequiresPhases: []int{1, 2, 3, 4, 6, 7, 8},
+		MaxPerPhase:    map[int]int{1: 1500, 2: 1500, 3: 2000, 4: 0, 6: 2000, 7: 2000, 8: 2000},
 		HeaderFormat: map[int]string{
 			1: "## Requirements (from Phase 1)",
 			2: "## Design (from Phase 2)",
 			3: "## Implementation (from Phase 3)",
 			4: "## QA Report (from Phase 4)",
+			6: "## Oversight Analysis (from Phase 6 — Numbuh 0)",
+			7: "## Security Analysis (from Phase 7 — Numbuh 274)",
+			8: "## Deploy Prep (from Phase 8 — Numbuh 362)",
 		},
 	},
 }

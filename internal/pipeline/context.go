@@ -127,6 +127,28 @@ func extractFilesChanged(output string) []string {
 	return files
 }
 
+// MergeSpecialistResults writes fan-out results into the pipeline context
+// in phase-number order. Results MUST be pre-sorted by phase number (guaranteed
+// by RunSpecialists). Failed specialists are recorded with an error marker.
+func (pc *PipelineContext) MergeSpecialistResults(results []FanOutResult) {
+	for _, r := range results {
+		if r.Err != nil {
+			pc.PhaseOutputs[r.Phase] = fmt.Sprintf("[SPECIALIST FAILED: %v]", r.Err)
+		} else {
+			pc.PhaseOutputs[r.Phase] = r.Output
+		}
+		// Extract files from successful specialist output.
+		if r.Output != "" {
+			files := extractFilesChanged(r.Output)
+			for _, f := range files {
+				if !contains(pc.FilesChanged, f) {
+					pc.FilesChanged = append(pc.FilesChanged, f)
+				}
+			}
+		}
+	}
+}
+
 // contains checks if a string slice contains a value.
 func contains(slice []string, val string) bool {
 	for _, s := range slice {

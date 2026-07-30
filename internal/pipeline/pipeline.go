@@ -84,20 +84,26 @@ type Pipeline struct {
 	MaxOutputSize int              // Maximum allowed output size in bytes (default 100KB)
 	MaxRetries    int              // Maximum retries per phase (default 1)
 	Retries       map[int]int      // Phase number → retry count
+
+	// Parallel specialist fan-out configuration.
+	ParallelSpecialists      bool // Enable concurrent specialist execution (default true)
+	MaxSpecialistConcurrency int  // Max concurrent specialists (default 4, range 1–16)
 }
 
 // New creates a new pipeline for a given task.
 func New(task string) *Pipeline {
 	return &Pipeline{
-		Task:          task,
-		Active:        true,
-		MaxRework:     2,
-		TraceID:       generateTraceID(),
-		PhaseTimeout:  5 * time.Minute,
-		MaxOutputSize: 100000,
-		MaxRetries:    1,
-		Retries:       make(map[int]int),
-		Context:       NewPipelineContext(task),
+		Task:                     task,
+		Active:                   true,
+		MaxRework:                2,
+		TraceID:                  generateTraceID(),
+		PhaseTimeout:             5 * time.Minute,
+		MaxOutputSize:            100000,
+		MaxRetries:               1,
+		Retries:                  make(map[int]int),
+		ParallelSpecialists:      true,
+		MaxSpecialistConcurrency: 4,
+		Context:                  NewPipelineContext(task),
 		Phases: []Phase{
 			{Number: 1, Name: "Analysis", Operative: "Numbuh 1", AgentName: "numbuh-1", Status: StatusPending},
 			{Number: 2, Name: "Architecture", Operative: "Numbuh 2", AgentName: "numbuh-2", Status: StatusPending},
