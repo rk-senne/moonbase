@@ -4,10 +4,10 @@ import "os/exec"
 
 // isToolAvailable checks tool availability from cache (refreshes every 30s).
 func (a App) isToolAvailable(tool string) bool {
-	if a.infra.ToolCache == nil {
+	if a.env.Infra.ToolCache == nil {
 		return false
 	}
-	return a.infra.ToolCache[tool]
+	return a.env.Infra.ToolCache[tool]
 }
 
 // refreshToolCache updates the cached tool availability map.

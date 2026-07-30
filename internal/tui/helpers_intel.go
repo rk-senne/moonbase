@@ -60,7 +60,7 @@ func (a *App) filterAgents() {
 }
 
 func (a App) gitStatus() string {
-	return a.system.GitStatus()
+	return a.env.System.GitStatus()
 }
 
 func (a App) uptime() string {
@@ -73,7 +73,7 @@ func (a App) uptime() string {
 
 func (a App) detectedBackends() string {
 	var names []string
-	for _, b := range a.backend.Available {
+	for _, b := range a.env.Backend.Available {
 		if b.Available() {
 			names = append(names, b.Name())
 		}

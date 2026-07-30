@@ -291,7 +291,7 @@ func TestApp_ThreatGauge(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		app.system = tt.system
+		app.env.System = tt.system
 		gauge := app.renderThreatGauge(30)
 		if !strings.Contains(gauge, tt.want) {
 			t.Errorf("%s: expected gauge to contain %q, got %q", tt.name, tt.want, gauge)

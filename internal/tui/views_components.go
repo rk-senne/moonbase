@@ -14,8 +14,8 @@ func (a App) renderHeader(breadcrumb string) string {
 
 	// Right: backend + stack + spec indicator
 	var rightParts []string
-	if a.backend.Active != nil && a.backend.Active.Name() != "" {
-		rightParts = append(rightParts, a.backend.Active.Name())
+	if a.env.Backend.Active != nil && a.env.Backend.Active.Name() != "" {
+		rightParts = append(rightParts, a.env.Backend.Active.Name())
 	}
 	if a.projectCtx != nil && a.projectCtx.Stack.Language != "" {
 		rightParts = append(rightParts, a.projectCtx.Stack.Language+"/"+a.projectCtx.Stack.BuildTool)
@@ -151,7 +151,7 @@ func (a App) renderSidebar(width int, maxH int) string {
 	s.WriteString("\n")
 	s.WriteString(lipgloss.NewStyle().Foreground(a.themeData.Brand).Bold(true).Render("◆ BACKEND") + "\n")
 	s.WriteString(lipgloss.NewStyle().Foreground(a.themeData.Dim).Render("──────────────────") + "\n")
-	for _, b := range a.backend.Available {
+	for _, b := range a.env.Backend.Available {
 		mark := "✗"
 		st := a.styles.Inactive
 		if b.Available() {
@@ -271,14 +271,14 @@ func (a App) renderRightPanel(width int, maxH int) string {
 	s.WriteString(sysLabel + radar + " " + strings.Repeat("─", max(1, width-sysLabelW-radarW-1)) + "\n")
 
 	gitStyle := lipgloss.NewStyle().Foreground(a.themeData.Active)
-	if !a.system.Clean {
+	if !a.env.System.Clean {
 		gitStyle = lipgloss.NewStyle().Foreground(a.themeData.Warning)
 	}
-	s.WriteString(fmt.Sprintf(" GIT    %s %s\n", gitStyle.Render(a.system.Branch), a.gitStatus()))
+	s.WriteString(fmt.Sprintf(" GIT    %s %s\n", gitStyle.Render(a.env.System.Branch), a.gitStatus()))
 
 	dockerStatus := dimStyle.Render("not running")
-	if a.system.Docker > 0 {
-		dockerStatus = lipgloss.NewStyle().Foreground(a.themeData.Active).Render(fmt.Sprintf("● %d up", a.system.Docker))
+	if a.env.System.Docker > 0 {
+		dockerStatus = lipgloss.NewStyle().Foreground(a.themeData.Active).Render(fmt.Sprintf("● %d up", a.env.System.Docker))
 	}
 	s.WriteString(fmt.Sprintf(" DOCKER %s\n", dockerStatus))
 	s.WriteString(fmt.Sprintf(" AGENTS %d loaded\n", a.registry.Count()))
@@ -319,8 +319,8 @@ func (a App) renderRightPanel(width int, maxH int) string {
 	s.WriteString("\n")
 	recentLabel := labelStyle.Render("─ RECENT FILES ")
 	s.WriteString(recentLabel + strings.Repeat("─", max(1, width-lipgloss.Width(recentLabel))) + "\n")
-	if a.infra.Watcher != nil && a.infra.Watcher.Running() {
-		recent := a.infra.Watcher.Recent()
+	if a.env.Infra.Watcher != nil && a.env.Infra.Watcher.Running() {
+		recent := a.env.Infra.Watcher.Recent()
 		if len(recent) == 0 {
 			s.WriteString(dimStyle.Render(" watching...") + "\n")
 		}
@@ -352,7 +352,7 @@ func (a App) renderRightPanel(width int, maxH int) string {
 
 // threatSignals returns the current working-tree signals from detected state.
 func (a App) threatSignals() ThreatSignals {
-	return a.system.Signals()
+	return a.env.System.Signals()
 }
 
 func (a App) renderThreatGauge(width int) string {

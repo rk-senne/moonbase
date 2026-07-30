@@ -123,12 +123,14 @@ func newGoldenApp(t *testing.T) App {
 		},
 		intel:         []IntelEntry{},
 		mission:       MissionModel{History: []MissionEntry{{Name: "init scaffold", Status: "✅"}, {Name: "tui views", Status: "✅"}, {Name: "pipeline+deploy", Status: "✅"}}},
-		infra: InfraModel{
-			ToolCache:     toolCache,
-			ToolCacheTime: time.Now(),
+		env: EnvModel{
+			Infra: InfraModel{
+				ToolCache:     toolCache,
+				ToolCacheTime: time.Now(),
+			},
+			System: SystemModel{Branch: "main", Clean: true},
 		},
 		browser:       BrowserModel{FileBrowser: nil, Active: false}, // avoid real FS reads, show terminal panel
-		system:        SystemModel{Branch: "main", Clean: true},
 		terminal:      TerminalModel{Cwd: "/home/operative/moonbase"}, // fixed path for stable header
 	}
 

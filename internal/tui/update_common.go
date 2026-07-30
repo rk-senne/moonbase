@@ -42,14 +42,14 @@ func (a App) handleBootDone() (tea.Model, tea.Cmd) {
 	a.view = ViewDashboard
 	a.addIntel("Moonbase online. %d operatives loaded.", a.registry.Count())
 	a.addIntel("AI backends detected: %s", a.detectedBackends())
-	a.addIntel("Git: %s %s", a.system.Branch, a.gitStatus())
+	a.addIntel("Git: %s %s", a.env.System.Branch, a.gitStatus())
 	return a, nil
 }
 
 // handleAgentsLoaded processes the registry load result.
 func (a App) handleAgentsLoaded(msg AgentsLoadedMsg) (tea.Model, tea.Cmd) {
 	if msg.Err == nil {
-		a.backend.Available = backend.DetectAll()
+		a.env.Backend.Available = backend.DetectAll()
 	}
 	return a, nil
 }
@@ -156,7 +156,7 @@ func (a App) handlePipelineAborted() (tea.Model, tea.Cmd) {
 
 // handleSystemInfo processes system detection results.
 func (a App) handleSystemInfo(msg systemInfoMsg) (tea.Model, tea.Cmd) {
-	a.system = SystemModel{
+	a.env.System = SystemModel{
 		Branch:         msg.branch,
 		Clean:          msg.clean,
 		Docker:         msg.dockerCount,
@@ -198,12 +198,12 @@ type fileChangeMsg struct{ path string }
 type agentReloadMsg struct{}
 
 func (a App) pollWatcher() tea.Cmd {
-	if a.infra.Watcher == nil {
+	if a.env.Infra.Watcher == nil {
 		return nil
 	}
 	return func() tea.Msg {
 		select {
-		case ev, ok := <-a.infra.Watcher.Events:
+		case ev, ok := <-a.env.Infra.Watcher.Events:
 			if !ok {
 				// Watcher closed, stop polling
 				return nil

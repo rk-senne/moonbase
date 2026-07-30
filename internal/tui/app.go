@@ -67,7 +67,7 @@ type App struct {
 	keys           KeyMap
 	view           View
 	registry       *agents.Registry
-	backend        BackendModel
+	env            EnvModel
 	dashboard      DashboardModel
 	pipeline       PipelineModel
 	width          int
@@ -75,7 +75,6 @@ type App struct {
 	boot           BootModel
 	spinner        spinner.Model
 	intel          []IntelEntry
-	system         SystemModel
 	mission        MissionModel
 	search         SearchModel
 	theme          string
@@ -83,7 +82,6 @@ type App struct {
 	styles         Styles
 	chrome         ChromeModel
 	comms          CommsModel
-	infra          InfraModel
 	projectCtx     *discovery.ProjectContext
 	snippetPick    SnippetPickerModel
 	ctxFile        ContextFileModel
@@ -178,7 +176,15 @@ func NewApp() App {
 		spinner:       s,
 		intel:         []IntelEntry{},
 		projectCtx:    projectCtx,
-		backend:       BackendModel{Active: activeBackend},
+		env: EnvModel{
+			Backend: BackendModel{Active: activeBackend},
+			Infra: InfraModel{
+				Watcher:       fw,
+				Ctx:           platform.Detect(),
+				ToolCache:     refreshToolCache(),
+				ToolCacheTime: time.Now(),
+			},
+		},
 		mission:      MissionModel{Input: ti, History: missionEntries},
 		search:       SearchModel{Input: si},
 		comms:        CommsModel{Input: ci},
@@ -190,12 +196,6 @@ func NewApp() App {
 			Clock:     time.Now().Format("15:04:05"),
 			StartTime: time.Now(),
 			Focus:     FocusSidebar,
-		},
-		infra: InfraModel{
-			Watcher:       fw,
-			Ctx:           platform.Detect(),
-			ToolCache:     refreshToolCache(),
-			ToolCacheTime: time.Now(),
 		},
 		terminal:     term,
 		browser:      BrowserModel{FileBrowser: newFileBrowser(), Active: true}, // start in file browser mode
@@ -243,9 +243,9 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case clockTickMsg:
 		a.chrome.Clock = time.Time(msg).Format("15:04:05")
 		// Refresh tool cache every 30 seconds
-		if time.Since(a.infra.ToolCacheTime) > 30*time.Second {
-			a.infra.ToolCache = refreshToolCache()
-			a.infra.ToolCacheTime = time.Now()
+		if time.Since(a.env.Infra.ToolCacheTime) > 30*time.Second {
+			a.env.Infra.ToolCache = refreshToolCache()
+			a.env.Infra.ToolCacheTime = time.Now()
 		}
 		return a, nil
 

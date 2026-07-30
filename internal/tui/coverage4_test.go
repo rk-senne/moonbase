@@ -160,7 +160,7 @@ func TestPollAgentDir_ReturnsCmd(t *testing.T) {
 
 func TestPollWatcher_NilWatcher(t *testing.T) {
 	app := NewApp()
-	app.infra.Watcher = nil
+	app.env.Infra.Watcher = nil
 	cmd := app.pollWatcher()
 	if cmd != nil {
 		t.Error("expected nil cmd when fileWatcher is nil")
@@ -304,7 +304,7 @@ func TestStartNextPhase_InactivePipeline(t *testing.T) {
 func TestStartNextPhase_ClipboardBackend(t *testing.T) {
 	app := NewApp()
 	app.pipeline.State = pipeline.New("test")
-	app.backend.Active = &mockBackend{name: "clipboard", available: true}
+	app.env.Backend.Active = &mockBackend{name: "clipboard", available: true}
 
 	cmd := app.startNextPhase()
 	if cmd != nil {
@@ -318,7 +318,7 @@ func TestStartNextPhase_ClipboardBackend(t *testing.T) {
 func TestStartNextPhase_NilBackend(t *testing.T) {
 	app := NewApp()
 	app.pipeline.State = pipeline.New("test")
-	app.backend.Active = nil
+	app.env.Backend.Active = nil
 
 	cmd := app.startNextPhase()
 	if cmd != nil {
@@ -329,7 +329,7 @@ func TestStartNextPhase_NilBackend(t *testing.T) {
 func TestStartNextPhase_PipelineComplete(t *testing.T) {
 	app := NewApp()
 	app.pipeline.State = pipeline.New("test")
-	app.backend.Active = &mockBackend{name: "real", available: true}
+	app.env.Backend.Active = &mockBackend{name: "real", available: true}
 	// Move past all phases
 	app.pipeline.State.Current = len(app.pipeline.State.Phases)
 
@@ -342,7 +342,7 @@ func TestStartNextPhase_PipelineComplete(t *testing.T) {
 func TestStartNextPhase_ConditionalSkipped(t *testing.T) {
 	app := NewApp()
 	app.pipeline.State = pipeline.New("test")
-	app.backend.Active = &mockBackend{name: "real", available: true}
+	app.env.Backend.Active = &mockBackend{name: "real", available: true}
 	// Move to a conditional phase (index 5 = Oversight)
 	app.pipeline.State.Current = 5
 
@@ -356,7 +356,7 @@ func TestStartNextPhase_ConditionalSkipped(t *testing.T) {
 func TestStartNextPhase_RealBackendExecutes(t *testing.T) {
 	app := NewApp()
 	app.pipeline.State = pipeline.New("test")
-	app.backend.Active = &mockBackend{name: "test-backend", available: true, output: "done"}
+	app.env.Backend.Active = &mockBackend{name: "test-backend", available: true, output: "done"}
 	app.registry = newTestRegistry()
 
 	cmd := app.startNextPhase()
@@ -407,7 +407,7 @@ func TestHandlePhaseResult_PipelineComplete(t *testing.T) {
 	}
 	app.pipeline.State.Phases[4].Status = pipeline.StatusRunning
 	app.pipeline.Running = true
-	app.backend.Active = nil // no backend means it won't try to execute next
+	app.env.Backend.Active = nil // no backend means it won't try to execute next
 
 	msg := PhaseResultMsg{
 		Phase:   5,

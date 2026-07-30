@@ -186,7 +186,7 @@ func TestRenderHeader_WithBackendAndProject(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 120
 	app.height = 40
-	app.backend.Active = &mockBackend{name: "kiro-cli", available: true}
+	app.env.Backend.Active = &mockBackend{name: "kiro-cli", available: true}
 	app.projectCtx = &discovery.ProjectContext{
 		Stack: discovery.StackInfo{Language: "Go", BuildTool: "make"},
 	}
@@ -203,7 +203,7 @@ func TestRenderHeader_NarrowWidth(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 30 // Very narrow
 	app.height = 40
-	app.backend.Active = &mockBackend{name: "kiro-cli", available: true}
+	app.env.Backend.Active = &mockBackend{name: "kiro-cli", available: true}
 	app.projectCtx = &discovery.ProjectContext{
 		Stack: discovery.StackInfo{Language: "Go", BuildTool: "make"},
 	}
@@ -360,10 +360,10 @@ func TestRenderRightPanel_FocusRight(t *testing.T) {
 	app.height = 40
 	app.chrome.Focus = FocusRight
 	app.registry = newTestRegistry()
-	app.system.Branch = "feature/test"
-	app.system.Clean = false
-	app.system.Docker = 3
-	app.system.ChangedLines = 75
+	app.env.System.Branch = "feature/test"
+	app.env.System.Clean = false
+	app.env.System.Docker = 3
+	app.env.System.ChangedLines = 75
 	app.mission.History = []MissionEntry{
 		{Name: "test mission 1", Status: "✅"},
 		{Name: "test mission 2", Status: "❌"},
@@ -385,7 +385,7 @@ func TestRenderRightPanel_HighDiffLines(t *testing.T) {
 	app.width = 120
 	app.height = 40
 	app.registry = newTestRegistry()
-	app.system = SystemModel{ChangedLines: 600, FilesChanged: 12, UntrackedFiles: 5, SensitiveHits: 2} // CRITICAL
+	app.env.System = SystemModel{ChangedLines: 600, FilesChanged: 12, UntrackedFiles: 5, SensitiveHits: 2} // CRITICAL
 
 	result := app.renderRightPanel(30, 30)
 	if result == "" {
@@ -399,7 +399,7 @@ func TestRenderRightPanel_MediumDiffLines(t *testing.T) {
 	app.width = 120
 	app.height = 40
 	app.registry = newTestRegistry()
-	app.system = SystemModel{ChangedLines: 150, FilesChanged: 6} // MEDIUM
+	app.env.System = SystemModel{ChangedLines: 150, FilesChanged: 6} // MEDIUM
 
 	result := app.renderRightPanel(30, 30)
 	if result == "" {
@@ -413,7 +413,7 @@ func TestRenderRightPanel_HighDiff(t *testing.T) {
 	app.width = 120
 	app.height = 40
 	app.registry = newTestRegistry()
-	app.system = SystemModel{ChangedLines: 300, FilesChanged: 8, UntrackedFiles: 3} // HIGH
+	app.env.System = SystemModel{ChangedLines: 300, FilesChanged: 8, UntrackedFiles: 3} // HIGH
 
 	result := app.renderRightPanel(30, 30)
 	if result == "" {
@@ -973,7 +973,7 @@ func TestHandlePhaseResult_RiskMedium(t *testing.T) {
 	}
 	app.pipeline.State.Phases[3].Status = pipeline.StatusRunning
 	app.pipeline.Running = true
-	app.backend.Active = nil
+	app.env.Backend.Active = nil
 
 	msg := PhaseResultMsg{
 		Phase:   4,
@@ -1000,7 +1000,7 @@ func TestHandlePipelineAdvance_WithState(t *testing.T) {
 	app.pipeline.State = pipeline.New("advance test")
 	app.pipeline.State.Phases[0].Status = pipeline.StatusComplete
 	app.pipeline.Running = false
-	app.backend.Active = nil
+	app.env.Backend.Active = nil
 	app.registry = newTestRegistry()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
@@ -1114,7 +1114,7 @@ func TestDashboardKeys_W_FileWatcher(t *testing.T) {
 	app.boot.Ready = true
 	app.browser.Active = false
 	app.terminal.Active = false
-	app.infra.Watcher = nil // nil watcher, should not panic
+	app.env.Infra.Watcher = nil // nil watcher, should not panic
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'w'}})
 	result := model.(App)
@@ -1127,7 +1127,7 @@ func TestDashboardKeys_P_NotPersonal(t *testing.T) {
 	app.boot.Ready = true
 	app.browser.Active = false
 	app.terminal.Active = false
-	app.infra.Ctx = platform.Context(1) // Work context
+	app.env.Infra.Ctx = platform.Context(1) // Work context
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'P'}})
 	result := model.(App)
@@ -1149,7 +1149,7 @@ func TestDashboardKeys_P_Personal(t *testing.T) {
 	app.boot.Ready = true
 	app.browser.Active = false
 	app.terminal.Active = false
-	app.infra.Ctx = platform.Context(0) // Personal context
+	app.env.Infra.Ctx = platform.Context(0) // Personal context
 
 	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'P'}})
 	if cmd == nil {
@@ -1449,7 +1449,7 @@ func TestSwitchCommsAgent_NotFoundAgent(t *testing.T) {
 
 func TestRenderThreatGauge_VeryNarrow(t *testing.T) {
 	app := NewApp()
-	app.system.ChangedLines = 250
+	app.env.System.ChangedLines = 250
 
 	result := app.renderThreatGauge(8)
 	if result == "" {
@@ -1724,7 +1724,7 @@ func TestRenderHistory_WithMissions(t *testing.T) {
 
 func TestDetectedBackends_NoBackends(t *testing.T) {
 	app := NewApp()
-	app.backend.Available = nil
+	app.env.Backend.Available = nil
 	result := app.detectedBackends()
 	if result != "clipboard only" {
 		t.Errorf("expected 'clipboard only', got %q", result)
@@ -1733,7 +1733,7 @@ func TestDetectedBackends_NoBackends(t *testing.T) {
 
 func TestDetectedBackends_WithBackends(t *testing.T) {
 	app := NewApp()
-	app.backend.Available = nil
+	app.env.Backend.Available = nil
 	// Can't easily construct backend.Backend slice in test; just verify no-backends path
 	result := app.detectedBackends()
 	if result != "clipboard only" {
@@ -1745,7 +1745,7 @@ func TestDetectedBackends_WithBackends(t *testing.T) {
 
 func TestGitStatus_Clean(t *testing.T) {
 	app := NewApp()
-	app.system.Clean = true
+	app.env.System.Clean = true
 	result := app.gitStatus()
 	if result != "✓ clean" {
 		t.Errorf("expected '✓ clean', got %q", result)
@@ -1754,7 +1754,7 @@ func TestGitStatus_Clean(t *testing.T) {
 
 func TestGitStatus_Dirty(t *testing.T) {
 	app := NewApp()
-	app.system.Clean = false
+	app.env.System.Clean = false
 	result := app.gitStatus()
 	if result != "● dirty" {
 		t.Errorf("expected '● dirty', got %q", result)
@@ -2171,7 +2171,7 @@ func TestHandlePhaseResult_SuccessAdvance(t *testing.T) {
 	app.pipeline.State = pipeline.New("test")
 	app.pipeline.State.Phases[0].Status = pipeline.StatusRunning
 	app.pipeline.Running = true
-	app.backend.Active = nil
+	app.env.Backend.Active = nil
 
 	msg := PhaseResultMsg{
 		Phase:   1,
@@ -2199,7 +2199,7 @@ func TestHandlePhaseResult_RiskCritical(t *testing.T) {
 	}
 	app.pipeline.State.Phases[3].Status = pipeline.StatusRunning
 	app.pipeline.Running = true
-	app.backend.Active = nil
+	app.env.Backend.Active = nil
 
 	msg := PhaseResultMsg{
 		Phase:   4,
@@ -2248,7 +2248,7 @@ func TestRenderRightPanel_WatcherNoEvents(t *testing.T) {
 	app.width = 120
 	app.height = 40
 	app.registry = newTestRegistry()
-	app.infra.Watcher = nil // no watcher
+	app.env.Infra.Watcher = nil // no watcher
 
 	result := app.renderRightPanel(30, 30)
 	if result == "" {
@@ -2450,7 +2450,7 @@ func TestRenderSidebar_BlinkTrue(t *testing.T) {
 	app.registry = newTestRegistry()
 	app.view = ViewDashboard
 	app.chrome.Blink = true
-	app.backend.Available = nil
+	app.env.Backend.Available = nil
 
 	result := app.renderSidebar(24, 30)
 	if result == "" {
@@ -2466,10 +2466,10 @@ func TestRenderRightPanel_DockerRunning(t *testing.T) {
 	app.width = 120
 	app.height = 40
 	app.registry = newTestRegistry()
-	app.system.Docker = 5
-	app.system.Branch = "feature/new"
-	app.system.Clean = true
-	app.system.ChangedLines = 15
+	app.env.System.Docker = 5
+	app.env.System.Branch = "feature/new"
+	app.env.System.Clean = true
+	app.env.System.ChangedLines = 15
 
 	result := app.renderRightPanel(30, 30)
 	if result == "" {
@@ -2556,7 +2556,7 @@ func TestRenderHeader_WithSpecs(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 120
 	app.height = 40
-	app.backend.Active = &mockBackend{name: "test", available: true}
+	app.env.Backend.Active = &mockBackend{name: "test", available: true}
 	app.projectCtx = &discovery.ProjectContext{
 		Stack: discovery.StackInfo{Language: "Go", BuildTool: "make"},
 		Specs: []discovery.SpecFile{{Feature: "test", Type: "requirements", Path: "/tmp/spec.md"}},
@@ -2700,7 +2700,7 @@ func TestHandlePhaseResult_SuccessWithLongOutput(t *testing.T) {
 	app.pipeline.State = pipeline.New("long output test")
 	app.pipeline.State.Phases[0].Status = pipeline.StatusRunning
 	app.pipeline.Running = true
-	app.backend.Active = nil
+	app.env.Backend.Active = nil
 
 	// Create output longer than maxSummaryChars
 	longOutput := ""
@@ -2913,17 +2913,17 @@ func TestHandleSystemInfo_Coverage(t *testing.T) {
 	}
 	model, _ := app.Update(msg)
 	result := model.(App)
-	if result.system.Branch != "feature/test" {
-		t.Errorf("expected branch=feature/test, got %s", result.system.Branch)
+	if result.env.System.Branch != "feature/test" {
+		t.Errorf("expected branch=feature/test, got %s", result.env.System.Branch)
 	}
-	if result.system.Clean {
+	if result.env.System.Clean {
 		t.Error("expected clean=false")
 	}
-	if result.system.Docker != 3 {
-		t.Errorf("expected dockerCount=3, got %d", result.system.Docker)
+	if result.env.System.Docker != 3 {
+		t.Errorf("expected dockerCount=3, got %d", result.env.System.Docker)
 	}
-	if result.system.ChangedLines != 42 {
-		t.Errorf("expected diffLines=42, got %d", result.system.ChangedLines)
+	if result.env.System.ChangedLines != 42 {
+		t.Errorf("expected diffLines=42, got %d", result.env.System.ChangedLines)
 	}
 }
 
@@ -3008,7 +3008,7 @@ func TestHandlePhaseResult_MediumRework(t *testing.T) {
 	}
 	app.pipeline.State.Phases[3].Status = pipeline.StatusRunning
 	app.pipeline.Running = true
-	app.backend.Active = nil // no backend to execute rework
+	app.env.Backend.Active = nil // no backend to execute rework
 
 	msg := PhaseResultMsg{
 		Phase:   4,

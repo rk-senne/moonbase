@@ -417,7 +417,7 @@ func TestApp_FieldCountBounded(t *testing.T) {
 	count := reflect.TypeOf(App{}).NumField()
 	// Ratchet: lower this only when an extraction reduces the count. Never raise it
 	// to accommodate new loose fields — extract a sub-model instead.
-	const maxFields = 27
+	const maxFields = 25
 	if count > maxFields {
 		t.Errorf("App has %d fields, expected ≤ %d — did you add fields without extracting? See comment above.", count, maxFields)
 	}

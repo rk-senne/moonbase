@@ -123,22 +123,22 @@ func (a App) handleDashboardKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, a.keys.LaunchFish):
 		return a, a.launchTool("fish")
 	case key.Matches(msg, a.keys.ToggleWatcher):
-		if a.infra.Watcher != nil {
-			if a.infra.Watcher.Running() {
-				a.infra.Watcher.Stop()
+		if a.env.Infra.Watcher != nil {
+			if a.env.Infra.Watcher.Running() {
+				a.env.Infra.Watcher.Stop()
 				a.addIntel("File watcher stopped.")
 			} else {
 				cwd, _ := os.Getwd()
 				fw, _ := watcher.New()
 				if fw != nil {
 					fw.Start(cwd)
-					a.infra.Watcher = fw
+					a.env.Infra.Watcher = fw
 					a.addIntel("File watcher started: %s", cwd)
 				}
 			}
 		}
 	case key.Matches(msg, a.keys.CreatePR):
-		if a.infra.Ctx.IsPersonal() {
+		if a.env.Infra.Ctx.IsPersonal() {
 			return a, a.createPR()
 		}
 		a.addIntel("PR: not available in this context.")

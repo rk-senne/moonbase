@@ -40,7 +40,7 @@ func (a App) handleMissionKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 			// Start real pipeline execution if backend available
 			if cmd := a.startNextPhase(); cmd != nil {
-				a.addIntel("Pipeline executing via %s...", a.backend.Active.Name())
+				a.addIntel("Pipeline executing via %s...", a.env.Backend.Active.Name())
 				return a, cmd
 			}
 			// No backend — show simulated mode

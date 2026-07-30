@@ -204,17 +204,17 @@ func TestHandleSystemInfo(t *testing.T) {
 
 	model, _ := app.Update(msg)
 	result := model.(App)
-	if result.system.Branch != "main" {
-		t.Errorf("expected branch=main, got %s", result.system.Branch)
+	if result.env.System.Branch != "main" {
+		t.Errorf("expected branch=main, got %s", result.env.System.Branch)
 	}
-	if !result.system.Clean {
+	if !result.env.System.Clean {
 		t.Error("expected gitClean=true")
 	}
-	if result.system.Docker != 2 {
-		t.Errorf("expected dockerCount=2, got %d", result.system.Docker)
+	if result.env.System.Docker != 2 {
+		t.Errorf("expected dockerCount=2, got %d", result.env.System.Docker)
 	}
-	if result.system.ChangedLines != 45 {
-		t.Errorf("expected diffLines=45, got %d", result.system.ChangedLines)
+	if result.env.System.ChangedLines != 45 {
+		t.Errorf("expected diffLines=45, got %d", result.env.System.ChangedLines)
 	}
 }
 
