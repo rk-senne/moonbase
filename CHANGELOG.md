@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- feat(flywheel): token consumption and estimated cost per pipeline phase — OpenAI, Anthropic, and Kimi backends report prompt/completion tokens; flywheel persists per-entry token counts and estimated USD cost
+- feat(flywheel): `moonbase flywheel` shows Token & Cost Summary, per-agent cost breakdown, per-mission averages, and cost-heavy phase detection
+- feat(pipeline): per-mission token budget with configurable warn threshold and hard cap (`token_budget` config section)
+- feat(config): `model_pricing` config section for overriding default per-model token prices
+- feat(backend): `UsageReporter` and `RawUsageReporter` optional interfaces for backends that report token usage
+
 ## [1.12.0] - 2026-07-30
 
 ### Added
