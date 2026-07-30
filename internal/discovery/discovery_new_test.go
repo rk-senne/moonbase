@@ -388,3 +388,233 @@ func TestProjectContext_Summary_WithSkillsAndPrompts(t *testing.T) {
 		t.Errorf("expected 'Prompts: 1' in summary, got: %s", summary)
 	}
 }
+
+// === discoverSkillRegistry tests ===
+
+func TestDiscoverSkillRegistry_FrontmatterToRegistry(t *testing.T) {
+	tmpDir := t.TempDir()
+	skillsDir := filepath.Join(tmpDir, ".kiro", "skills")
+	os.MkdirAll(skillsDir, 0o755)
+
+	// Skill with valid frontmatter
+	content := "---\nname: docker-build\ndescription: Docker patterns\n---\n\n# Docker\nContent.\n"
+	os.WriteFile(filepath.Join(skillsDir, "docker-build.md"), []byte(content), 0o644)
+
+	registry := discoverSkillRegistry(tmpDir)
+	if registry.Len() != 1 {
+		t.Fatalf("expected 1 skill in registry, got %d", registry.Len())
+	}
+	meta := registry.Get("docker-build")
+	if meta == nil {
+		t.Fatal("expected 'docker-build' in registry")
+	}
+	if meta.Description != "Docker patterns" {
+		t.Errorf("unexpected description: %q", meta.Description)
+	}
+}
+
+func TestDiscoverSkillRegistry_LegacyNotInRegistry(t *testing.T) {
+	tmpDir := t.TempDir()
+	skillsDir := filepath.Join(tmpDir, ".kiro", "skills")
+	os.MkdirAll(skillsDir, 0o755)
+
+	// Legacy skill (no frontmatter)
+	os.WriteFile(filepath.Join(skillsDir, "legacy.md"), []byte("# Legacy\nNo frontmatter.\n"), 0o644)
+
+	registry := discoverSkillRegistry(tmpDir)
+	if registry.Len() != 0 {
+		t.Fatalf("expected 0 skills in registry (legacy excluded), got %d", registry.Len())
+	}
+}
+
+func TestDiscoverSkillRegistry_MissingDir(t *testing.T) {
+	tmpDir := t.TempDir()
+	// No .kiro/skills/ directory
+
+	registry := discoverSkillRegistry(tmpDir)
+	if registry == nil {
+		t.Fatal("expected non-nil registry")
+	}
+	if registry.Len() != 0 {
+		t.Errorf("expected empty registry, got %d skills", registry.Len())
+	}
+}
+
+func TestDiscoverSkillRegistry_SubdirectorySkills(t *testing.T) {
+	tmpDir := t.TempDir()
+	skillsDir := filepath.Join(tmpDir, ".kiro", "skills", "api")
+	os.MkdirAll(skillsDir, 0o755)
+
+	content := "---\nname: api-patterns\ndescription: REST patterns\n---\n\n# API\nContent.\n"
+	os.WriteFile(filepath.Join(skillsDir, "SKILL.md"), []byte(content), 0o644)
+
+	registry := discoverSkillRegistry(tmpDir)
+	if registry.Len() != 1 {
+		t.Fatalf("expected 1 skill from subdir, got %d", registry.Len())
+	}
+}
+
+func TestDiscoverLegacySkills_OnlyLegacy(t *testing.T) {
+	tmpDir := t.TempDir()
+	skillsDir := filepath.Join(tmpDir, ".kiro", "skills")
+	os.MkdirAll(skillsDir, 0o755)
+
+	// Frontmatter skill — should NOT appear in legacy
+	os.WriteFile(filepath.Join(skillsDir, "modern.md"),
+		[]byte("---\nname: modern\ndescription: Modern\n---\n\nBody.\n"), 0o644)
+	// Legacy skill — should appear in legacy
+	os.WriteFile(filepath.Join(skillsDir, "legacy.md"),
+		[]byte("# Legacy Skill\nNo frontmatter.\n"), 0o644)
+
+	skills, err := discoverLegacySkills(tmpDir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(skills) != 1 {
+		t.Fatalf("expected 1 legacy skill, got %d", len(skills))
+	}
+	if skills[0].Name != "legacy" {
+		t.Errorf("expected name 'legacy', got %q", skills[0].Name)
+	}
+	if skills[0].Content == "" {
+		t.Error("expected legacy skill to have content loaded eagerly")
+	}
+}
+
+func TestDiscover_SkillRegistry_Populated(t *testing.T) {
+	tmpDir := t.TempDir()
+	skillsDir := filepath.Join(tmpDir, ".kiro", "skills")
+	os.MkdirAll(skillsDir, 0o755)
+
+	os.WriteFile(filepath.Join(skillsDir, "registered.md"),
+		[]byte("---\nname: registered\ndescription: In registry\n---\n\nBody.\n"), 0o644)
+
+	ctx := Discover(tmpDir)
+	if ctx.SkillRegistry == nil {
+		t.Fatal("expected SkillRegistry to be populated")
+	}
+	if ctx.SkillRegistry.Len() != 1 {
+		t.Fatalf("expected 1 in registry, got %d", ctx.SkillRegistry.Len())
+	}
+}
+
+func TestDiscover_MetadataOnly_NoBodyRead(t *testing.T) {
+	tmpDir := t.TempDir()
+	skillsDir := filepath.Join(tmpDir, ".kiro", "skills")
+	os.MkdirAll(skillsDir, 0o755)
+
+	os.WriteFile(filepath.Join(skillsDir, "meta-only.md"),
+		[]byte("---\nname: meta-only\ndescription: Should not read body\n---\n\nExpensive body content.\n"), 0o644)
+
+	ctx := Discover(tmpDir)
+	// SkillRegistry should have the skill
+	if ctx.SkillRegistry.Get("meta-only") == nil {
+		t.Fatal("expected meta-only in registry")
+	}
+	// But content should not be loaded yet (verify by checking internal state)
+	// We can verify by calling LoadContent and checking it works (proves lazy)
+	content, err := ctx.SkillRegistry.LoadContent("meta-only")
+	if err != nil {
+		t.Fatalf("LoadContent failed: %v", err)
+	}
+	if content != "Expensive body content." {
+		t.Errorf("unexpected content: %q", content)
+	}
+}
+
+// === ComposePrompt skill catalog tests ===
+
+func TestComposePrompt_SkillCatalog_ShowsMetadataOnly(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "test-skill.md")
+	os.WriteFile(path, []byte("---\nname: test-skill\ndescription: Test desc\n---\n\nSecret body.\n"), 0o644)
+
+	r := NewSkillRegistry()
+	r.Register(SkillMeta{Name: "test-skill", Description: "Test desc", Path: path})
+
+	ctx := &ProjectContext{SkillRegistry: r}
+	result := ComposePrompt("# Agent", ctx, "Do stuff")
+
+	if !strings.Contains(result, "AVAILABLE SKILLS") {
+		t.Error("expected AVAILABLE SKILLS section")
+	}
+	if !strings.Contains(result, "test-skill") {
+		t.Error("expected skill name in catalog")
+	}
+	if !strings.Contains(result, "Test desc") {
+		t.Error("expected description in catalog")
+	}
+	// Body should NOT be in the prompt (metadata only)
+	if strings.Contains(result, "Secret body") {
+		t.Error("expected skill body NOT to be included in catalog")
+	}
+	if !strings.Contains(result, "@skill(name)") {
+		t.Error("expected @skill instruction in catalog")
+	}
+}
+
+func TestComposePrompt_SkillCatalog_FallbackToLegacy(t *testing.T) {
+	ctx := &ProjectContext{
+		Skills: []SkillFile{
+			{Name: "legacy-skill", Content: "Legacy content here"},
+		},
+	}
+	result := ComposePrompt("# Agent", ctx, "Do stuff")
+
+	if !strings.Contains(result, "PROJECT SKILLS") {
+		t.Error("expected legacy PROJECT SKILLS section")
+	}
+	if !strings.Contains(result, "Legacy content here") {
+		t.Error("expected legacy skill content")
+	}
+}
+
+func TestComposePrompt_TaskContainsSkillRef_AutoInjects(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "docker-build.md")
+	os.WriteFile(path, []byte("---\nname: docker-build\ndescription: Docker\n---\n\n# Docker Patterns\n\nUse multi-stage.\n"), 0o644)
+
+	r := NewSkillRegistry()
+	r.Register(SkillMeta{Name: "docker-build", Description: "Docker", Path: path})
+
+	ctx := &ProjectContext{SkillRegistry: r}
+	result := ComposePrompt("# Agent", ctx, "Review using @skill(docker-build)")
+
+	if !strings.Contains(result, "--- SKILL: docker-build ---") {
+		t.Error("expected injected skill section")
+	}
+	if !strings.Contains(result, "Use multi-stage.") {
+		t.Error("expected skill body content injected")
+	}
+	if !strings.Contains(result, "--- END SKILL ---") {
+		t.Error("expected skill end delimiter")
+	}
+}
+
+func TestComposePrompt_SkillNotFound_ShowsNote(t *testing.T) {
+	r := NewSkillRegistry()
+	r.Register(SkillMeta{Name: "existing", Description: "Exists", Path: "/fake.md"})
+
+	ctx := &ProjectContext{SkillRegistry: r}
+	result := ComposePrompt("# Agent", ctx, "Use @skill(nonexistent) please")
+
+	if !strings.Contains(result, "SKILL RESOLUTION") {
+		t.Error("expected SKILL RESOLUTION section for not-found")
+	}
+	if !strings.Contains(result, "nonexistent") {
+		t.Error("expected not-found name in resolution note")
+	}
+	if !strings.Contains(result, "existing") {
+		t.Error("expected available skills listed in resolution note")
+	}
+}
+
+func TestComposePrompt_SkillCatalog_EmptyRegistry(t *testing.T) {
+	r := NewSkillRegistry()
+	ctx := &ProjectContext{SkillRegistry: r}
+	result := ComposePrompt("# Agent", ctx, "Task")
+
+	if strings.Contains(result, "AVAILABLE SKILLS") {
+		t.Error("expected no AVAILABLE SKILLS section for empty registry")
+	}
+}

@@ -6,6 +6,7 @@ package discovery
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,13 +14,14 @@ import (
 
 // ProjectContext holds discovered information about the project an agent is working in.
 type ProjectContext struct {
-	Specs    []SpecFile     // Spec documents found in .kiro/specs/{feature}/
-	Steering []SteeringFile // Steering rules from .kiro/steering/ (manual-inclusion files excluded)
-	Skills   []SkillFile    // Skill definitions from .kiro/skills/
-	Prompts  []PromptFile   // Stored prompts from .kiro/prompts/
-	Stack    StackInfo      // Detected technology stack from build config files
-	README   string         // Project README content (truncated to 2000 chars)
-	RootDir  string         // Absolute path to the project root directory
+	Specs          []SpecFile     // Spec documents found in .kiro/specs/{feature}/
+	Steering       []SteeringFile // Steering rules from .kiro/steering/ (manual-inclusion files excluded)
+	Skills         []SkillFile    // Skill definitions from .kiro/skills/ (legacy: no-frontmatter only)
+	Prompts        []PromptFile   // Stored prompts from .kiro/prompts/
+	SkillRegistry  *SkillRegistry // Progressive skill registry (metadata-only at startup)
+	Stack          StackInfo      // Detected technology stack from build config files
+	README         string         // Project README content (truncated to 2000 chars)
+	RootDir        string         // Absolute path to the project root directory
 }
 
 // SpecFile represents a spec document from .kiro/specs/{feature}/.
@@ -78,10 +80,13 @@ func Discover(projectDir string) *ProjectContext {
 		ctx.Steering = steering
 	}
 
-	// Discover skills
-	skills, err := discoverSkills(projectDir)
+	// Discover skills — progressive loading with legacy fallback.
+	// Skills WITH frontmatter go into SkillRegistry (metadata-only at startup).
+	// Skills WITHOUT frontmatter go into Skills (legacy eager-load path).
+	ctx.SkillRegistry = discoverSkillRegistry(projectDir)
+	legacySkills, err := discoverLegacySkills(projectDir)
 	if err == nil {
-		ctx.Skills = skills
+		ctx.Skills = legacySkills
 	}
 
 	// Discover prompts
@@ -109,9 +114,14 @@ func (pc *ProjectContext) HasSteering() bool {
 	return len(pc.Steering) > 0
 }
 
-// HasSkills returns true if any skill files were found.
+// HasSkills returns true if any skill files were found (legacy or registry).
 func (pc *ProjectContext) HasSkills() bool {
-	return len(pc.Skills) > 0
+	return len(pc.Skills) > 0 || (pc.SkillRegistry != nil && pc.SkillRegistry.Len() > 0)
+}
+
+// HasRegistrySkills returns true if the skill registry has entries.
+func (pc *ProjectContext) HasRegistrySkills() bool {
+	return pc.SkillRegistry != nil && pc.SkillRegistry.Len() > 0
 }
 
 // HasPrompts returns true if any stored prompts were found.
@@ -141,7 +151,11 @@ func (pc *ProjectContext) Summary() string {
 		parts = append(parts, fmt.Sprintf("Steering: %s", strings.Join(names, ", ")))
 	}
 	if pc.HasSkills() {
-		parts = append(parts, fmt.Sprintf("Skills: %d", len(pc.Skills)))
+		count := len(pc.Skills)
+		if pc.SkillRegistry != nil {
+			count += pc.SkillRegistry.Len()
+		}
+		parts = append(parts, fmt.Sprintf("Skills: %d", count))
 	}
 	if pc.HasPrompts() {
 		parts = append(parts, fmt.Sprintf("Prompts: %d", len(pc.Prompts)))
@@ -248,6 +262,128 @@ func readREADME(projectDir string) string {
 	}
 
 	return ""
+}
+
+// discoverSkillRegistry builds a SkillRegistry from .kiro/skills/ using
+// metadata-only parsing. Files with valid YAML frontmatter are registered;
+// files without frontmatter are skipped (they go through discoverLegacySkills).
+// Missing directory returns an empty registry, not an error.
+func discoverSkillRegistry(projectDir string) *SkillRegistry {
+	registry := NewSkillRegistry()
+	skillsDir := filepath.Join(projectDir, ".kiro", "skills")
+
+	if _, err := os.Stat(skillsDir); os.IsNotExist(err) {
+		return registry
+	}
+
+	entries, err := os.ReadDir(skillsDir)
+	if err != nil {
+		return registry
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			// Check subdirectory .md files
+			subDir := filepath.Join(skillsDir, entry.Name())
+			subEntries, err := os.ReadDir(subDir)
+			if err != nil {
+				continue
+			}
+			for _, subEntry := range subEntries {
+				if subEntry.IsDir() || !strings.HasSuffix(strings.ToLower(subEntry.Name()), ".md") {
+					continue
+				}
+				path := filepath.Join(subDir, subEntry.Name())
+				meta, err := parseFrontmatterOnly(path)
+				if err != nil {
+					// No frontmatter — skip for registry (handled by legacy path)
+					continue
+				}
+				meta.Path = path
+				registry.Register(meta)
+			}
+		} else if strings.HasSuffix(strings.ToLower(entry.Name()), ".md") {
+			path := filepath.Join(skillsDir, entry.Name())
+			meta, err := parseFrontmatterOnly(path)
+			if err != nil {
+				// No frontmatter — skip for registry (handled by legacy path)
+				continue
+			}
+			meta.Path = path
+			registry.Register(meta)
+		}
+	}
+
+	return registry
+}
+
+// discoverLegacySkills finds skill files WITHOUT YAML frontmatter in .kiro/skills/.
+// These are loaded eagerly (full content) for backward compatibility.
+// Files WITH valid frontmatter are excluded (they live in SkillRegistry).
+func discoverLegacySkills(projectDir string) ([]SkillFile, error) {
+	skillsDir := filepath.Join(projectDir, ".kiro", "skills")
+	if _, err := os.Stat(skillsDir); os.IsNotExist(err) {
+		return nil, nil
+	}
+
+	var skills []SkillFile
+
+	entries, err := os.ReadDir(skillsDir)
+	if err != nil {
+		return nil, fmt.Errorf("reading skills dir: %w", err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			subDir := filepath.Join(skillsDir, entry.Name())
+			subEntries, err := os.ReadDir(subDir)
+			if err != nil {
+				continue
+			}
+			for _, subEntry := range subEntries {
+				if subEntry.IsDir() || !strings.HasSuffix(strings.ToLower(subEntry.Name()), ".md") {
+					continue
+				}
+				path := filepath.Join(subDir, subEntry.Name())
+				// Check if it has frontmatter — if so, skip (it's in the registry)
+				if _, err := parseFrontmatterOnly(path); err == nil {
+					continue
+				}
+				// Legacy skill — load eagerly
+				content, err := os.ReadFile(path)
+				if err != nil {
+					continue
+				}
+				name := entry.Name() + "/" + strings.TrimSuffix(subEntry.Name(), ".md")
+				slog.Warn("skill missing frontmatter", "path", path, "name", name)
+				skills = append(skills, SkillFile{
+					Name:    name,
+					Path:    path,
+					Content: string(content),
+				})
+			}
+		} else if strings.HasSuffix(strings.ToLower(entry.Name()), ".md") {
+			path := filepath.Join(skillsDir, entry.Name())
+			// Check if it has frontmatter — if so, skip (it's in the registry)
+			if _, err := parseFrontmatterOnly(path); err == nil {
+				continue
+			}
+			// Legacy skill — load eagerly
+			content, err := os.ReadFile(path)
+			if err != nil {
+				continue
+			}
+			name := strings.TrimSuffix(entry.Name(), ".md")
+			slog.Warn("skill missing frontmatter", "path", path, "name", name)
+			skills = append(skills, SkillFile{
+				Name:    name,
+				Path:    path,
+				Content: string(content),
+			})
+		}
+	}
+
+	return skills, nil
 }
 
 // discoverSkills finds skill/knowledge files in .kiro/skills/.
