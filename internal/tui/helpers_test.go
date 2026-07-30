@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 func TestCommsKeys_SnippetPicker(t *testing.T) {
@@ -17,12 +17,12 @@ func TestCommsKeys_SnippetPicker(t *testing.T) {
 	app.views.SnippetPick.List = nil
 
 	// Navigate in snippet picker
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'j', Text: "j"})
 	result := model.(App)
 	_ = result
 
 	// Esc exits snippet picker
-	model, _ = app.Update(tea.KeyMsg{Type: tea.KeyEscape})
+	model, _ = app.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	result = model.(App)
 	if result.views.SnippetPick.Active {
 		t.Error("expected snippetPick.Active=false after esc")
@@ -39,7 +39,7 @@ func TestCommsKeys_ContextFile(t *testing.T) {
 	app.views.CtxFile.Input.Focus()
 
 	// Esc exits context file mode
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	result := model.(App)
 	if result.views.CtxFile.Active {
 		t.Error("expected ctxFile.Active=false after esc")
@@ -57,7 +57,7 @@ func TestCommsKeys_ContextFileEnter(t *testing.T) {
 	app.views.CtxFile.Input.SetValue("/nonexistent/path")
 
 	// Enter with invalid path should exit context file mode
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	result := model.(App)
 	if result.views.CtxFile.Active {
 		t.Error("expected ctxFile.Active=false after enter")
@@ -72,7 +72,7 @@ func TestCommsKeys_AtSwitch(t *testing.T) {
 	app.views.Comms.Input.Focus()
 	app.views.Comms.Input.SetValue("@numbuh-1")
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	result := model.(App)
 	// Should have reset input after @ command
 	if result.views.Comms.Input.Value() != "" {
@@ -87,7 +87,7 @@ func TestFileBrowserKeys_Esc(t *testing.T) {
 	app.views.Browser.Active = true
 	app.views.Terminal.Active = false
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	result := model.(App)
 	if result.views.Browser.Active {
 		t.Error("expected browsing=false after esc in file browser")
@@ -102,7 +102,7 @@ func TestFileBrowserKeys_Navigate(t *testing.T) {
 	app.views.Terminal.Active = false
 
 	// Navigate down
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'j', Text: "j"})
 	result := model.(App)
 	_ = result // just ensure no crash
 }
@@ -115,7 +115,7 @@ func TestTerminalKeys_Esc(t *testing.T) {
 	app.views.Terminal.Active = true
 	app.views.Terminal.Input.Focus()
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	result := model.(App)
 	if result.views.Terminal.Active {
 		t.Error("expected termActive=false after esc in terminal")
@@ -130,7 +130,7 @@ func TestTerminalKeys_Backtick(t *testing.T) {
 	app.views.Terminal.Active = true
 	app.views.Terminal.Input.Focus()
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'`'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: '`', Text: "`"})
 	result := model.(App)
 	if result.views.Terminal.Active {
 		t.Error("expected termActive=false after backtick")
@@ -147,7 +147,7 @@ func TestFileBrowserKeys_Backtick(t *testing.T) {
 	app.views.Browser.Active = true
 	app.views.Terminal.Active = false
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'`'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: '`', Text: "`"})
 	result := model.(App)
 	if result.views.Browser.Active {
 		t.Error("expected browsing=false after backtick from browser")

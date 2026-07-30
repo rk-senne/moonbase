@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/help"
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/help"
+	"charm.land/bubbles/v2/key"
+	"charm.land/lipgloss/v2"
 )
 
 // helpCategoryNames maps each FullHelp group index to its category label.
@@ -92,7 +92,7 @@ func (a App) renderHelp() string {
 // newHelpModel creates a help.Model configured for the TUI footer rendering.
 func newHelpModel(width int, t Theme) help.Model {
 	h := help.New()
-	h.Width = width
+	h.SetWidth(width)
 	h.ShortSeparator = " • "
 	h.Styles.ShortKey = lipgloss.NewStyle().Foreground(t.Text).Bold(true)
 	h.Styles.ShortDesc = lipgloss.NewStyle().Foreground(t.Muted)

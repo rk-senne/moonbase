@@ -3,8 +3,8 @@ package tui
 import (
 	"testing"
 
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
 	"github.com/rk-senne/moonbase/internal/pipeline"
 )
 
@@ -15,7 +15,7 @@ func TestDashboardKeys_Mission(t *testing.T) {
 	app.views.Browser.Active = false
 	app.views.Terminal.Active = false
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'m'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'm', Text: "m"})
 	result := model.(App)
 	if result.view != ViewMission {
 		t.Errorf("expected ViewMission after 'm', got %d", result.view)
@@ -29,7 +29,7 @@ func TestDashboardKeys_Search(t *testing.T) {
 	app.views.Browser.Active = false
 	app.views.Terminal.Active = false
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: '/', Text: "/"})
 	result := model.(App)
 	if !result.views.Search.Active {
 		t.Error("expected searching=true after '/'")
@@ -43,7 +43,7 @@ func TestDashboardKeys_NumberJump(t *testing.T) {
 	app.views.Browser.Active = false
 	app.views.Terminal.Active = false
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'3'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: '3', Text: "3"})
 	result := model.(App)
 	if result.views.Dashboard.Cursor != 3 {
 		t.Errorf("expected cursor=3 after '3', got %d", result.views.Dashboard.Cursor)
@@ -60,7 +60,7 @@ func TestDashboardKeys_History(t *testing.T) {
 	app.views.Browser.Active = false
 	app.views.Terminal.Active = false
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'H'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'H', Text: "H"})
 	result := model.(App)
 	if result.view != ViewHistory {
 		t.Errorf("expected ViewHistory after 'H', got %d", result.view)
@@ -74,7 +74,7 @@ func TestDossierKeys_EscBack(t *testing.T) {
 	app.views.Browser.Active = false
 	app.views.Terminal.Active = false
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	result := model.(App)
 	if result.view != ViewDashboard {
 		t.Errorf("expected ViewDashboard after esc in dossier, got %d", result.view)
@@ -89,7 +89,7 @@ func TestDossierKeys_Enter(t *testing.T) {
 	app.views.Terminal.Active = false
 	app.registry = newTestRegistry()
 
-	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	_, cmd := app.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	// Enter in dossier triggers deployAgent which returns a cmd
 	// It should not be nil (it launches an agent deploy)
 	_ = cmd // deploy returns a cmd or nil depending on backend
@@ -104,7 +104,7 @@ func TestPipelineKeys_EscAbort(t *testing.T) {
 	app.views.Pipeline.Running = true
 	app.views.Pipeline.State = pipeline.New("test")
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	result := model.(App)
 	if !result.views.Pipeline.AbortPending {
 		t.Error("expected abortPending=true after first esc during running pipeline")
@@ -119,7 +119,7 @@ func TestPipelineKeys_EscBackWhenIdle(t *testing.T) {
 	app.views.Terminal.Active = false
 	app.views.Pipeline.Running = false
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	result := model.(App)
 	if result.view != ViewDashboard {
 		t.Errorf("expected ViewDashboard after esc on idle pipeline, got %d", result.view)
@@ -136,7 +136,7 @@ func TestPipelineKeys_Retry(t *testing.T) {
 	app.views.Pipeline.State = pipeline.New("test")
 	app.views.Pipeline.State.Phases[0].Status = pipeline.StatusFailed
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'r', Text: "r"})
 	result := model.(App)
 	if result.views.Pipeline.State.Phases[0].Status != pipeline.StatusRunning {
 		t.Errorf("expected phase 0 to be running after retry, got %d", result.views.Pipeline.State.Phases[0].Status)
@@ -153,7 +153,7 @@ func TestPipelineKeys_Skip(t *testing.T) {
 	app.views.Pipeline.State = pipeline.New("test")
 	app.views.Pipeline.State.Phases[0].Status = pipeline.StatusRunning
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
 	result := model.(App)
 	if result.views.Pipeline.State.Phases[0].Status != pipeline.StatusSkipped {
 		t.Errorf("expected phase 0 to be skipped, got %d", result.views.Pipeline.State.Phases[0].Status)
@@ -169,7 +169,7 @@ func TestMissionKeys_Esc(t *testing.T) {
 	app.boot.Ready = true
 	app.views.Mission.Input.Focus()
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	result := model.(App)
 	if result.view != ViewDashboard {
 		t.Errorf("expected ViewDashboard after esc in mission, got %d", result.view)
@@ -183,7 +183,7 @@ func TestMissionKeys_EnterSubmit(t *testing.T) {
 	app.views.Mission.Input.Focus()
 	app.views.Mission.Input.SetValue("deploy the fleet")
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	result := model.(App)
 	if result.view != ViewPipeline {
 		t.Errorf("expected ViewPipeline after mission submit, got %d", result.view)
@@ -203,7 +203,7 @@ func TestMissionKeys_EnterEmpty(t *testing.T) {
 	app.views.Mission.Input.Focus()
 	app.views.Mission.Input.SetValue("")
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	result := model.(App)
 	// Empty mission should not start pipeline
 	if result.view != ViewMission {
@@ -221,7 +221,7 @@ func TestCommsKeys_Esc(t *testing.T) {
 	app.views.Comms.State = newCommsState("test-agent", "system prompt", 80, 40)
 	app.views.Comms.Input.Focus()
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	result := model.(App)
 	if result.view != ViewDossier {
 		t.Errorf("expected ViewDossier after esc in comms, got %d", result.view)
@@ -236,9 +236,9 @@ func TestCommsKeys_MessageInput(t *testing.T) {
 	app.views.Comms.Input.Focus()
 
 	// Type a character
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'h'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'h', Text: "h"})
 	result := model.(App)
-	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'i'}})
+	model, _ = result.Update(tea.KeyPressMsg{Code: 'i', Text: "i"})
 	result = model.(App)
 
 	if result.views.Comms.Input.Value() != "hi" {

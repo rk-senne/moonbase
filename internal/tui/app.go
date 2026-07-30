@@ -5,10 +5,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/rk-senne/moonbase/internal/agents"
 	"github.com/rk-senne/moonbase/internal/backend"
 	"github.com/rk-senne/moonbase/internal/discovery"
@@ -96,22 +96,22 @@ func NewApp() App {
 	ti := textinput.New()
 	ti.Placeholder = "Describe the mission objective..."
 	ti.CharLimit = 500
-	ti.Width = 60
+	ti.SetWidth(60)
 
 	si := textinput.New()
 	si.Placeholder = "Search operatives..."
 	si.CharLimit = 40
-	si.Width = 30
+	si.SetWidth(30)
 
 	ci := textinput.New()
 	ci.Placeholder = "Type message..."
 	ci.CharLimit = 2000
-	ci.Width = 80
+	ci.SetWidth(80)
 
 	fi := textinput.New()
 	fi.Placeholder = "File path to attach..."
 	fi.CharLimit = 256
-	fi.Width = 60
+	fi.SetWidth(60)
 
 	cwd, _ := os.Getwd()
 
@@ -302,10 +302,13 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.views.Terminal = a.views.Terminal.HandleClear()
 		return a, nil
 
-	case tea.MouseMsg:
-		return a.handleMouse(msg)
+	case tea.MouseWheelMsg:
+		return a.handleMouseWheel(msg)
 
-	case tea.KeyMsg:
+	case tea.MouseClickMsg:
+		return a.handleMouseClick(msg)
+
+	case tea.KeyPressMsg:
 		// Boot view: any key skips
 		if a.view == ViewBoot {
 			a.view = ViewDashboard
@@ -342,7 +345,10 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return a, nil
 }
 
-func (a App) View() string {
+// renderFrame returns the full frame content as a string. This is the seam
+// between the internal render logic (all returning strings) and the v2 View()
+// that returns tea.View. Golden tests call this directly for determinism.
+func (a App) renderFrame() string {
 	if !a.boot.Ready {
 		return "  Initializing..."
 	}
@@ -370,4 +376,11 @@ func (a App) View() string {
 	default:
 		return a.renderDashboard()
 	}
+}
+
+func (a App) View() tea.View {
+	v := tea.NewView(a.renderFrame())
+	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
+	return v
 }

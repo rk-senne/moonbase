@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/viewport"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/viewport"
+	"charm.land/lipgloss/v2"
 	"github.com/rk-senne/moonbase/internal/docs"
 )
 
@@ -20,7 +20,7 @@ type DocsState struct {
 
 func newDocsState(width, height int) *DocsState {
 	files := docs.Discover()
-	vp := viewport.New(width-28, height-4)
+	vp := viewport.New(viewport.WithWidth(width-28), viewport.WithHeight(height-4))
 
 	ds := &DocsState{
 		files:    files,

@@ -1,7 +1,7 @@
 package tui
 
 import (
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/rk-senne/moonbase/internal/agents"
 )
 
@@ -16,10 +16,10 @@ const (
 	sidebarWidth       = 24
 )
 
-// handleMouse routes mouse events to the active view. Mouse support is strictly
+// handleMouseWheel routes mouse wheel events. Mouse support is strictly
 // additive: every action here has a keyboard equivalent, so the TUI remains fully
-// usable without a mouse. Enabled via tea.WithMouseCellMotion in the program.
-func (a App) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
+// usable without a mouse.
+func (a App) handleMouseWheel(msg tea.MouseWheelMsg) (tea.Model, tea.Cmd) {
 	// Boot view: any interaction skips the boot animation, mirroring key handling.
 	if a.view == ViewBoot {
 		a.view = ViewDashboard
@@ -28,14 +28,25 @@ func (a App) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg.Button {
-	case tea.MouseButtonWheelUp:
+	case tea.MouseWheelUp:
 		return a.mouseScroll(-1), nil
-	case tea.MouseButtonWheelDown:
+	case tea.MouseWheelDown:
 		return a.mouseScroll(1), nil
-	case tea.MouseButtonLeft:
-		if msg.Action == tea.MouseActionPress {
-			return a.mouseClick(msg), nil
-		}
+	}
+	return a, nil
+}
+
+// handleMouseClick routes mouse click events.
+func (a App) handleMouseClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd) {
+	// Boot view: any interaction skips the boot animation, mirroring key handling.
+	if a.view == ViewBoot {
+		a.view = ViewDashboard
+		a.addIntel("Boot skipped by operative.")
+		return a, nil
+	}
+
+	if msg.Button == tea.MouseLeft {
+		return a.mouseClick(msg), nil
 	}
 	return a, nil
 }
@@ -49,17 +60,17 @@ func (a App) mouseScroll(dir int) App {
 	case ViewComms:
 		if a.views.Comms.State != nil {
 			if dir < 0 {
-				a.views.Comms.State.viewport.LineUp(mouseWheelLines)
+				a.views.Comms.State.viewport.ScrollUp(mouseWheelLines)
 			} else {
-				a.views.Comms.State.viewport.LineDown(mouseWheelLines)
+				a.views.Comms.State.viewport.ScrollDown(mouseWheelLines)
 			}
 		}
 	case ViewDocs:
 		if a.views.Docs != nil {
 			if dir < 0 {
-				a.views.Docs.viewport.LineUp(mouseWheelLines)
+				a.views.Docs.viewport.ScrollUp(mouseWheelLines)
 			} else {
-				a.views.Docs.viewport.LineDown(mouseWheelLines)
+				a.views.Docs.viewport.ScrollDown(mouseWheelLines)
 			}
 		}
 	case ViewProjects:
@@ -88,7 +99,7 @@ func (a App) mouseScroll(dir int) App {
 // roster row was clicked and opens its dossier — the mouse equivalent of arrowing to
 // an operative and pressing enter. The sidebar is only present in the 2-col and
 // 3-col layouts (width >= 80).
-func (a App) mouseClick(msg tea.MouseMsg) App {
+func (a App) mouseClick(msg tea.MouseClickMsg) App {
 	if a.view != ViewDashboard || a.width < 80 || a.registry == nil {
 		return a
 	}

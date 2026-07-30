@@ -1,8 +1,8 @@
 package tui
 
 import (
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
 )
 
 // DashboardModel owns the roster navigation state: which agent is highlighted
@@ -24,7 +24,7 @@ func NewDashboardModel() DashboardModel {
 // Update handles roster navigation key messages (Up/Down/JumpToAgent).
 // Returns the updated model. Other dashboard keys (Enter, theme, etc.) remain
 // in App's handleDashboardKeys because they need access to App-level state.
-func (m DashboardModel) Update(msg tea.KeyMsg, ctx AppContext) (DashboardModel, tea.Cmd) {
+func (m DashboardModel) Update(msg tea.KeyPressMsg, ctx AppContext) (DashboardModel, tea.Cmd) {
 	switch {
 	case key.Matches(msg, ctx.Keys.Up):
 		if m.Cursor > 0 {

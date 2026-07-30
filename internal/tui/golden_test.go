@@ -9,9 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/rk-senne/moonbase/internal/pipeline"
-	"github.com/muesli/termenv"
 )
 
 // updateGolden controls whether golden files are written (regenerated) or compared.
@@ -27,7 +25,7 @@ func goldenDir() string {
 
 // goldenAssert renders the given view string and compares it to the golden file
 // at testdata/<name>.golden. If -update-golden is set, the golden file is written
-// instead. The colour profile is pinned to TrueColor for cross-machine stability.
+// instead. Lipgloss v2 Style.Render is deterministic so no color profile pinning needed.
 func goldenAssert(t *testing.T, name string, got string) {
 	t.Helper()
 
@@ -139,23 +137,16 @@ func newGoldenApp(t *testing.T) App {
 
 // TestGolden_Dashboard captures the dashboard view at a fixed 100x30 state.
 func TestGolden_Dashboard(t *testing.T) {
-	// Pin colour profile to TrueColor for deterministic ANSI output.
-	lipgloss.SetColorProfile(termenv.TrueColor)
-	lipgloss.SetHasDarkBackground(true)
-
 	app := newGoldenApp(t)
 	app.view = ViewDashboard
 
-	got := app.View()
+	got := app.renderFrame()
 	goldenAssert(t, "dashboard", got)
 }
 
 // TestGolden_Pipeline captures the pipeline view with a deterministic phase state.
 // All phases are set to fixed statuses (no StatusRunning which would include spinner).
 func TestGolden_Pipeline(t *testing.T) {
-	lipgloss.SetColorProfile(termenv.TrueColor)
-	lipgloss.SetHasDarkBackground(true)
-
 	app := newGoldenApp(t)
 	app.view = ViewPipeline
 
@@ -189,44 +180,35 @@ func TestGolden_Pipeline(t *testing.T) {
 		{Agent: "", Content: "└── ✅ Architecture complete (2.0s)"},
 	}
 
-	got := app.View()
+	got := app.renderFrame()
 	goldenAssert(t, "pipeline", got)
 }
 
 // TestGolden_Dossier captures the dossier view for the first agent in the registry.
 func TestGolden_Dossier(t *testing.T) {
-	lipgloss.SetColorProfile(termenv.TrueColor)
-	lipgloss.SetHasDarkBackground(true)
-
 	app := newGoldenApp(t)
 	app.view = ViewDossier
 	app.views.Dashboard.Selected = 0
 
-	got := app.View()
+	got := app.renderFrame()
 	goldenAssert(t, "dossier", got)
 }
 
 // TestGolden_Help captures the operations manual, which is generated entirely
 // from the central key map — this snapshot guards against help/keybinding drift.
 func TestGolden_Help(t *testing.T) {
-	lipgloss.SetColorProfile(termenv.TrueColor)
-	lipgloss.SetHasDarkBackground(true)
-
 	app := newGoldenApp(t)
 	app.view = ViewHelp
 
-	got := app.View()
+	got := app.renderFrame()
 	goldenAssert(t, "help", got)
 }
 
 // TestGolden_Protocol captures the static operations-protocol reference view.
 func TestGolden_Protocol(t *testing.T) {
-	lipgloss.SetColorProfile(termenv.TrueColor)
-	lipgloss.SetHasDarkBackground(true)
-
 	app := newGoldenApp(t)
 	app.view = ViewProtocol
 
-	got := app.View()
+	got := app.renderFrame()
 	goldenAssert(t, "protocol", got)
 }

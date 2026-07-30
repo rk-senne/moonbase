@@ -1,6 +1,6 @@
 package tui
 
-import "github.com/charmbracelet/bubbles/textinput"
+import "charm.land/bubbles/v2/textinput"
 
 // ContextFileModel holds the file-attachment input state for COMMS.
 // Extracted from App to keep the top-level struct focused on orchestration.

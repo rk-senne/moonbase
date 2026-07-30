@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
 	"github.com/rk-senne/moonbase/internal/pipeline"
 )
 
 // handleMissionKeys handles key messages when the view is ViewMission.
-func (a App) handleMissionKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (a App) handleMissionKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, a.keys.Back):
 		a.view = ViewDashboard

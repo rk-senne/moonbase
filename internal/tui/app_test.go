@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/rk-senne/moonbase/internal/agents"
 )
 
@@ -74,7 +74,7 @@ func TestApp_BootSkipOnKeyPress(t *testing.T) {
 	app := NewApp()
 	app.boot.Ready = true
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	result := model.(App)
 	if result.view != ViewDashboard {
 		t.Errorf("expected ViewDashboard after boot skip, got %d", result.view)
@@ -100,7 +100,7 @@ func TestApp_KeyNavigation_MissionView(t *testing.T) {
 	app.views.Browser.Active = false
 	app.views.Terminal.Active = false
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'m'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'm', Text: "m"})
 	result := model.(App)
 	if result.view != ViewMission {
 		t.Errorf("expected ViewMission after 'm', got %d", result.view)
@@ -114,13 +114,13 @@ func TestApp_KeyNavigation_HelpToggle(t *testing.T) {
 	app.views.Browser.Active = false
 	app.views.Terminal.Active = false
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: '?', Text: "?"})
 	result := model.(App)
 	if result.view != ViewHelp {
 		t.Errorf("expected ViewHelp after '?', got %d", result.view)
 	}
 
-	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
+	model, _ = result.Update(tea.KeyPressMsg{Code: '?', Text: "?"})
 	result = model.(App)
 	if result.view != ViewDashboard {
 		t.Errorf("expected ViewDashboard after second '?', got %d", result.view)
@@ -135,7 +135,7 @@ func TestApp_KeyNavigation_CursorUpDown(t *testing.T) {
 	app.views.Terminal.Active = false
 	app.registry = newTestRegistry()
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'j', Text: "j"})
 	result := model.(App)
 	if result.views.Dashboard.Cursor != 1 {
 		t.Errorf("expected cursor=1 after 'j', got %d", result.views.Dashboard.Cursor)
@@ -144,7 +144,7 @@ func TestApp_KeyNavigation_CursorUpDown(t *testing.T) {
 		t.Errorf("expected selected=1 after 'j', got %d", result.views.Dashboard.Selected)
 	}
 
-	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
+	model, _ = result.Update(tea.KeyPressMsg{Code: 'k', Text: "k"})
 	result = model.(App)
 	if result.views.Dashboard.Cursor != 0 {
 		t.Errorf("expected cursor=0 after 'k', got %d", result.views.Dashboard.Cursor)
@@ -158,7 +158,7 @@ func TestApp_KeyNavigation_DossierView(t *testing.T) {
 	app.views.Browser.Active = false
 	app.views.Terminal.Active = false
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	result := model.(App)
 	if result.view != ViewDossier {
 		t.Errorf("expected ViewDossier after enter, got %d", result.view)
@@ -172,7 +172,7 @@ func TestApp_KeyNavigation_HistoryView(t *testing.T) {
 	app.views.Browser.Active = false
 	app.views.Terminal.Active = false
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'H'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'H', Text: "H"})
 	result := model.(App)
 	if result.view != ViewHistory {
 		t.Errorf("expected ViewHistory after 'H', got %d", result.view)
@@ -185,9 +185,9 @@ func TestApp_MissionInput(t *testing.T) {
 	app.boot.Ready = true
 	app.views.Mission.Input.Focus()
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'h'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'h', Text: "h"})
 	result := model.(App)
-	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'i'}})
+	model, _ = result.Update(tea.KeyPressMsg{Code: 'i', Text: "i"})
 	result = model.(App)
 
 	if result.views.Mission.Input.Value() != "hi" {
@@ -201,7 +201,7 @@ func TestApp_MissionInput_EscReturns(t *testing.T) {
 	app.boot.Ready = true
 	app.views.Mission.Input.Focus()
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	result := model.(App)
 	if result.view != ViewDashboard {
 		t.Errorf("expected ViewDashboard after esc in mission, got %d", result.view)
@@ -215,7 +215,7 @@ func TestApp_MissionInput_Submit(t *testing.T) {
 	app.views.Mission.Input.Focus()
 	app.views.Mission.Input.SetValue("add pagination")
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	result := model.(App)
 	if result.view != ViewPipeline {
 		t.Errorf("expected ViewPipeline after mission submit, got %d", result.view)
@@ -235,7 +235,7 @@ func TestApp_QuitKey(t *testing.T) {
 	app.views.Browser.Active = false
 	app.views.Terminal.Active = false
 
-	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
+	_, cmd := app.Update(tea.KeyPressMsg{Code: 'q', Text: "q"})
 	if cmd == nil {
 		t.Fatal("expected quit command, got nil")
 	}
@@ -252,7 +252,7 @@ func TestApp_CtrlC_Quit(t *testing.T) {
 	app.views.Browser.Active = false
 	app.views.Terminal.Active = false
 
-	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	_, cmd := app.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
 	if cmd == nil {
 		t.Fatal("expected quit command from ctrl+c, got nil")
 	}
@@ -286,19 +286,19 @@ func TestApp_TabCyclesFocus(t *testing.T) {
 	app.views.Browser.Active = false
 	app.views.Terminal.Active = false
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyTab})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 	result := model.(App)
 	if result.chrome.Focus != FocusMain {
 		t.Errorf("expected focus=FocusMain after first tab, got %d", result.chrome.Focus)
 	}
 
-	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyTab})
+	model, _ = result.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 	result = model.(App)
 	if result.chrome.Focus != FocusRight {
 		t.Errorf("expected focus=FocusRight after second tab, got %d", result.chrome.Focus)
 	}
 
-	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyTab})
+	model, _ = result.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 	result = model.(App)
 	if result.chrome.Focus != FocusSidebar {
 		t.Errorf("expected focus=FocusSidebar after third tab (wrap), got %d", result.chrome.Focus)
@@ -312,25 +312,25 @@ func TestApp_ThemeCycle(t *testing.T) {
 	app.views.Browser.Active = false
 	app.views.Terminal.Active = false
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'T'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'T', Text: "T"})
 	result := model.(App)
 	if result.theme.Name != "treehouse" {
 		t.Errorf("expected theme=treehouse after first 'T', got %s", result.theme.Name)
 	}
 
-	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'T'}})
+	model, _ = result.Update(tea.KeyPressMsg{Code: 'T', Text: "T"})
 	result = model.(App)
 	if result.theme.Name != "classified" {
 		t.Errorf("expected theme=classified after second 'T', got %s", result.theme.Name)
 	}
 
-	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'T'}})
+	model, _ = result.Update(tea.KeyPressMsg{Code: 'T', Text: "T"})
 	result = model.(App)
 	if result.theme.Name != "nerv" {
 		t.Errorf("expected theme=nerv after third 'T', got %s", result.theme.Name)
 	}
 
-	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'T'}})
+	model, _ = result.Update(tea.KeyPressMsg{Code: 'T', Text: "T"})
 	result = model.(App)
 	if result.theme.Name != "moonbase" {
 		t.Errorf("expected theme=moonbase after fourth 'T' (wrap), got %s", result.theme.Name)
@@ -345,7 +345,7 @@ func TestApp_PipelineEscAbort(t *testing.T) {
 	app.views.Terminal.Active = false
 	app.views.Pipeline.Running = true
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	result := model.(App)
 	if !result.views.Pipeline.AbortPending {
 		t.Error("expected abortPending=true after first esc during running pipeline")
@@ -359,7 +359,7 @@ func TestApp_PipelineEscAbort(t *testing.T) {
 	app2.views.Terminal.Active = false
 	app2.views.Pipeline.Running = false
 
-	model, _ = app2.Update(tea.KeyMsg{Type: tea.KeyEscape})
+	model, _ = app2.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	result = model.(App)
 	if result.view != ViewDashboard {
 		t.Errorf("expected ViewDashboard after esc on idle pipeline, got %d", result.view)
@@ -370,7 +370,7 @@ func TestApp_View_ReturnsInitializing(t *testing.T) {
 	app := NewApp()
 	app.boot.Ready = false
 
-	output := app.View()
+	output := app.renderFrame()
 	if output != "  Initializing..." {
 		t.Errorf("expected 'Initializing...' when not ready, got %q", output)
 	}
@@ -384,7 +384,7 @@ func TestApp_CursorBoundsCheck(t *testing.T) {
 	app.views.Terminal.Active = false
 	app.views.Dashboard.Cursor = 0
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'k', Text: "k"})
 	result := model.(App)
 	if result.views.Dashboard.Cursor != 0 {
 		t.Errorf("expected cursor stays at 0, got %d", result.views.Dashboard.Cursor)

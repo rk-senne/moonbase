@@ -5,10 +5,10 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 // TerminalModel owns the embedded terminal state: input, output buffer, active flag,
@@ -26,7 +26,7 @@ func NewTerminalModel() TerminalModel {
 	ti := textinput.New()
 	ti.Placeholder = "$ "
 	ti.CharLimit = 500
-	ti.Width = 80
+	ti.SetWidth(80)
 
 	cwd, _ := os.Getwd()
 	return TerminalModel{
@@ -39,7 +39,7 @@ func NewTerminalModel() TerminalModel {
 
 // Update handles key messages when the terminal is active.
 // Returns the updated TerminalModel and any tea.Cmd to execute.
-func (m TerminalModel) Update(msg tea.KeyMsg, ctx AppContext) (TerminalModel, tea.Cmd) {
+func (m TerminalModel) Update(msg tea.KeyPressMsg, ctx AppContext) (TerminalModel, tea.Cmd) {
 	switch {
 	case key.Matches(msg, ctx.Keys.TerminalEsc):
 		m.Active = false

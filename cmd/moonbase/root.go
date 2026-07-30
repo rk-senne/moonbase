@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/rk-senne/moonbase/internal/backend"
 	clip "github.com/rk-senne/moonbase/internal/clipboard"
 	"github.com/rk-senne/moonbase/internal/logging"
@@ -78,7 +78,7 @@ Pipe Mode:
 		}
 
 		// Default: launch TUI
-		p := tea.NewProgram(tui.NewApp(), tea.WithAltScreen(), tea.WithMouseCellMotion())
+		p := tea.NewProgram(tui.NewApp())
 		if _, err := p.Run(); err != nil {
 			return fmt.Errorf("TUI error: %w", err)
 		}

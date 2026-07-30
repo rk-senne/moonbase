@@ -1,12 +1,12 @@
 package tui
 
 import (
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
 )
 
 // handleProjectsKeys handles key messages when the view is ViewProjects.
-func (a App) handleProjectsKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (a App) handleProjectsKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if a.views.ProjectNav == nil {
 		return a, nil
 	}
@@ -32,7 +32,7 @@ func (a App) handleProjectsKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 // handleDocsKeys handles key messages when the view is ViewDocs.
-func (a App) handleDocsKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (a App) handleDocsKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if a.views.Docs == nil {
 		return a, nil
 	}
@@ -50,9 +50,9 @@ func (a App) handleDocsKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, a.keys.Enter):
 		a.views.Docs.loadDoc(a.views.Docs.cursor, a.width-30)
 	case key.Matches(msg, a.keys.DocsPageDown):
-		a.views.Docs.viewport.HalfViewDown()
+		a.views.Docs.viewport.HalfPageDown()
 	case key.Matches(msg, a.keys.DocsPageUp):
-		a.views.Docs.viewport.HalfViewUp()
+		a.views.Docs.viewport.HalfPageUp()
 	}
 	return a, nil
 }

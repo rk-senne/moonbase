@@ -1,10 +1,11 @@
 package tui
 
 import (
+	"image/color"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 func TestApp_FocusCycle(t *testing.T) {
@@ -18,19 +19,19 @@ func TestApp_FocusCycle(t *testing.T) {
 		t.Fatalf("expected initial focus=FocusSidebar, got %d", app.chrome.Focus)
 	}
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyTab})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 	result := model.(App)
 	if result.chrome.Focus != FocusMain {
 		t.Errorf("expected FocusMain after first tab, got %d", result.chrome.Focus)
 	}
 
-	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyTab})
+	model, _ = result.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 	result = model.(App)
 	if result.chrome.Focus != FocusRight {
 		t.Errorf("expected FocusRight after second tab, got %d", result.chrome.Focus)
 	}
 
-	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyTab})
+	model, _ = result.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 	result = model.(App)
 	if result.chrome.Focus != FocusSidebar {
 		t.Errorf("expected FocusSidebar after third tab (wrap), got %d", result.chrome.Focus)
@@ -47,7 +48,7 @@ func TestApp_ThemeCycleAll(t *testing.T) {
 	themes := []string{"treehouse", "classified", "nerv", "moonbase"}
 	result := app
 	for _, expected := range themes {
-		model, _ := result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'T'}})
+		model, _ := result.Update(tea.KeyPressMsg{Code: 'T', Text: "T"})
 		result = model.(App)
 		if result.theme.Name != expected {
 			t.Errorf("expected theme=%s, got %s", expected, result.theme.Name)
@@ -68,7 +69,7 @@ func TestApp_SearchFilter(t *testing.T) {
 	}
 
 	// Enter search mode
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: '/', Text: "/"})
 	result := model.(App)
 	if !result.views.Search.Active {
 		t.Fatal("expected searching=true")
@@ -86,7 +87,7 @@ func TestApp_SearchFilter(t *testing.T) {
 	}
 
 	// Exit search with esc
-	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyEscape})
+	model, _ = result.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	result = model.(App)
 	if result.views.Search.Active {
 		t.Error("expected searching=false after esc")
@@ -105,7 +106,7 @@ func TestApp_SearchEnter(t *testing.T) {
 	app.registry = newTestRegistry()
 
 	// Enter search mode
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: '/', Text: "/"})
 	result := model.(App)
 
 	// Simulate typing by setting the search input value directly
@@ -117,7 +118,7 @@ func TestApp_SearchEnter(t *testing.T) {
 	}
 
 	// Press enter to select
-	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = result.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	result = model.(App)
 
 	if result.views.Search.Active {
@@ -143,14 +144,14 @@ func TestApp_CursorBounds(t *testing.T) {
 	}
 
 	// Try to go up past 0
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'k', Text: "k"})
 	result := model.(App)
 	if result.views.Dashboard.Cursor != 0 {
 		t.Errorf("expected cursor to stay at 0 when going up, got %d", result.views.Dashboard.Cursor)
 	}
 
 	// Go down
-	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	model, _ = result.Update(tea.KeyPressMsg{Code: 'j', Text: "j"})
 	result = model.(App)
 	if result.views.Dashboard.Cursor != 1 {
 		t.Errorf("expected cursor=1 after down, got %d", result.views.Dashboard.Cursor)
@@ -160,7 +161,7 @@ func TestApp_CursorBounds(t *testing.T) {
 	count := app.registry.Count()
 	result.views.Dashboard.Cursor = count - 1
 	result.views.Dashboard.Selected = count - 1
-	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	model, _ = result.Update(tea.KeyPressMsg{Code: 'j', Text: "j"})
 	result = model.(App)
 	if result.views.Dashboard.Cursor != count-1 {
 		t.Errorf("expected cursor to stay at max (%d), got %d", count-1, result.views.Dashboard.Cursor)
@@ -202,7 +203,7 @@ func TestAgentColor(t *testing.T) {
 	// Note: "274" contains "2" so it hits the "2" case first due to switch ordering.
 	tests := []struct {
 		name     string
-		expected lipgloss.Color
+		expected color.Color
 	}{
 		{"Numbuh 1", lipgloss.Color("#FF6B6B")},
 		{"Numbuh 2", lipgloss.Color("#4ECDC4")},
