@@ -141,6 +141,14 @@ func runMission(task string) {
 	// Create pipeline
 	p := pipeline.New(task)
 
+	// Apply parallel specialist configuration from config and CLI flags.
+	cfg := config.Load()
+	p.ParallelSpecialists = cfg.ParallelSpecialists
+	p.MaxSpecialistConcurrency = cfg.MaxSpecialistConcurrency
+	if missionSequential {
+		p.ParallelSpecialists = false
+	}
+
 	// Create flywheel logger
 	flywheel := pipeline.NewFlywheelLog()
 
