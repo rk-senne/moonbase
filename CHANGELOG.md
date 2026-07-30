@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- feat(agents): `mcp_servers` frontmatter field for MCP server declarations
+- feat(compile): `moonbase compile` emits Kiro-native agent JSON (`--out`, `--validate`, `--agent`)
+- feat(deploy): `--native` flag for Kiro-native agent deployment via `kiro-cli chat --agent`
+- feat(config): `compile`, `deploy`, and `safety` config sections for native interop
+- feat(status): Native Interop section showing compiled/stale counts and deploy mode
+- feat(list): MCP server count per agent in roster output
+- feat(lint): validates `mcp_servers` entries (name/command present, no duplicates)
+- docs(migration): `docs/MIGRATION-NATIVE.md` — safety delegation table, opt-in steps, rollback
+
 ## [1.11.0] - 2026-07-30
 
 ### Changed
