@@ -155,7 +155,7 @@ func TestFooterShowsOnlyActiveViewKeys(t *testing.T) {
 			app.view = tc.view
 			app.search.Active = tc.searching
 			app.terminal.Active = tc.termActive
-			app.browsing = tc.browsing
+			app.browser.Active = tc.browsing
 			app.width = 120
 			app.height = 40
 			app.boot.Ready = true
@@ -229,7 +229,7 @@ func TestContextualStatusBar_RendersWithoutPanic(t *testing.T) {
 			app.view = v.view
 			app.search.Active = v.searching
 			app.terminal.Active = v.termActive
-			app.browsing = v.browsing
+			app.browser.Active = v.browsing
 			app.width = 100
 			app.height = 40
 			app.boot.Ready = true

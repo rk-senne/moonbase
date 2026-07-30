@@ -251,10 +251,10 @@ func (a App) launchNvim() tea.Cmd {
 	var args []string
 	if a.view == ViewProjects && a.projectNav != nil && len(a.projectNav.list) > 0 {
 		args = append(args, a.projectNav.list[a.projectNav.cursor].Path)
-	} else if a.browsing && a.fileBrowser != nil && len(a.fileBrowser.entries) > 0 {
-		entry := a.fileBrowser.entries[a.fileBrowser.cursor]
+	} else if a.browser.Active && a.browser.FileBrowser != nil && len(a.browser.FileBrowser.entries) > 0 {
+		entry := a.browser.FileBrowser.entries[a.browser.FileBrowser.cursor]
 		if !entry.IsDir {
-			args = append(args, filepath.Join(a.fileBrowser.dir, entry.Name))
+			args = append(args, filepath.Join(a.browser.FileBrowser.dir, entry.Name))
 		}
 	}
 	c := exec.Command(bin, args...)

@@ -127,8 +127,7 @@ func newGoldenApp(t *testing.T) App {
 			ToolCache:     toolCache,
 			ToolCacheTime: time.Now(),
 		},
-		fileBrowser:   nil,      // avoid real FS reads
-		browsing:      false,    // show terminal panel (deterministic with empty state)
+		browser:       BrowserModel{FileBrowser: nil, Active: false}, // avoid real FS reads, show terminal panel
 		system:        SystemModel{Branch: "main", Clean: true},
 		terminal:      TerminalModel{Cwd: "/home/operative/moonbase"}, // fixed path for stable header
 	}

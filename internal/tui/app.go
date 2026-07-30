@@ -67,7 +67,7 @@ type App struct {
 	keys           KeyMap
 	view           View
 	registry       *agents.Registry
-	backends       []backend.Backend
+	backend        BackendModel
 	dashboard      DashboardModel
 	pipeline       PipelineModel
 	width          int
@@ -86,14 +86,12 @@ type App struct {
 	commsInput     textinput.Model
 	infra          InfraModel
 	projectCtx     *discovery.ProjectContext
-	activeBackend  backend.Backend
 	snippetPick    SnippetPickerModel
 	ctxFile        ContextFileModel
 	docs           *DocsState
 	projectNav     *ProjectsState
 	terminal       TerminalModel
-	fileBrowser     *FileBrowser
-	browsing        bool // true = file browser mode, false = terminal mode
+	browser        BrowserModel
 }
 
 type MissionEntry struct {
@@ -181,7 +179,7 @@ func NewApp() App {
 		spinner:       s,
 		intel:         []IntelEntry{},
 		projectCtx:    projectCtx,
-		activeBackend: activeBackend,
+		backend:       BackendModel{Active: activeBackend},
 		mission:      MissionModel{Input: ti, History: missionEntries},
 		search:       SearchModel{Input: si},
 		commsInput:   ci,
@@ -201,8 +199,7 @@ func NewApp() App {
 			ToolCacheTime: time.Now(),
 		},
 		terminal:     term,
-		fileBrowser:  newFileBrowser(),
-		browsing:     true, // start in file browser mode
+		browser:      BrowserModel{FileBrowser: newFileBrowser(), Active: true}, // start in file browser mode
 	}
 }
 
@@ -334,7 +331,7 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return a.handleTerminalKeys(msg)
 		}
 		// File browser
-		if a.browsing && a.view == ViewDashboard && a.fileBrowser != nil {
+		if a.browser.Active && a.view == ViewDashboard && a.browser.FileBrowser != nil {
 			return a.handleFileBrowserKeys(msg)
 		}
 		// View-specific key handlers

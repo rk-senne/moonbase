@@ -12,7 +12,7 @@ func TestDashboardKeys_Mission(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'m'}})
@@ -26,7 +26,7 @@ func TestDashboardKeys_Search(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
@@ -40,7 +40,7 @@ func TestDashboardKeys_NumberJump(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'3'}})
@@ -57,7 +57,7 @@ func TestDashboardKeys_History(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'H'}})
@@ -71,7 +71,7 @@ func TestDossierKeys_EscBack(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDossier
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEscape})
@@ -85,7 +85,7 @@ func TestDossierKeys_Enter(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDossier
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 	app.registry = newTestRegistry()
 
@@ -99,7 +99,7 @@ func TestPipelineKeys_EscAbort(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 	app.pipeline.Running = true
 	app.pipeline.State = pipeline.New("test")
@@ -115,7 +115,7 @@ func TestPipelineKeys_EscBackWhenIdle(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 	app.pipeline.Running = false
 
@@ -130,7 +130,7 @@ func TestPipelineKeys_Retry(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 	app.pipeline.Running = false
 	app.pipeline.State = pipeline.New("test")
@@ -147,7 +147,7 @@ func TestPipelineKeys_Skip(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 	app.pipeline.Running = false
 	app.pipeline.State = pipeline.New("test")

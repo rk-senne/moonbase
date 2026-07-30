@@ -11,7 +11,7 @@ func TestApp_FocusCycle(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 
 	if app.chrome.Focus != FocusSidebar {
@@ -41,7 +41,7 @@ func TestApp_ThemeCycleAll(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 
 	themes := []string{"treehouse", "classified", "nerv", "moonbase"}
@@ -59,7 +59,7 @@ func TestApp_SearchFilter(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 	app.registry = newTestRegistry()
 
@@ -100,7 +100,7 @@ func TestApp_SearchEnter(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 	app.registry = newTestRegistry()
 
@@ -132,7 +132,7 @@ func TestApp_CursorBounds(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 	app.registry = newTestRegistry()
 	app.dashboard.Cursor = 0

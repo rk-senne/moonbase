@@ -275,7 +275,7 @@ func TestDashboardKeys_F1Protocol(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 
 	// F1 in bubbletea - the key string is "F1" when using tea.KeyMsg with string matching
@@ -285,7 +285,7 @@ func TestDashboardKeys_F1Protocol(t *testing.T) {
 	// Actually test via the correct approach - the handleDashboardKeys checks for "F1"
 	// which corresponds to tea.KeyF1 type
 	result.view = ViewDashboard
-	result.browsing = false
+	result.browser.Active = false
 	result.terminal.Active = false
 	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyF1})
 	result = model.(App)
@@ -301,7 +301,7 @@ func TestDashboardKeys_P_Projects(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
@@ -317,7 +317,7 @@ func TestDashboardKeys_W_Docs(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'W'}})
@@ -333,7 +333,7 @@ func TestPipelineDoubleEsc_Abort(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 	app.pipeline.Running = true
 	app.pipeline.State = pipeline.New("test")

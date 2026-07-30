@@ -49,7 +49,7 @@ func (a App) handleBootDone() (tea.Model, tea.Cmd) {
 // handleAgentsLoaded processes the registry load result.
 func (a App) handleAgentsLoaded(msg AgentsLoadedMsg) (tea.Model, tea.Cmd) {
 	if msg.Err == nil {
-		a.backends = backend.DetectAll()
+		a.backend.Available = backend.DetectAll()
 	}
 	return a, nil
 }
@@ -95,7 +95,7 @@ func (a App) handleTerminalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	a.terminal, cmd = a.terminal.Update(msg, a.appContext())
 	// If user pressed the browser-switch key, activate file browser mode
 	if wasBrowserSwitch {
-		a.browsing = true
+		a.browser.Active = true
 	}
 	return a, cmd
 }
@@ -104,28 +104,28 @@ func (a App) handleTerminalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (a App) handleFileBrowserKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, a.keys.BrowserToTerminal):
-		a.browsing = false
+		a.browser.Active = false
 		a.terminal.Active = true
 		a.terminal.Input.Focus()
 		return a, textinput.Blink
 	case key.Matches(msg, a.keys.BrowserUp):
-		a.fileBrowser.Up()
+		a.browser.FileBrowser.Up()
 	case key.Matches(msg, a.keys.BrowserDown):
-		a.fileBrowser.Down()
+		a.browser.FileBrowser.Down()
 	case key.Matches(msg, a.keys.BrowserEnter):
-		a.fileBrowser.Enter()
-		a.terminal.Cwd = a.fileBrowser.dir
+		a.browser.FileBrowser.Enter()
+		a.terminal.Cwd = a.browser.FileBrowser.dir
 	case key.Matches(msg, a.keys.BrowserBack):
-		a.fileBrowser.Back()
-		a.terminal.Cwd = a.fileBrowser.dir
+		a.browser.FileBrowser.Back()
+		a.terminal.Cwd = a.browser.FileBrowser.dir
 	case key.Matches(msg, a.keys.BrowserEdit):
-		if a.fileBrowser.SelectedIsFile() {
-			return a, a.editFile(a.fileBrowser.SelectedPath())
+		if a.browser.FileBrowser.SelectedIsFile() {
+			return a, a.editFile(a.browser.FileBrowser.SelectedPath())
 		}
 	case key.Matches(msg, a.keys.BrowserRefresh):
-		a.fileBrowser.refresh()
+		a.browser.FileBrowser.refresh()
 	case key.Matches(msg, a.keys.BrowserEsc):
-		a.browsing = false
+		a.browser.Active = false
 	}
 	return a, nil
 }

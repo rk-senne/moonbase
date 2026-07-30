@@ -118,7 +118,7 @@ func (a *App) startNextPhase() tea.Cmd {
 	}
 
 	// Check if we have a backend that can actually execute
-	if a.activeBackend == nil || a.activeBackend.Name() == "clipboard" {
+	if a.backend.Active == nil || a.backend.Active.Name() == "clipboard" {
 		// No real backend — stay in simulated mode
 		a.pipeline.Running = false
 		return nil
@@ -174,7 +174,7 @@ func (a *App) startNextPhase() tea.Cmd {
 		a.pipeline.Ctx,
 		*phase,
 		a.registry,
-		a.activeBackend,
+		a.backend.Active,
 		a.projectCtx,
 		a.pipeline.State.Context,
 		a.pipeline.State.PhaseTimeout,

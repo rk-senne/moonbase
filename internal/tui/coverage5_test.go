@@ -186,7 +186,7 @@ func TestRenderHeader_WithBackendAndProject(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 120
 	app.height = 40
-	app.activeBackend = &mockBackend{name: "kiro-cli", available: true}
+	app.backend.Active = &mockBackend{name: "kiro-cli", available: true}
 	app.projectCtx = &discovery.ProjectContext{
 		Stack: discovery.StackInfo{Language: "Go", BuildTool: "make"},
 	}
@@ -203,7 +203,7 @@ func TestRenderHeader_NarrowWidth(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 30 // Very narrow
 	app.height = 40
-	app.activeBackend = &mockBackend{name: "kiro-cli", available: true}
+	app.backend.Active = &mockBackend{name: "kiro-cli", available: true}
 	app.projectCtx = &discovery.ProjectContext{
 		Stack: discovery.StackInfo{Language: "Go", BuildTool: "make"},
 	}
@@ -287,8 +287,8 @@ func TestRenderMainPanel_BrowsingMode(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 120
 	app.height = 40
-	app.browsing = true
-	app.fileBrowser = newFileBrowser()
+	app.browser.Active = true
+	app.browser.FileBrowser = newFileBrowser()
 
 	result := app.renderMainPanel(80, 30)
 	if result == "" {
@@ -301,7 +301,7 @@ func TestRenderMainPanel_TermActive(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = true
 	app.chrome.Focus = FocusMain
 	app.intel = []IntelEntry{
@@ -321,7 +321,7 @@ func TestRenderMainPanel_EmptyIntel(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 40
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 	app.intel = nil
 	app.terminal.Output = nil
@@ -337,7 +337,7 @@ func TestRenderMainPanel_ManyLines(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 20
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 
 	// Many intel entries to trigger scrolling
@@ -492,7 +492,7 @@ func TestRender3Col_WideWidth(t *testing.T) {
 	app.width = 160
 	app.height = 40
 	app.registry = newTestRegistry()
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 
 	result := app.render3Col(30)
@@ -520,7 +520,7 @@ func TestRender2Col_WideWidth(t *testing.T) {
 	app.width = 120
 	app.height = 40
 	app.registry = newTestRegistry()
-	app.browsing = false
+	app.browser.Active = false
 
 	result := app.render2Col(30)
 	if result == "" {
@@ -830,14 +830,14 @@ func TestLaunchNvim_ProjectsView(t *testing.T) {
 func TestLaunchNvim_BrowsingFile(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
-	app.browsing = true
-	app.fileBrowser = newFileBrowser()
+	app.browser.Active = true
+	app.browser.FileBrowser = newFileBrowser()
 	// Ensure there's at least one file entry
-	if len(app.fileBrowser.entries) > 0 {
+	if len(app.browser.FileBrowser.entries) > 0 {
 		// Find a non-dir entry
-		for i, e := range app.fileBrowser.entries {
+		for i, e := range app.browser.FileBrowser.entries {
 			if !e.IsDir {
-				app.fileBrowser.cursor = i
+				app.browser.FileBrowser.cursor = i
 				break
 			}
 		}
@@ -973,7 +973,7 @@ func TestHandlePhaseResult_RiskMedium(t *testing.T) {
 	}
 	app.pipeline.State.Phases[3].Status = pipeline.StatusRunning
 	app.pipeline.Running = true
-	app.activeBackend = nil
+	app.backend.Active = nil
 
 	msg := PhaseResultMsg{
 		Phase:   4,
@@ -995,12 +995,12 @@ func TestHandlePipelineAdvance_WithState(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 	app.pipeline.State = pipeline.New("advance test")
 	app.pipeline.State.Phases[0].Status = pipeline.StatusComplete
 	app.pipeline.Running = false
-	app.activeBackend = nil
+	app.backend.Active = nil
 	app.registry = newTestRegistry()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
@@ -1112,7 +1112,7 @@ func TestDashboardKeys_W_FileWatcher(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 	app.infra.Watcher = nil // nil watcher, should not panic
 
@@ -1125,7 +1125,7 @@ func TestDashboardKeys_P_NotPersonal(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 	app.infra.Ctx = platform.Context(1) // Work context
 
@@ -1147,7 +1147,7 @@ func TestDashboardKeys_P_Personal(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 	app.infra.Ctx = platform.Context(0) // Personal context
 
@@ -1161,7 +1161,7 @@ func TestDashboardKeys_NumberKeys(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 	app.registry = newTestRegistry()
 
@@ -1179,7 +1179,7 @@ func TestDashboardKeys_G_GitStatusCmd(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 
 	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}})
@@ -1192,7 +1192,7 @@ func TestDashboardKeys_D_GitDiffCmd(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 
 	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
@@ -1205,7 +1205,7 @@ func TestDashboardKeys_F1_Protocol(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 
 	// The handler checks msg.String() == "F1" — send as Runes
@@ -1330,7 +1330,7 @@ func TestRenderDashboard_WideLayout(t *testing.T) {
 	app.height = 40
 	app.view = ViewDashboard
 	app.registry = newTestRegistry()
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 
 	result := app.renderDashboard()
@@ -1346,7 +1346,7 @@ func TestRenderDashboard_MediumLayout(t *testing.T) {
 	app.height = 40
 	app.view = ViewDashboard
 	app.registry = newTestRegistry()
-	app.browsing = false
+	app.browser.Active = false
 
 	result := app.renderDashboard()
 	if result == "" {
@@ -1361,7 +1361,7 @@ func TestRenderDashboard_NarrowLayout(t *testing.T) {
 	app.height = 40
 	app.view = ViewDashboard
 	app.registry = newTestRegistry()
-	app.browsing = false
+	app.browser.Active = false
 
 	result := app.renderDashboard()
 	if result == "" {
@@ -1377,7 +1377,7 @@ func TestRenderDashboard_Searching(t *testing.T) {
 	app.view = ViewDashboard
 	app.registry = newTestRegistry()
 	app.search.Active = true
-	app.browsing = false
+	app.browser.Active = false
 
 	result := app.renderDashboard()
 	if result == "" {
@@ -1392,8 +1392,8 @@ func TestRenderDashboard_Browsing(t *testing.T) {
 	app.height = 40
 	app.view = ViewDashboard
 	app.registry = newTestRegistry()
-	app.browsing = true
-	app.fileBrowser = newFileBrowser()
+	app.browser.Active = true
+	app.browser.FileBrowser = newFileBrowser()
 
 	result := app.renderDashboard()
 	if result == "" {
@@ -1408,7 +1408,7 @@ func TestRenderDashboard_TermActive(t *testing.T) {
 	app.height = 40
 	app.view = ViewDashboard
 	app.registry = newTestRegistry()
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = true
 
 	result := app.renderDashboard()
@@ -1724,7 +1724,7 @@ func TestRenderHistory_WithMissions(t *testing.T) {
 
 func TestDetectedBackends_NoBackends(t *testing.T) {
 	app := NewApp()
-	app.backends = nil
+	app.backend.Available = nil
 	result := app.detectedBackends()
 	if result != "clipboard only" {
 		t.Errorf("expected 'clipboard only', got %q", result)
@@ -1733,7 +1733,7 @@ func TestDetectedBackends_NoBackends(t *testing.T) {
 
 func TestDetectedBackends_WithBackends(t *testing.T) {
 	app := NewApp()
-	app.backends = nil
+	app.backend.Available = nil
 	// Can't easily construct backend.Backend slice in test; just verify no-backends path
 	result := app.detectedBackends()
 	if result != "clipboard only" {
@@ -1930,7 +1930,7 @@ func TestTerminalKeys_BacktickToFB(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = true
 	app.terminal.Input.Focus()
 
@@ -1939,7 +1939,7 @@ func TestTerminalKeys_BacktickToFB(t *testing.T) {
 	if result.terminal.Active {
 		t.Error("expected termActive=false after backtick")
 	}
-	if !result.browsing {
+	if !result.browser.Active {
 		t.Error("expected browsing=true after backtick")
 	}
 }
@@ -1950,7 +1950,7 @@ func TestTerminalKeys_DefaultChar(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = true
 	app.terminal.Input.Focus()
 
@@ -1967,13 +1967,13 @@ func TestFileBrowserKeys_BacktickToTerm(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = true
+	app.browser.Active = true
 	app.terminal.Active = false
-	app.fileBrowser = newFileBrowser()
+	app.browser.FileBrowser = newFileBrowser()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'`'}})
 	result := model.(App)
-	if result.browsing {
+	if result.browser.Active {
 		t.Error("expected browsing=false after backtick")
 	}
 	if !result.terminal.Active {
@@ -1987,13 +1987,13 @@ func TestFileBrowserKeys_Edit(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = true
-	app.fileBrowser = newFileBrowser()
+	app.browser.Active = true
+	app.browser.FileBrowser = newFileBrowser()
 
 	// Find a file entry
-	for i, e := range app.fileBrowser.entries {
+	for i, e := range app.browser.FileBrowser.entries {
 		if !e.IsDir {
-			app.fileBrowser.cursor = i
+			app.browser.FileBrowser.cursor = i
 			break
 		}
 	}
@@ -2009,8 +2009,8 @@ func TestFileBrowserKeys_DotRefresh(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = true
-	app.fileBrowser = newFileBrowser()
+	app.browser.Active = true
+	app.browser.FileBrowser = newFileBrowser()
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'.'}})
 	result := model.(App)
@@ -2171,7 +2171,7 @@ func TestHandlePhaseResult_SuccessAdvance(t *testing.T) {
 	app.pipeline.State = pipeline.New("test")
 	app.pipeline.State.Phases[0].Status = pipeline.StatusRunning
 	app.pipeline.Running = true
-	app.activeBackend = nil
+	app.backend.Active = nil
 
 	msg := PhaseResultMsg{
 		Phase:   1,
@@ -2199,7 +2199,7 @@ func TestHandlePhaseResult_RiskCritical(t *testing.T) {
 	}
 	app.pipeline.State.Phases[3].Status = pipeline.StatusRunning
 	app.pipeline.Running = true
-	app.activeBackend = nil
+	app.backend.Active = nil
 
 	msg := PhaseResultMsg{
 		Phase:   4,
@@ -2450,7 +2450,7 @@ func TestRenderSidebar_BlinkTrue(t *testing.T) {
 	app.registry = newTestRegistry()
 	app.view = ViewDashboard
 	app.chrome.Blink = true
-	app.backends = nil
+	app.backend.Available = nil
 
 	result := app.renderSidebar(24, 30)
 	if result == "" {
@@ -2485,7 +2485,7 @@ func TestRender1Col(t *testing.T) {
 	app.width = 60
 	app.height = 40
 	app.registry = newTestRegistry()
-	app.browsing = false
+	app.browser.Active = false
 
 	result := app.render1Col(30)
 	if result == "" {
@@ -2556,7 +2556,7 @@ func TestRenderHeader_WithSpecs(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 120
 	app.height = 40
-	app.activeBackend = &mockBackend{name: "test", available: true}
+	app.backend.Active = &mockBackend{name: "test", available: true}
 	app.projectCtx = &discovery.ProjectContext{
 		Stack: discovery.StackInfo{Language: "Go", BuildTool: "make"},
 		Specs: []discovery.SpecFile{{Feature: "test", Type: "requirements", Path: "/tmp/spec.md"}},
@@ -2700,7 +2700,7 @@ func TestHandlePhaseResult_SuccessWithLongOutput(t *testing.T) {
 	app.pipeline.State = pipeline.New("long output test")
 	app.pipeline.State.Phases[0].Status = pipeline.StatusRunning
 	app.pipeline.Running = true
-	app.activeBackend = nil
+	app.backend.Active = nil
 
 	// Create output longer than maxSummaryChars
 	longOutput := ""
@@ -2818,14 +2818,14 @@ func TestRenderFileBrowser_ManyEntries(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 20
-	app.browsing = true
+	app.browser.Active = true
 
 	// Create file browser with many entries
 	entries := make([]FileEntry, 50)
 	for i := range entries {
 		entries[i] = FileEntry{Name: "file" + string(rune('a'+i%26)) + ".go", IsDir: false, Size: 100}
 	}
-	app.fileBrowser = &FileBrowser{
+	app.browser.FileBrowser = &FileBrowser{
 		dir:     "/tmp",
 		entries: entries,
 		cursor:  45, // near the end — tests the scroll start calculation
@@ -2874,7 +2874,7 @@ func TestRenderDashboard_AllStatusModes(t *testing.T) {
 
 	// Test searching mode status bar
 	app.search.Active = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 	result := app.renderDashboard()
 	if result == "" {
@@ -2883,15 +2883,15 @@ func TestRenderDashboard_AllStatusModes(t *testing.T) {
 
 	// Test browsing mode
 	app.search.Active = false
-	app.browsing = true
-	app.fileBrowser = newFileBrowser()
+	app.browser.Active = true
+	app.browser.FileBrowser = newFileBrowser()
 	result = app.renderDashboard()
 	if result == "" {
 		t.Error("expected non-empty dashboard in browsing mode")
 	}
 
 	// Test termActive mode
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = true
 	result = app.renderDashboard()
 	if result == "" {
@@ -2958,10 +2958,10 @@ func TestRenderFileBrowser_WithDirs(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 100
 	app.height = 30
-	app.browsing = true
-	app.fileBrowser = &FileBrowser{dir: tmpDir}
-	app.fileBrowser.refresh()
-	app.fileBrowser.cursor = 0
+	app.browser.Active = true
+	app.browser.FileBrowser = &FileBrowser{dir: tmpDir}
+	app.browser.FileBrowser.refresh()
+	app.browser.FileBrowser.cursor = 0
 
 	result := app.renderFileBrowser(80, 25)
 	if result == "" {
@@ -2978,14 +2978,14 @@ func TestFileBrowserKeys_EditFile(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = true
-	app.fileBrowser = &FileBrowser{dir: tmpDir}
-	app.fileBrowser.refresh()
+	app.browser.Active = true
+	app.browser.FileBrowser = &FileBrowser{dir: tmpDir}
+	app.browser.FileBrowser.refresh()
 
 	// Find the file entry
-	for i, e := range app.fileBrowser.entries {
+	for i, e := range app.browser.FileBrowser.entries {
 		if !e.IsDir {
-			app.fileBrowser.cursor = i
+			app.browser.FileBrowser.cursor = i
 			break
 		}
 	}
@@ -3008,7 +3008,7 @@ func TestHandlePhaseResult_MediumRework(t *testing.T) {
 	}
 	app.pipeline.State.Phases[3].Status = pipeline.StatusRunning
 	app.pipeline.Running = true
-	app.activeBackend = nil // no backend to execute rework
+	app.backend.Active = nil // no backend to execute rework
 
 	msg := PhaseResultMsg{
 		Phase:   4,
@@ -3101,9 +3101,9 @@ func TestRenderFileBrowser_TinyHeight(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 80
 	app.height = 10
-	app.browsing = true
-	app.fileBrowser = &FileBrowser{dir: tmpDir}
-	app.fileBrowser.refresh()
+	app.browser.Active = true
+	app.browser.FileBrowser = &FileBrowser{dir: tmpDir}
+	app.browser.FileBrowser.refresh()
 
 	result := app.renderFileBrowser(60, 5) // maxH=5, maxFiles=5-4=1 < 3
 	if result == "" {
@@ -3130,14 +3130,14 @@ func TestRenderFileBrowser_LongPreview(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 60
 	app.height = 10
-	app.browsing = true
-	app.fileBrowser = &FileBrowser{dir: tmpDir}
-	app.fileBrowser.refresh()
+	app.browser.Active = true
+	app.browser.FileBrowser = &FileBrowser{dir: tmpDir}
+	app.browser.FileBrowser.refresh()
 	// Select the file
-	for i, e := range app.fileBrowser.entries {
+	for i, e := range app.browser.FileBrowser.entries {
 		if e.Name == "long.txt" {
-			app.fileBrowser.cursor = i
-			app.fileBrowser.updatePreview()
+			app.browser.FileBrowser.cursor = i
+			app.browser.FileBrowser.updatePreview()
 			break
 		}
 	}
@@ -3159,9 +3159,9 @@ func TestRenderFileBrowser_LongFileName(t *testing.T) {
 	app.boot.Ready = true
 	app.width = 60
 	app.height = 20
-	app.browsing = true
-	app.fileBrowser = &FileBrowser{dir: tmpDir}
-	app.fileBrowser.refresh()
+	app.browser.Active = true
+	app.browser.FileBrowser = &FileBrowser{dir: tmpDir}
+	app.browser.FileBrowser.refresh()
 
 	result := app.renderFileBrowser(40, 15) // narrow width to trigger name truncation
 	if result == "" {
@@ -3257,7 +3257,7 @@ func TestDashboardKeys_QuitWithPipeline(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 	app.pipeline.State = pipeline.New("test")
 	app.pipeline.Running = true
@@ -3279,7 +3279,7 @@ func TestDashboardKeys_DoubleEscAbort(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 	app.pipeline.State = pipeline.New("abort test")
 	app.pipeline.Running = true
@@ -3307,7 +3307,7 @@ func TestDashboardKeys_C_CopyInDossier(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDossier
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 	app.registry = newTestRegistry()
 	app.dashboard.Selected = 0
@@ -3353,22 +3353,22 @@ func TestFileBrowserKeys_EnterDir(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = true
-	app.fileBrowser = &FileBrowser{dir: tmpDir}
-	app.fileBrowser.refresh()
+	app.browser.Active = true
+	app.browser.FileBrowser = &FileBrowser{dir: tmpDir}
+	app.browser.FileBrowser.refresh()
 
 	// Find the dir entry
-	for i, e := range app.fileBrowser.entries {
+	for i, e := range app.browser.FileBrowser.entries {
 		if e.IsDir && e.Name == "subdir" {
-			app.fileBrowser.cursor = i
+			app.browser.FileBrowser.cursor = i
 			break
 		}
 	}
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	result := model.(App)
-	if result.fileBrowser.dir != subDir {
-		t.Logf("expected dir=%s, got %s", subDir, result.fileBrowser.dir)
+	if result.browser.FileBrowser.dir != subDir {
+		t.Logf("expected dir=%s, got %s", subDir, result.browser.FileBrowser.dir)
 	}
 }
 
@@ -3447,7 +3447,7 @@ func TestDashboardKeys_C_OpensComms(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 	app.registry = newTestRegistry()
 	app.dashboard.Selected = 0
@@ -3512,23 +3512,23 @@ func TestFileBrowserKeys_UpDown(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = true
+	app.browser.Active = true
 	app.terminal.Active = false
-	app.fileBrowser = &FileBrowser{dir: tmpDir}
-	app.fileBrowser.refresh()
-	app.fileBrowser.cursor = 0
+	app.browser.FileBrowser = &FileBrowser{dir: tmpDir}
+	app.browser.FileBrowser.refresh()
+	app.browser.FileBrowser.cursor = 0
 
 	// Move down
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
 	result := model.(App)
-	if result.fileBrowser.cursor != 1 {
-		t.Errorf("expected cursor=1 after j, got %d", result.fileBrowser.cursor)
+	if result.browser.FileBrowser.cursor != 1 {
+		t.Errorf("expected cursor=1 after j, got %d", result.browser.FileBrowser.cursor)
 	}
 
 	// Move up
 	model, _ = result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
 	result = model.(App)
-	if result.fileBrowser.cursor != 0 {
-		t.Errorf("expected cursor=0 after k, got %d", result.fileBrowser.cursor)
+	if result.browser.FileBrowser.cursor != 0 {
+		t.Errorf("expected cursor=0 after k, got %d", result.browser.FileBrowser.cursor)
 	}
 }

@@ -169,7 +169,7 @@ func TestTerminalKeys_EnterWithCommand(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = true
 	app.terminal.Input.Focus()
 	app.terminal.Input.SetValue("echo hello")
@@ -193,7 +193,7 @@ func TestFileBrowserKeys_Enter(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = true
+	app.browser.Active = true
 	app.terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
@@ -207,7 +207,7 @@ func TestFileBrowserKeys_Backspace(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = true
+	app.browser.Active = true
 	app.terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyBackspace})
@@ -218,7 +218,7 @@ func TestFileBrowserKeys_Dot(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = true
+	app.browser.Active = true
 	app.terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'.'}})
@@ -229,7 +229,7 @@ func TestFileBrowserKeys_E(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = true
+	app.browser.Active = true
 	app.terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
@@ -259,7 +259,7 @@ func TestDashboardKeys_D_GitDiff(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 
 	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
@@ -272,7 +272,7 @@ func TestDashboardKeys_G_GitStatus(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 
 	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}})
@@ -287,7 +287,7 @@ func TestDossierKeys_C_Comms(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDossier
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 	app.registry = newTestRegistry()
 
@@ -306,7 +306,7 @@ func TestView_MainPanel_FileBrowser(t *testing.T) {
 	app.width = 120
 	app.height = 40
 	app.view = ViewDashboard
-	app.browsing = true
+	app.browser.Active = true
 	app.registry = newTestRegistry()
 
 	output := app.View()
@@ -321,7 +321,7 @@ func TestView_MainPanel_Terminal(t *testing.T) {
 	app.width = 120
 	app.height = 40
 	app.view = ViewDashboard
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = true
 	app.registry = newTestRegistry()
 

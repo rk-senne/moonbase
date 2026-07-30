@@ -73,7 +73,7 @@ func (a App) uptime() string {
 
 func (a App) detectedBackends() string {
 	var names []string
-	for _, b := range a.backends {
+	for _, b := range a.backend.Available {
 		if b.Available() {
 			names = append(names, b.Name())
 		}

@@ -293,7 +293,7 @@ func TestPipelineKeys_Advance(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 	app.pipeline.Running = false
 	app.pipeline.State = pipeline.New("test")
@@ -315,7 +315,7 @@ func TestDashboardKeys_Protocol(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 
 	// Directly set view to test rendering
@@ -330,7 +330,7 @@ func TestApp_HelpToggleFromDossier(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDossier
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})

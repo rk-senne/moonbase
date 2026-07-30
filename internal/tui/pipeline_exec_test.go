@@ -178,7 +178,7 @@ func TestStartNextPhase_NoBackend(t *testing.T) {
 	app := NewApp()
 	app.pipeline.State = pipeline.New("test task")
 	app.pipeline.State.Phases[0].Status = pipeline.StatusRunning
-	app.activeBackend = nil
+	app.backend.Active = nil
 
 	cmd := app.startNextPhase()
 	if cmd != nil {
@@ -192,7 +192,7 @@ func TestStartNextPhase_NoBackend(t *testing.T) {
 func TestStartNextPhase_ConditionalSkip(t *testing.T) {
 	app := NewApp()
 	app.pipeline.State = pipeline.New("test task")
-	app.activeBackend = nil
+	app.backend.Active = nil
 	// Move to a conditional phase (index 5 = phase 6, Oversight)
 	app.pipeline.State.Current = 5
 	app.pipeline.State.Phases[5].Status = pipeline.StatusRunning

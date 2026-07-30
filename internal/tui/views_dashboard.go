@@ -22,7 +22,7 @@ func (a App) renderDashboard() string {
 
 	var statusBar string
 	if a.search.Active {
-		bindings := a.keys.keysFor(a.view, a.search.Active, a.terminal.Active, a.browsing)
+		bindings := a.keys.keysFor(a.view, a.search.Active, a.terminal.Active, a.browser.Active)
 		h := newHelpModel(a.width-4, a.themeData)
 		keyHints := h.ShortHelpView(bindings)
 		statusBar = a.renderStatusBar("/ " + a.search.Input.View() + "  " + keyHints)

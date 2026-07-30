@@ -97,7 +97,7 @@ func TestApp_KeyNavigation_MissionView(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'m'}})
@@ -111,7 +111,7 @@ func TestApp_KeyNavigation_HelpToggle(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
@@ -131,7 +131,7 @@ func TestApp_KeyNavigation_CursorUpDown(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 	app.registry = newTestRegistry()
 
@@ -155,7 +155,7 @@ func TestApp_KeyNavigation_DossierView(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
@@ -169,7 +169,7 @@ func TestApp_KeyNavigation_HistoryView(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'H'}})
@@ -232,7 +232,7 @@ func TestApp_QuitKey(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 
 	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
@@ -249,7 +249,7 @@ func TestApp_CtrlC_Quit(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 
 	_, cmd := app.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
@@ -283,7 +283,7 @@ func TestApp_TabCyclesFocus(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyTab})
@@ -309,7 +309,7 @@ func TestApp_ThemeCycle(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'T'}})
@@ -341,7 +341,7 @@ func TestApp_PipelineEscAbort(t *testing.T) {
 	app := NewApp()
 	app.view = ViewPipeline
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 	app.pipeline.Running = true
 
@@ -355,7 +355,7 @@ func TestApp_PipelineEscAbort(t *testing.T) {
 	app2 := NewApp()
 	app2.view = ViewPipeline
 	app2.boot.Ready = true
-	app2.browsing = false
+	app2.browser.Active = false
 	app2.terminal.Active = false
 	app2.pipeline.Running = false
 
@@ -380,7 +380,7 @@ func TestApp_CursorBoundsCheck(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 	app.dashboard.Cursor = 0
 
@@ -400,14 +400,14 @@ func TestApp_CursorBoundsCheck(t *testing.T) {
 //
 // Extracted so far: TerminalModel, DashboardModel, PipelineModel, SystemModel,
 // SearchModel, SnippetPickerModel, ContextFileModel, MissionModel, ChromeModel,
-// BootModel, and InfraModel.
+// BootModel, InfraModel, BrowserModel, and BackendModel.
 // Each remaining extraction is its own task; this test
 // ratchets the count down so it can only shrink, never silently grow.
 func TestApp_FieldCountBounded(t *testing.T) {
 	count := reflect.TypeOf(App{}).NumField()
 	// Ratchet: lower this only when an extraction reduces the count. Never raise it
 	// to accommodate new loose fields — extract a sub-model instead.
-	const maxFields = 30
+	const maxFields = 28
 	if count > maxFields {
 		t.Errorf("App has %d fields, expected ≤ %d — did you add fields without extracting? See comment above.", count, maxFields)
 	}

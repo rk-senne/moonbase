@@ -14,8 +14,8 @@ func (a App) renderHeader(breadcrumb string) string {
 
 	// Right: backend + stack + spec indicator
 	var rightParts []string
-	if a.activeBackend != nil && a.activeBackend.Name() != "" {
-		rightParts = append(rightParts, a.activeBackend.Name())
+	if a.backend.Active != nil && a.backend.Active.Name() != "" {
+		rightParts = append(rightParts, a.backend.Active.Name())
 	}
 	if a.projectCtx != nil && a.projectCtx.Stack.Language != "" {
 		rightParts = append(rightParts, a.projectCtx.Stack.Language+"/"+a.projectCtx.Stack.BuildTool)
@@ -151,7 +151,7 @@ func (a App) renderSidebar(width int, maxH int) string {
 	s.WriteString("\n")
 	s.WriteString(lipgloss.NewStyle().Foreground(a.themeData.Brand).Bold(true).Render("◆ BACKEND") + "\n")
 	s.WriteString(lipgloss.NewStyle().Foreground(a.themeData.Dim).Render("──────────────────") + "\n")
-	for _, b := range a.backends {
+	for _, b := range a.backend.Available {
 		mark := "✗"
 		st := a.styles.Inactive
 		if b.Available() {
@@ -172,7 +172,7 @@ func (a App) renderSidebar(width int, maxH int) string {
 
 func (a App) renderMainPanel(width int, maxH int) string {
 	// KND file browser mode
-	if a.browsing && a.fileBrowser != nil {
+	if a.browser.Active && a.browser.FileBrowser != nil {
 		return a.renderFileBrowser(width, maxH)
 	}
 
@@ -402,7 +402,7 @@ func (a App) renderStatusBar(keys string) string {
 // renderContextualStatusBar renders a footer with only the keys valid for the current
 // view and sub-mode, generated from the KeyMap (never hand-duplicated).
 func (a App) renderContextualStatusBar() string {
-	bindings := a.keys.keysFor(a.view, a.search.Active, a.terminal.Active, a.browsing)
+	bindings := a.keys.keysFor(a.view, a.search.Active, a.terminal.Active, a.browser.Active)
 	h := newHelpModel(a.width-4, a.themeData)
 	footer := h.ShortHelpView(bindings)
 	return a.renderStatusBar(footer)

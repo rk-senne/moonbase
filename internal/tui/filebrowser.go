@@ -155,7 +155,7 @@ func (fb *FileBrowser) SelectedIsFile() bool {
 
 // Render the file browser for the main panel
 func (a App) renderFileBrowser(width, maxH int) string {
-	fb := a.fileBrowser
+	fb := a.browser.FileBrowser
 	borderColor := a.themeData.Active
 
 	var s strings.Builder

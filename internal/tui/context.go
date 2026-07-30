@@ -26,7 +26,7 @@ type AppContext struct {
 func (a App) appContext() AppContext {
 	return AppContext{
 		Registry:   a.registry,
-		Backend:    a.activeBackend,
+		Backend:    a.backend.Active,
 		ProjectCtx: a.projectCtx,
 		Styles:     a.styles,
 		Keys:       a.keys,

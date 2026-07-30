@@ -304,7 +304,7 @@ func TestStartNextPhase_InactivePipeline(t *testing.T) {
 func TestStartNextPhase_ClipboardBackend(t *testing.T) {
 	app := NewApp()
 	app.pipeline.State = pipeline.New("test")
-	app.activeBackend = &mockBackend{name: "clipboard", available: true}
+	app.backend.Active = &mockBackend{name: "clipboard", available: true}
 
 	cmd := app.startNextPhase()
 	if cmd != nil {
@@ -318,7 +318,7 @@ func TestStartNextPhase_ClipboardBackend(t *testing.T) {
 func TestStartNextPhase_NilBackend(t *testing.T) {
 	app := NewApp()
 	app.pipeline.State = pipeline.New("test")
-	app.activeBackend = nil
+	app.backend.Active = nil
 
 	cmd := app.startNextPhase()
 	if cmd != nil {
@@ -329,7 +329,7 @@ func TestStartNextPhase_NilBackend(t *testing.T) {
 func TestStartNextPhase_PipelineComplete(t *testing.T) {
 	app := NewApp()
 	app.pipeline.State = pipeline.New("test")
-	app.activeBackend = &mockBackend{name: "real", available: true}
+	app.backend.Active = &mockBackend{name: "real", available: true}
 	// Move past all phases
 	app.pipeline.State.Current = len(app.pipeline.State.Phases)
 
@@ -342,7 +342,7 @@ func TestStartNextPhase_PipelineComplete(t *testing.T) {
 func TestStartNextPhase_ConditionalSkipped(t *testing.T) {
 	app := NewApp()
 	app.pipeline.State = pipeline.New("test")
-	app.activeBackend = &mockBackend{name: "real", available: true}
+	app.backend.Active = &mockBackend{name: "real", available: true}
 	// Move to a conditional phase (index 5 = Oversight)
 	app.pipeline.State.Current = 5
 
@@ -356,7 +356,7 @@ func TestStartNextPhase_ConditionalSkipped(t *testing.T) {
 func TestStartNextPhase_RealBackendExecutes(t *testing.T) {
 	app := NewApp()
 	app.pipeline.State = pipeline.New("test")
-	app.activeBackend = &mockBackend{name: "test-backend", available: true, output: "done"}
+	app.backend.Active = &mockBackend{name: "test-backend", available: true, output: "done"}
 	app.registry = newTestRegistry()
 
 	cmd := app.startNextPhase()
@@ -407,7 +407,7 @@ func TestHandlePhaseResult_PipelineComplete(t *testing.T) {
 	}
 	app.pipeline.State.Phases[4].Status = pipeline.StatusRunning
 	app.pipeline.Running = true
-	app.activeBackend = nil // no backend means it won't try to execute next
+	app.backend.Active = nil // no backend means it won't try to execute next
 
 	msg := PhaseResultMsg{
 		Phase:   5,
@@ -1397,7 +1397,7 @@ func TestDossierKeys_T_SpawnHook(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDossier
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 	app.registry = newTestRegistry()
 	app.dashboard.Selected = 0
@@ -1414,7 +1414,7 @@ func TestDashboardKeys_LaunchTools(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 
 	keys := []rune{'L', 'B', 'V', 'M', 'F'}
@@ -1432,7 +1432,7 @@ func TestDashboardKeys_ViewSwitching(t *testing.T) {
 	app := NewApp()
 	app.view = ViewDashboard
 	app.boot.Ready = true
-	app.browsing = false
+	app.browser.Active = false
 	app.terminal.Active = false
 	app.width = 100
 	app.height = 40
