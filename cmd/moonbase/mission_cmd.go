@@ -44,6 +44,23 @@ var missionCmd = &cobra.Command{
 			osExit(1)
 		}
 
+		// Explicit mutual-exclusivity message — root sets SilenceErrors, so cobra's
+		// built-in MarkFlagsMutuallyExclusive message is suppressed (AC-4.4).
+		depthFlagCount := 0
+		if missionFast {
+			depthFlagCount++
+		}
+		if missionFull {
+			depthFlagCount++
+		}
+		if missionDepth != "" {
+			depthFlagCount++
+		}
+		if depthFlagCount > 1 {
+			fmt.Fprintln(os.Stderr, "❌ Flags --fast, --full, and --depth are mutually exclusive.")
+			osExit(1)
+		}
+
 		if missionDryRun {
 			runMissionDryRun(task)
 		} else {

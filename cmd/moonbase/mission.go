@@ -78,6 +78,8 @@ func executeAndRecordPhase(
 		DurationMs:  phase.ElapsedTime().Milliseconds(),
 		OutputSize:  len(output),
 		ReworkCount: p.Context.ReworkCount,
+		Depth:       string(p.Depth),
+		DepthReason: p.DepthReason,
 	}
 	if usage != nil {
 		entry.PromptTokens = usage.PromptTokens
@@ -140,6 +142,7 @@ func runMission(task string) {
 
 	// Create pipeline
 	p := pipeline.New(task)
+	p.Depth = "override:full"
 
 	// Apply parallel specialist configuration from config and CLI flags.
 	cfg := config.Load()
@@ -210,6 +213,7 @@ func runMissionFast(task string) {
 
 	// Fast pipeline: only Phase 3 (Implementation) and Phase 4 (QA) active
 	p := pipeline.NewFast(task)
+	p.Depth = "override:fast"
 
 	// Create flywheel logger
 	flywheel := pipeline.NewFlywheelLog()
@@ -307,6 +311,18 @@ func runMissionAdaptive(task string, depth pipeline.Depth, reason string) {
 
 // pipelineLoopOptions captures the behavioural differences between full and fast
 // mission modes within the shared phase iteration loop.
+// shouldSilentlySkip reports whether a phase should be skipped without execution
+// or messaging, given the loop mode. In adaptive/full mode (handleConditionals),
+// only NON-conditional phases pre-skipped by the depth profile are silently skipped
+// — conditional phases still have their triggers evaluated. In fast mode, any
+// already-skipped phase is skipped. This is the runtime enforcement of adaptive depth.
+func shouldSilentlySkip(phase pipeline.Phase, handleConditionals bool) bool {
+	if handleConditionals {
+		return phase.Status == pipeline.StatusSkipped && !phase.Conditional
+	}
+	return phase.Status == pipeline.StatusSkipped
+}
+
 type pipelineLoopOptions struct {
 	// handleConditionals enables conditional-phase trigger checking and skip messages.
 	// When false, phases with StatusSkipped are silently skipped.
@@ -359,23 +375,22 @@ func runPipelineLoop(
 
 		phase := &p.Phases[i]
 
-		// Handle phase skipping
-		if opts.handleConditionals {
-			// Full mode: evaluate conditional trigger
-			if phase.Conditional {
-				trigger := p.ShouldInvokeConditional(phase)
-				if !trigger.Invoke {
-					fmt.Printf("   ⏭️  Phase %d: %s — skipped (%s)\n", phase.Number, phase.Name, trigger.Reason)
-					phase.Status = pipeline.StatusSkipped
-					continue
-				}
-				fmt.Printf("   ⚡ Phase %d: %s — triggered (%s)\n", phase.Number, phase.Name, trigger.Reason)
-			}
-		} else {
-			// Fast mode: skip already-skipped phases silently
-			if phase.Status == pipeline.StatusSkipped {
+		// Silently skip phases pre-skipped by the depth profile (adaptive/full mode:
+		// only non-conditional phases such as Analysis/Architecture/Review at a shallow
+		// depth) or by fast mode (any already-skipped phase).
+		if shouldSilentlySkip(*phase, opts.handleConditionals) {
+			continue
+		}
+
+		// Conditional trigger evaluation (full/adaptive mode only).
+		if opts.handleConditionals && phase.Conditional {
+			trigger := p.ShouldInvokeConditional(phase)
+			if !trigger.Invoke {
+				fmt.Printf("   ⏭️  Phase %d: %s — skipped (%s)\n", phase.Number, phase.Name, trigger.Reason)
+				phase.Status = pipeline.StatusSkipped
 				continue
 			}
+			fmt.Printf("   ⚡ Phase %d: %s — triggered (%s)\n", phase.Number, phase.Name, trigger.Reason)
 		}
 
 		// Resolve agent
@@ -527,8 +542,10 @@ func runPipelineLoop(
 					continue
 				}
 
-				// LOW risk on escalated pipeline — ensure Review runs
-				if p.Escalated && routing.Level == pipeline.RiskLow {
+				// Ensure Review (Phase 5) runs on LOW risk when the depth includes it:
+				// escalated pipelines and non-escalated simple depth both proceed to Review.
+				// Trivial (non-escalated) intentionally skips Review on LOW.
+				if routing.Level == pipeline.RiskLow && (p.Escalated || p.Depth == pipeline.DepthSimple) {
 					p.UnskipPhase(5)
 				}
 			} else {
