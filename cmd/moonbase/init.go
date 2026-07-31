@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 
+	moonbase "github.com/rk-senne/moonbase"
 	"github.com/rk-senne/moonbase/internal/discovery"
 	"github.com/rk-senne/moonbase/internal/templates"
 )
@@ -84,11 +86,10 @@ func runInit() {
 		fmt.Printf("   ⚠️  Failed to write skills/README.md: %v\n", err)
 	}
 
-	// Scaffold example skill in Kiro-native directory format
-	exampleSkillDir := filepath.Join(kiroDir, "skills", "example")
-	os.MkdirAll(exampleSkillDir, 0o755)
-	if err := writeTemplate(filepath.Join(exampleSkillDir, "SKILL.md"), exampleSkillContent); err != nil {
-		fmt.Printf("   ⚠️  Failed to write skills/example/SKILL.md: %v\n", err)
+	// Scaffold curated skills library from embedded files (Kiro-native directory style)
+	skillsInstalled, skillsErr := writeEmbeddedSkills(filepath.Join(kiroDir, "skills"))
+	if skillsErr != nil {
+		fmt.Printf("   ⚠️  Failed to scaffold skills: %v\n", skillsErr)
 	}
 
 	// Write prompts README
@@ -130,7 +131,7 @@ func runInit() {
 	if dataAccessGenerated {
 		fmt.Println("   ✅ Created .kiro/steering/data-access-performance.md (opt-in)")
 	}
-	fmt.Println("   ✅ Created .kiro/skills/ (domain knowledge)")
+	fmt.Printf("   ✅ Created .kiro/skills/ (%d curated skills)\n", skillsInstalled)
 	fmt.Println("   ✅ Created .kiro/prompts/ (reusable workflows)")
 	fmt.Println()
 	fmt.Println("   Next steps:")
@@ -345,24 +346,40 @@ Example:
     diagnose.md     # Debug from an issue report
 `
 
-const exampleSkillContent = `---
-name: example
-description: Example skill — replace with your domain knowledge. Agents request this with @skill(example).
----
+// writeEmbeddedSkills writes each embedded skill .md file into targetDir using
+// Kiro-native directory format: <name>/SKILL.md. Returns the count of skills
+// written. Each skill is read from the embedded filesystem and written into a
+// subdirectory named after the filename stem.
+func writeEmbeddedSkills(targetDir string) (int, error) {
+	sfs, err := moonbase.SkillsFS()
+	if err != nil {
+		return 0, fmt.Errorf("loading embedded skills: %w", err)
+	}
+	entries, err := fs.Glob(sfs, "*.md")
+	if err != nil {
+		return 0, fmt.Errorf("listing embedded skills: %w", err)
+	}
 
-# Example Skill
-
-This is a template skill. Replace this content with domain-specific knowledge
-that your agents should have access to on demand.
-
-## When to Use
-
-Agents see the skill catalog (name + description) in every prompt. When they
-need the full content, they request it with @skill(example).
-
-## Guidelines
-
-- Keep skills focused on one domain or topic
-- Include examples, patterns, and rules
-- Target 500–2000 characters for best context efficiency
-`
+	installed := 0
+	for _, name := range entries {
+		base := filepath.Base(name)
+		// SECURITY: reject any unexpected path components.
+		if strings.Contains(base, "..") || strings.ContainsAny(base, `/\`) {
+			continue
+		}
+		stem := strings.TrimSuffix(base, ".md")
+		skillDir := filepath.Join(targetDir, stem)
+		if err := os.MkdirAll(skillDir, 0o755); err != nil {
+			return installed, fmt.Errorf("creating skill dir %s: %w", stem, err)
+		}
+		data, rerr := fs.ReadFile(sfs, name)
+		if rerr != nil {
+			return installed, fmt.Errorf("reading embedded skill %s: %w", base, rerr)
+		}
+		if werr := os.WriteFile(filepath.Join(skillDir, "SKILL.md"), data, 0o644); werr != nil {
+			return installed, fmt.Errorf("writing skill %s/SKILL.md: %w", stem, werr)
+		}
+		installed++
+	}
+	return installed, nil
+}

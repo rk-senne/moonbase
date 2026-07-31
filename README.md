@@ -354,6 +354,21 @@ When `moonbase init` scaffolds a project, it creates:
 - `.kiro/skills/` — Domain-specific knowledge agents reference progressively
 - `.kiro/prompts/` — Reusable named workflows
 
+**Curated Skills Library:** `moonbase init` installs 10 production-ready skills:
+
+| Skill | Focus |
+|-------|-------|
+| `testing-discipline` | Table-driven Go tests, race detection, regression-first fixes |
+| `security-review` | OWASP-aligned checklist: auth, injection, secrets, CVEs |
+| `git-workflow` | Conventional commits, atomic changes, PR hygiene |
+| `api-design` | REST resource modeling, pagination, versioning, error shapes |
+| `error-handling` | Wrap with context, sentinels, fail fast, log at boundaries |
+| `docker-build` | Multi-stage builds, layer caching, non-root, .dockerignore |
+| `concurrency-patterns` | Goroutine lifecycle, context, mutex vs channel, races |
+| `observability` | Structured logging, metrics, traces, never log secrets |
+| `refactoring-safely` | Characterization tests first, small steps, green builds |
+| `code-review` | Four lenses + constructive etiquette |
+
 **Progressive Skill Loading:** Skills use YAML frontmatter (`name`, `description`) so
 agents see a lightweight catalog (~100 tokens per skill) instead of full content. Agents
 request specific skills with `@skill(name)` to load content on demand — saving context
