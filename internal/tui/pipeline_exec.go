@@ -26,6 +26,13 @@ type PhaseResultMsg struct {
 	Elapsed time.Duration
 }
 
+// FanOutCompleteMsg carries all specialist results as a single batch from the
+// fan-out goroutine back to the Elm update loop. This replaces N individual
+// PhaseResultMsg events with a single atomic update for deterministic merging.
+type FanOutCompleteMsg struct {
+	Results []pipeline.FanOutResult
+}
+
 // PipelineAbortedMsg is sent when the user aborts the pipeline.
 type PipelineAbortedMsg struct{}
 
@@ -266,6 +273,11 @@ func (a *App) handlePhaseResult(msg PhaseResultMsg) tea.Cmd {
 			// Rework — pipeline was already rerouted by ApplyRiskGate
 			return a.startNextPhase()
 		}
+
+		// RiskLow — dispatch parallel specialists if enabled.
+		if a.views.Pipeline.State.ParallelSpecialists {
+			return a.startFanOut()
+		}
 	}
 
 	// Advance to next phase
@@ -287,4 +299,180 @@ func (a *App) handlePhaseResult(msg PhaseResultMsg) tea.Cmd {
 
 	// Start next phase
 	return a.startNextPhase()
+}
+
+// startFanOut dispatches parallel specialist execution as a tea.Cmd.
+// It identifies triggered specialists from the pipeline's conditional phases,
+// runs them concurrently via RunSpecialists, and returns a FanOutCompleteMsg.
+func (a *App) startFanOut() tea.Cmd {
+	return func() tea.Msg {
+		state := a.views.Pipeline.State
+		if state == nil {
+			return FanOutCompleteMsg{Results: nil}
+		}
+
+		// Identify conditional phases that are pending (eligible for fan-out).
+		var candidates []pipeline.Phase
+		for _, p := range state.Phases {
+			if p.Conditional && p.Status == pipeline.StatusPending {
+				candidates = append(candidates, p)
+			}
+		}
+
+		// Filter to only triggered specialists.
+		triggered := pipeline.TriggeredSpecialists(candidates, state.Context)
+
+		if len(triggered) == 0 {
+			return FanOutCompleteMsg{Results: nil}
+		}
+
+		cfg := pipeline.FanOutConfig{
+			MaxConcurrency: state.MaxSpecialistConcurrency,
+			PhaseTimeout:   state.PhaseTimeout,
+			TraceID:        state.TraceID,
+		}
+
+		// Build the execute function wrapping the backend call.
+		execute := func(ctx context.Context, phase pipeline.Phase) (string, error) {
+			agent := a.registry.GetByName(phase.AgentName)
+			if agent == nil {
+				return "", fmt.Errorf("agent %s not found", phase.AgentName)
+			}
+			phaseInput := state.Context.ForPhase(phase.Number)
+			composed := discovery.ComposePrompt(agent.Prompt, a.projectCtx, phaseInput)
+
+			output, _, err := backend.DeployComposed(ctx, composed, phaseInput, state.PhaseTimeout)
+			return output, err
+		}
+
+		results := pipeline.RunSpecialists(a.views.Pipeline.Ctx, triggered, execute, cfg)
+		return FanOutCompleteMsg{Results: results}
+	}
+}
+
+// handleFanOutComplete processes the batch result from parallel specialist execution.
+// It merges results into the pipeline context, appends per-specialist chat messages,
+// marks specialist phases appropriately, and advances to Phase 5 (Review).
+func (a *App) handleFanOutComplete(msg FanOutCompleteMsg) tea.Cmd {
+	a.views.Pipeline.Running = false
+
+	if a.views.Pipeline.State == nil {
+		return nil
+	}
+
+	state := a.views.Pipeline.State
+
+	if len(msg.Results) == 0 {
+		// No specialists triggered — skip to Phase 5 directly.
+		a.views.Pipeline.Chat = append(a.views.Pipeline.Chat,
+			PipelineMsg{"", "  ⏭️ No specialists triggered — advancing to Review."},
+		)
+	} else {
+		// Merge results into pipeline context (deterministic, phase-order).
+		state.Context.MergeSpecialistResults(msg.Results)
+
+		a.views.Pipeline.Chat = append(a.views.Pipeline.Chat,
+			PipelineMsg{"", fmt.Sprintf("⚡ Fan-out complete: %d specialist(s)", len(msg.Results))},
+		)
+
+		// Mark phases and append per-specialist chat.
+		for _, r := range msg.Results {
+			// Find the phase in the pipeline and update its status.
+			for i := range state.Phases {
+				if state.Phases[i].Number == r.Phase {
+					if r.Err != nil {
+						state.Phases[i].Status = pipeline.StatusFailed
+						state.Phases[i].Summary = r.Err.Error()
+					} else {
+						state.Phases[i].CompletePhase()
+					}
+					break
+				}
+			}
+
+			// Chat message per specialist.
+			if r.Err != nil {
+				a.views.Pipeline.Chat = append(a.views.Pipeline.Chat,
+					PipelineMsg{"", fmt.Sprintf("  ❌ %s (Phase %d) — failed: %v", r.Agent, r.Phase, r.Err)},
+				)
+			} else {
+				elapsed := r.Duration.Round(time.Millisecond)
+				a.views.Pipeline.Chat = append(a.views.Pipeline.Chat,
+					PipelineMsg{"", fmt.Sprintf("  ✅ %s (Phase %d) — %s", r.Agent, r.Phase, elapsed)},
+				)
+			}
+		}
+	}
+
+	// Skip untriggered conditional phases (mark as skipped).
+	for i := range state.Phases {
+		if state.Phases[i].Conditional && state.Phases[i].Status == pipeline.StatusPending {
+			state.Phases[i].Status = pipeline.StatusSkipped
+		}
+	}
+
+	// Advance to Phase 5 (Review).
+	// Find the Review phase index and set current to it.
+	for i := range state.Phases {
+		if state.Phases[i].Number == 5 && state.Phases[i].Status == pipeline.StatusPending {
+			state.Current = i
+			state.Phases[i].Status = pipeline.StatusRunning
+			a.views.Pipeline.Running = true
+			return a.startNextPhaseFrom(i)
+		}
+	}
+
+	// If Review is already complete or not found, mark pipeline done.
+	state.Active = false
+	a.views.Pipeline.Chat = append(a.views.Pipeline.Chat,
+		PipelineMsg{"", ""},
+		PipelineMsg{"", "━━━ MISSION COMPLETE ━━━"},
+	)
+	return nil
+}
+
+// startNextPhaseFrom starts a specific phase by index (used after fan-out to jump to Review).
+func (a *App) startNextPhaseFrom(idx int) tea.Cmd {
+	if a.views.Pipeline.State == nil || !a.views.Pipeline.State.Active {
+		a.views.Pipeline.Running = false
+		return nil
+	}
+
+	if a.env.Backend.Active == nil || a.env.Backend.Active.Name() == "clipboard" {
+		a.views.Pipeline.Running = false
+		return nil
+	}
+
+	if a.views.Pipeline.Ctx == nil {
+		ctx, cancel := context.WithCancel(context.Background())
+		a.views.Pipeline.Ctx = ctx
+		a.views.Pipeline.Cancel = cancel
+	}
+
+	phase := &a.views.Pipeline.State.Phases[idx]
+	phase.StartPhase()
+	a.views.Pipeline.Running = true
+
+	if logging.Logger != nil {
+		logging.Logger.Info("pipeline phase starting (post fan-out)",
+			"phase", phase.Number,
+			"name", phase.Name,
+			"operative", phase.Operative,
+		)
+	}
+
+	a.views.Pipeline.Chat = append(a.views.Pipeline.Chat,
+		PipelineMsg{"", "───────────────────────────────────"},
+		PipelineMsg{phase.Operative, fmt.Sprintf("Phase %d: %s starting...", phase.Number, phase.Name)},
+	)
+
+	return executePhase(
+		a.views.Pipeline.Ctx,
+		*phase,
+		a.registry,
+		a.env.Backend.Active,
+		a.projectCtx,
+		a.views.Pipeline.State.Context,
+		a.views.Pipeline.State.PhaseTimeout,
+	)
 }

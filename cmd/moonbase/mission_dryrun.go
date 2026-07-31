@@ -14,6 +14,11 @@ func runMissionDryRun(task string) {
 
 	p := pipeline.New(task)
 
+	// Apply sequential override if requested.
+	if missionSequential {
+		p.ParallelSpecialists = false
+	}
+
 	fmt.Println("   EXECUTION PLAN")
 	fmt.Println("   ─────────────────────────────────────")
 
@@ -31,6 +36,15 @@ func runMissionDryRun(task string) {
 			fmt.Printf("   ▶️  Phase %d: %s (%s)\n",
 				phase.Number, phase.Name, phase.Operative)
 		}
+	}
+
+	fmt.Println()
+	fmt.Println("   SPECIALISTS")
+	fmt.Println("   ─────────────────────────────────────")
+	if p.ParallelSpecialists {
+		fmt.Printf("   Mode: parallel (concurrency: %d)\n", p.MaxSpecialistConcurrency)
+	} else {
+		fmt.Println("   Mode: sequential (override)")
 	}
 
 	fmt.Println()

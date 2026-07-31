@@ -87,6 +87,7 @@ func TestPhaseResultMsg_RiskGate_Low(t *testing.T) {
 	app.view = ViewPipeline
 	app.boot.Ready = true
 	app.views.Pipeline.State = pipeline.New("test task")
+	app.views.Pipeline.State.ParallelSpecialists = false // Test sequential path
 	// Advance to phase 4 (QA) — set phases 0-3 as complete
 	for i := 0; i < 3; i++ {
 		app.views.Pipeline.State.Advance()

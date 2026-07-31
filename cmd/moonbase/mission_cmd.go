@@ -14,6 +14,7 @@ var missionDryRun bool
 var missionFast bool
 var missionTrace bool
 var missionForce bool
+var missionSequential bool
 
 var missionCmd = &cobra.Command{
 	Use:     "mission [task description]",
@@ -64,6 +65,7 @@ func init() {
 	missionCmd.Flags().BoolVar(&missionFast, "fast", false, "skip analysis/architecture, go straight to implementation + QA")
 	missionCmd.Flags().BoolVar(&missionTrace, "trace", false, "output trace-level info (TraceID, phase timestamps, output sizes)")
 	missionCmd.Flags().BoolVar(&missionForce, "force", false, "override WIP lock if another mission is running")
+	missionCmd.Flags().BoolVar(&missionSequential, "sequential", false, "disable parallel specialist fan-out for this mission")
 }
 
 // confirmMission shows a huh confirmation dialog before executing a mission.

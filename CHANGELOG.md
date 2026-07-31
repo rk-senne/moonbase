@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- feat(pipeline): parallel fan-out execution of independent conditional specialists — triggered specialists now run concurrently after QA (RiskLow), with bounded concurrency (default 4, configurable 1–16)
+- feat(pipeline): `RunSpecialists` orchestrator with `sync.WaitGroup` + semaphore for partial-failure tolerance (one failure does not cancel siblings)
+- feat(pipeline): `IsIndependentSpecialist` classifies parallelizable agents from metadata (shell.read_only, tools list) — not hardcoded
+- feat(pipeline): deterministic output aggregation via phase-number sorting, regardless of completion order
+- feat(pipeline): `MergeSpecialistResults` on `PipelineContext` for stable merging with file de-duplication
+- feat(config): `parallel_specialists` (default true) and `max_specialist_concurrency` (default 4) config fields
+- feat(cli): `moonbase mission --sequential` flag to disable fan-out for a single mission
+- feat(flywheel): `parallel_group` field on `FlywheelEntry` for correlating fan-out batch entries
+- feat(checkpoint): `specialist_results` optional field on `Checkpoint` for persisting fan-out outcomes
+- feat(tui): `FanOutCompleteMsg` Elm message for atomic batch updates; fan-out group header in pipeline sidebar
+
 ## [1.14.0] - 2026-07-31
 
 ### Added

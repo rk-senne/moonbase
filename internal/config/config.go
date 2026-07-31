@@ -50,6 +50,10 @@ type Config struct {
 	// cmux integration (manaflow-ai/cmux macOS terminal for AI agents).
 	UseCmux bool `yaml:"use_cmux,omitempty"` // Auto-enable cmux features when true (notifications, split panes)
 
+	// Parallel specialist fan-out configuration.
+	ParallelSpecialists      bool `yaml:"parallel_specialists,omitempty"`       // Enable concurrent specialists (default true)
+	MaxSpecialistConcurrency int  `yaml:"max_specialist_concurrency,omitempty"` // Concurrency cap (default 4, range 1–16)
+
 	// Kiro Native Interop configuration.
 	Compile CompileConfig `yaml:"compile,omitempty"` // Compilation settings
 	Deploy  DeployConfig  `yaml:"deploy,omitempty"`  // Deployment mode settings
@@ -87,16 +91,18 @@ type TokenBudgetConfig struct {
 // DefaultConfig returns a Config with sensible defaults.
 func DefaultConfig() Config {
 	return Config{
-		DefaultBackend:  "kiro-cli",
-		Theme:           "moonbase",
-		AgentsDir:       "",
-		TrustTools:      true, // Enable headless execution by default
-		PipelineBackend: "",   // Empty = use default_backend for all phases
-		FastThreshold:   0,    // 0 = disabled (user must pass --fast explicitly)
-		PhaseTimeout:    300,  // 5 minutes per phase
-		MaxOutputSize:   100000, // 100KB max output per phase
-		EnableTrace:     true,   // Trace IDs enabled by default for observability
-		MaxRetries:      1,      // One retry per phase before failure
+		DefaultBackend:           "kiro-cli",
+		Theme:                    "moonbase",
+		AgentsDir:                "",
+		TrustTools:               true, // Enable headless execution by default
+		PipelineBackend:          "",   // Empty = use default_backend for all phases
+		FastThreshold:            0,    // 0 = disabled (user must pass --fast explicitly)
+		PhaseTimeout:             300,  // 5 minutes per phase
+		MaxOutputSize:            100000, // 100KB max output per phase
+		EnableTrace:              true,   // Trace IDs enabled by default for observability
+		MaxRetries:               1,      // One retry per phase before failure
+		ParallelSpecialists:      true,   // Fan-out specialists concurrently by default
+		MaxSpecialistConcurrency: 4,      // Conservative default concurrency cap
 		AgentOrder: agents.DefaultAgentOrder,
 	}
 }
