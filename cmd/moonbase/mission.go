@@ -160,10 +160,11 @@ func runMission(task string) {
 
 	// Execute phases via the shared pipeline loop
 	runPipelineLoop(missionCtx, p, reg, ctx, flywheel, task, pipelineLoopOptions{
-		handleConditionals:   true,
-		advanceAfterPhase:    true,
-		reworkOnRisk:         true,
+		handleConditionals:     true,
+		advanceAfterPhase:      true,
+		reworkOnRisk:           true,
 		runConditionalParallel: true,
+		allowEscalation:        false,
 	})
 
 	// Enhancement 6: Run conditional phases in parallel
@@ -220,13 +221,88 @@ func runMissionFast(task string) {
 
 	// Execute phases via the shared pipeline loop
 	runPipelineLoop(missionCtx, p, reg, ctx, flywheel, task, pipelineLoopOptions{
-		handleConditionals:   false,
-		advanceAfterPhase:    false,
-		reworkOnRisk:         false,
+		handleConditionals:     false,
+		advanceAfterPhase:      false,
+		reworkOnRisk:           false,
 		runConditionalParallel: false,
+		allowEscalation:        false,
 	})
 
 	fmt.Println("\n   ✅ Fast mission complete.")
+}
+
+// runMissionAdaptive executes the pipeline at the given adaptive depth.
+// Enables mid-pipeline escalation when QA signals insufficient analysis.
+func runMissionAdaptive(task string, depth pipeline.Depth, reason string) {
+	// Acquire WIP lock
+	release, lockErr := acquireMissionLock(missionForce)
+	if lockErr != nil {
+		fmt.Fprintf(os.Stderr, "❌ %v\n", lockErr)
+		return
+	}
+	defer release()
+
+	// Set up graceful shutdown via SIGINT/SIGTERM
+	missionCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	fmt.Println("🌙 KND Council — Adaptive Mission")
+	fmt.Printf("   Task: %s\n", task)
+	fmt.Printf("   Depth: %s (%s)\n\n", depth, reason)
+
+	// Load agents
+	reg := loadAgentRegistry()
+
+	// Discover project context
+	cwd := mustGetwd()
+	ctx := discovery.Discover(cwd)
+	if ctx.HasSpecs() || ctx.HasSteering() {
+		fmt.Printf("   Project: %s\n\n", ctx.Summary())
+	}
+
+	// Create adaptive pipeline
+	p := pipeline.NewAdaptive(task, depth, reason)
+
+	// Apply parallel specialist configuration from config and CLI flags.
+	cfg := config.Load()
+	p.ParallelSpecialists = cfg.ParallelSpecialists
+	p.MaxSpecialistConcurrency = cfg.MaxSpecialistConcurrency
+	if missionSequential {
+		p.ParallelSpecialists = false
+	}
+
+	// Create flywheel logger
+	flywheel := pipeline.NewFlywheelLog()
+
+	// Trace: print TraceID at start
+	if missionTrace {
+		fmt.Printf("   [trace] TraceID: %s\n", p.TraceID)
+		fmt.Printf("   [trace] PhaseTimeout: %s, MaxOutputSize: %d\n\n", p.PhaseTimeout, p.MaxOutputSize)
+	}
+
+	// Execute phases via the shared pipeline loop with escalation enabled
+	runPipelineLoop(missionCtx, p, reg, ctx, flywheel, task, pipelineLoopOptions{
+		handleConditionals:     true,
+		advanceAfterPhase:      true,
+		reworkOnRisk:           true,
+		runConditionalParallel: true,
+		allowEscalation:        true,
+	})
+
+	// Enhancement 6: Run conditional phases in parallel
+	runConditionalPhasesParallel(p, reg, ctx, missionCtx)
+
+	// Final summary
+	fmt.Println()
+	if p.IsComplete() || p.Context.RiskLevel == string(pipeline.RiskLow) {
+		fmt.Println("   ✅ Adaptive mission complete.")
+	}
+	if p.Escalated {
+		fmt.Printf("   📈 Escalated: %s → %s\n", p.OrigDepth, p.Depth)
+	}
+	if len(p.Context.FilesChanged) > 0 {
+		fmt.Printf("   Files touched: %s\n", strings.Join(p.Context.FilesChanged, ", "))
+	}
 }
 
 // pipelineLoopOptions captures the behavioural differences between full and fast
@@ -244,6 +320,9 @@ type pipelineLoopOptions struct {
 	// runConditionalParallel is reserved for future use. Currently conditional
 	// parallel execution is triggered separately after the loop.
 	runConditionalParallel bool
+	// allowEscalation enables mid-pipeline depth promotion when QA signals
+	// insufficient analysis on a shallow pipeline (MEDIUM/HIGH risk).
+	allowEscalation bool
 }
 
 // runPipelineLoop iterates a pipeline's phases, executing each via
@@ -379,6 +458,50 @@ func runPipelineLoop(
 		// Apply risk gate after QA (phase 4)
 		if phase.Number == 4 {
 			if opts.reworkOnRisk {
+				// Parse risk level without side effects to check for escalation first.
+				routing := pipeline.ParseRiskGate(output)
+
+				// Escalation check: if depth is shallow and risk is non-LOW/non-CRITICAL, escalate.
+				// CRITICAL always stops first — escalation cannot override CRITICAL.
+				if opts.allowEscalation && routing.Level != pipeline.RiskLow && routing.Level != pipeline.RiskCritical && p.Depth != pipeline.DepthComplex {
+					targetDepth := pipeline.EscalationTarget(p.Depth, routing.Level)
+					if targetDepth != p.Depth {
+						fmt.Printf("   ⬆️  Escalating: %s → %s (QA risk: %s)\n", p.Depth, targetDepth, routing.Level)
+						p.Escalate(targetDepth)
+
+						// Log escalation to flywheel
+						flywheel.Append(pipeline.FlywheelEntry{
+							Timestamp:     time.Now().UTC(),
+							TraceID:       p.TraceID,
+							Phase:         phase.Number,
+							Agent:         phase.AgentName,
+							Task:          task,
+							Outcome:       "escalated",
+							RiskLevel:     string(routing.Level),
+							Depth:         string(targetDepth),
+							DepthReason:   p.DepthReason,
+							EscalatedFrom: string(p.OrigDepth),
+							EscalatedTo:   string(targetDepth),
+							DurationMs:    phase.ElapsedTime().Milliseconds(),
+							OutputSize:    len(output),
+						})
+
+						// Route to the earliest pending non-conditional phase
+						targetIdx := -1
+						for j, ph := range p.Phases {
+							if ph.Status == pipeline.StatusPending && !ph.Conditional {
+								targetIdx = j
+								break
+							}
+						}
+						if targetIdx >= 0 {
+							i = targetIdx - 1 // -1 because loop will increment
+							continue
+						}
+					}
+				}
+
+				// Normal risk gate handling (unchanged path).
 				shouldContinue, targetIdx := handleRiskGate(p, output)
 				if !shouldContinue {
 					break
@@ -393,6 +516,8 @@ func runPipelineLoop(
 						Task:        task,
 						Outcome:     "rework",
 						RiskLevel:   p.Context.RiskLevel,
+						Depth:       string(p.Depth),
+						DepthReason: p.DepthReason,
 						DurationMs:  phase.ElapsedTime().Milliseconds(),
 						OutputSize:  len(output),
 						ReworkCount: p.Context.ReworkCount,
@@ -400,6 +525,11 @@ func runPipelineLoop(
 					// Loop back — adjust i to re-run from the target phase
 					i = targetIdx - 1 // -1 because loop will increment
 					continue
+				}
+
+				// LOW risk on escalated pipeline — ensure Review runs
+				if p.Escalated && routing.Level == pipeline.RiskLow {
+					p.UnskipPhase(5)
 				}
 			} else {
 				// Fast mode: informational risk gate only

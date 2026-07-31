@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/huh"
+	"github.com/rk-senne/moonbase/internal/pipeline"
 	"github.com/spf13/cobra"
 )
 
@@ -15,6 +16,8 @@ var missionFast bool
 var missionTrace bool
 var missionForce bool
 var missionSequential bool
+var missionFull bool
+var missionDepth string
 
 var missionCmd = &cobra.Command{
 	Use:     "mission [task description]",
@@ -51,10 +54,21 @@ var missionCmd = &cobra.Command{
 					return
 				}
 			}
-			if missionFast {
+			switch {
+			case missionFast:
 				runMissionFast(task)
-			} else {
+			case missionFull:
 				runMission(task)
+			case missionDepth != "":
+				depth := validateDepthFlag(missionDepth)
+				if depth == "" {
+					return
+				}
+				runMissionAdaptive(task, depth, "override:"+missionDepth)
+			default:
+				// Auto-classify task complexity
+				classification := pipeline.ClassifyTask(task)
+				runMissionAdaptive(task, classification.Depth, classification.Reason)
 			}
 		}
 	},
@@ -63,9 +77,12 @@ var missionCmd = &cobra.Command{
 func init() {
 	missionCmd.Flags().BoolVar(&missionDryRun, "dry-run", false, "print execution plan without invoking backends")
 	missionCmd.Flags().BoolVar(&missionFast, "fast", false, "skip analysis/architecture, go straight to implementation + QA")
+	missionCmd.Flags().BoolVar(&missionFull, "full", false, "run all pipeline phases regardless of task complexity")
+	missionCmd.Flags().StringVar(&missionDepth, "depth", "", "override auto-classification (trivial|simple|complex)")
 	missionCmd.Flags().BoolVar(&missionTrace, "trace", false, "output trace-level info (TraceID, phase timestamps, output sizes)")
 	missionCmd.Flags().BoolVar(&missionForce, "force", false, "override WIP lock if another mission is running")
 	missionCmd.Flags().BoolVar(&missionSequential, "sequential", false, "disable parallel specialist fan-out for this mission")
+	missionCmd.MarkFlagsMutuallyExclusive("fast", "full", "depth")
 }
 
 // confirmMission shows a huh confirmation dialog before executing a mission.
@@ -89,4 +106,21 @@ func confirmMission(task string) bool {
 // runMissionWithoutConfirm executes a mission without showing the confirmation dialog.
 func runMissionWithoutConfirm(task string) {
 	runMission(task)
+}
+
+// validateDepthFlag validates the --depth flag value and returns the corresponding
+// pipeline.Depth. Prints an error and returns empty string on invalid input.
+func validateDepthFlag(value string) pipeline.Depth {
+	switch strings.ToLower(value) {
+	case "trivial":
+		return pipeline.DepthTrivial
+	case "simple":
+		return pipeline.DepthSimple
+	case "complex":
+		return pipeline.DepthComplex
+	default:
+		fmt.Fprintf(os.Stderr, "❌ Invalid --depth value %q. Must be one of: trivial, simple, complex.\n", value)
+		osExit(1)
+		return ""
+	}
 }
