@@ -46,6 +46,11 @@ type FlywheelEntry struct {
 	EstimatedCostUSD float64 `json:"estimated_cost_usd,omitempty"`
 	// Parallel specialist fan-out correlation (added without schema version bump).
 	ParallelGroup string `json:"parallel_group,omitempty"` // Groups entries from same fan-out batch
+	// Adaptive pipeline depth observability (added without schema version bump per evolution contract).
+	Depth         string `json:"depth,omitempty"`           // Pipeline depth for this run
+	DepthReason   string `json:"depth_reason,omitempty"`    // Why this depth was selected
+	EscalatedFrom string `json:"escalated_from,omitempty"`  // Original depth before escalation
+	EscalatedTo   string `json:"escalated_to,omitempty"`    // New depth after escalation
 }
 
 // FlywheelLog manages append-only JSONL logging for flywheel analysis.

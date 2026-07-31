@@ -112,6 +112,8 @@ moonbase status
 | `moonbase deploy <n> [task]` | Deploy operative by numbuh (interactive kiro-cli session) |
 | `moonbase mission <task>` | Run full KND Council pipeline on a task |
 | `moonbase mission --fast <task>` | Skip analysis/architecture, run implementation + QA only (use for trivial/well-specified tasks) |
+| `moonbase mission --full <task>` | Force all 5 mandatory phases regardless of task complexity |
+| `moonbase mission --depth <level> <task>` | Override auto-classification (`trivial`, `simple`, `complex`) |
 | `moonbase install [--all] [--global]` | Install agents to project's `.kiro/agents/` (or `~/.kiro/agents/` with `--global`) |
 | `moonbase compile [--out] [--validate] [--agent]` | Compile agents to Kiro-native JSON |
 | `moonbase setup` | Install agents globally to `~/.moonbase/agents/` |
@@ -247,6 +249,29 @@ moonbase/
 ---
 
 ## Key Capabilities
+
+### Adaptive Pipeline Depth
+
+The pipeline automatically classifies task complexity and selects the minimum
+viable depth, escalating mid-run if the risk gate signals the shallow path was
+insufficient.
+
+| Depth | Phases | When |
+|-------|--------|------|
+| `trivial` | 3 → 4 (Implement + QA) | Short tasks with trivial indicators (typo, rename, unused import) |
+| `simple` | 1 → 3 → 4 (Analysis + Implement + QA) | Moderate tasks with some complexity |
+| `complex` | 1 → 2 → 3 → 4 → 5 (full pipeline) | Long tasks, many signals, multi-scope |
+
+**Core invariant:** QA (Phase 4) always runs at every depth. If QA returns
+MEDIUM or HIGH risk on a shallow pipeline, it automatically escalates to a
+deeper depth and re-runs with the added context.
+
+```bash
+moonbase mission "fix typo in README"           # → trivial (2 phases)
+moonbase mission "add rate limiting to the API"  # → complex (5 phases)
+moonbase mission --depth simple "any task"       # override classification
+moonbase mission --full "any task"               # force full pipeline
+```
 
 ### Human Interaction Protocol
 

@@ -12,7 +12,40 @@ func runMissionDryRun(task string) {
 	fmt.Println("🌙 KND Council — Mission Dry Run")
 	fmt.Printf("   Task: %s\n\n", task)
 
-	p := pipeline.New(task)
+	// Determine depth
+	var depth pipeline.Depth
+	var reason string
+	switch {
+	case missionFast:
+		depth = "override:fast"
+		reason = "explicit --fast flag"
+	case missionFull:
+		depth = pipeline.DepthComplex
+		reason = "explicit --full flag"
+	case missionDepth != "":
+		depth = validateDepthFlag(missionDepth)
+		if depth == "" {
+			return
+		}
+		reason = "override:" + missionDepth
+	default:
+		classification := pipeline.ClassifyTask(task)
+		depth = classification.Depth
+		reason = classification.Reason
+	}
+
+	fmt.Printf("   DEPTH CLASSIFICATION\n")
+	fmt.Printf("   ─────────────────────────────────────\n")
+	fmt.Printf("   Depth: %s (%s)\n\n", depth, reason)
+
+	var p *pipeline.Pipeline
+	if missionFast || depth == "override:fast" {
+		p = pipeline.NewFast(task)
+	} else if depth == pipeline.DepthTrivial || depth == pipeline.DepthSimple || depth == pipeline.DepthComplex {
+		p = pipeline.NewAdaptive(task, depth, reason)
+	} else {
+		p = pipeline.New(task)
+	}
 
 	// Apply sequential override if requested.
 	if missionSequential {
@@ -32,6 +65,9 @@ func runMissionDryRun(task string) {
 				fmt.Printf("   ⏭️  Phase %d: %s (%s) — would skip (%s)\n",
 					phase.Number, phase.Name, phase.Operative, trigger.Reason)
 			}
+		} else if phase.Status == pipeline.StatusSkipped {
+			fmt.Printf("   ⏭️  Phase %d: %s (%s) — skipped (depth: %s)\n",
+				phase.Number, phase.Name, phase.Operative, depth)
 		} else {
 			fmt.Printf("   ▶️  Phase %d: %s (%s)\n",
 				phase.Number, phase.Name, phase.Operative)
@@ -56,6 +92,9 @@ func runMissionDryRun(task string) {
 	fmt.Println("     HIGH     → redesign from Architecture (Phase 2)")
 	fmt.Println("     CRITICAL → stop pipeline, escalate to human")
 	fmt.Printf("   Max rework loops: %d\n", p.MaxRework)
+	if !missionFast && depth != "override:fast" {
+		fmt.Println("   Escalation: enabled (shallow depths promote on MEDIUM/HIGH risk)")
+	}
 	fmt.Println()
 	fmt.Println("   ℹ️  No backends will be invoked. Use 'moonbase mission' without --dry-run to execute.")
 }
