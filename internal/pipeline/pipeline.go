@@ -88,6 +88,12 @@ type Pipeline struct {
 	// Parallel specialist fan-out configuration.
 	ParallelSpecialists      bool // Enable concurrent specialist execution (default true)
 	MaxSpecialistConcurrency int  // Max concurrent specialists (default 4, range 1–16)
+
+	// Adaptive pipeline depth fields.
+	Depth       Depth  // Effective depth: trivial, simple, complex
+	DepthReason string // Why this depth was selected (for flywheel + CLI display)
+	Escalated   bool   // True if depth was promoted mid-pipeline
+	OrigDepth   Depth  // Original depth before escalation (empty if no escalation)
 }
 
 // New creates a new pipeline for a given task.
