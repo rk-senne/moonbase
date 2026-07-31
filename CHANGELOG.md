@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- feat(skills): curated skills library (10 skills) scaffolded by `moonbase init` — testing-discipline, security-review, git-workflow, api-design, error-handling, docker-build, concurrency-patterns, observability, refactoring-safely, code-review
+- feat(skills): embedded skills via `SkillsFS()` — skills are frozen into the binary and scaffolded in Kiro-native directory format (`<name>/SKILL.md`)
+
 ## [1.16.0] - 2026-07-31
 
 ### Added

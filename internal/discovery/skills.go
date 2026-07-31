@@ -287,3 +287,11 @@ func ResolveSkills(registry *SkillRegistry, names []string) ([]ResolvedSkill, []
 
 	return resolved, notFound
 }
+
+// ParseFrontmatterOnlyFromPath is the exported entry point for parsing skill
+// YAML frontmatter from a file path. It returns SkillMeta with Name,
+// Description, and Path populated. Returns ErrSkillNoFrontmatter if the file
+// lacks frontmatter, or ErrSkillInvalidName if the name fails validation.
+func ParseFrontmatterOnlyFromPath(path string) (SkillMeta, error) {
+	return parseFrontmatterOnly(path)
+}
