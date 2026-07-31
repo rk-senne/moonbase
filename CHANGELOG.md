@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.16.0] - 2026-07-31
+
 ### Added
 - feat(pipeline): adaptive pipeline depth — auto-classifies task complexity (trivial/simple/complex) and selects minimum viable pipeline depth
 - feat(pipeline): mid-pipeline escalation — promotes shallow pipelines to deeper depth when QA flags insufficient analysis (MEDIUM/HIGH risk)
@@ -199,6 +201,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Security: SafeEnv isolation, hook command validation, input sanitization
 - Mission history with persistence
 
+[1.16.0]: https://github.com/rk-senne/moonbase/compare/v1.15.0...v1.16.0
 [1.15.0]: https://github.com/rk-senne/moonbase/compare/v1.14.0...v1.15.0
 [1.14.0]: https://github.com/rk-senne/moonbase/compare/v1.13.0...v1.14.0
 [1.13.0]: https://github.com/rk-senne/moonbase/compare/v1.12.0...v1.13.0
