@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.15.0] - 2026-07-31
+
 ### Added
 - feat(pipeline): parallel fan-out execution of independent conditional specialists — triggered specialists now run concurrently after QA (RiskLow), with bounded concurrency (default 4, configurable 1–16)
 - feat(pipeline): `RunSpecialists` orchestrator with `sync.WaitGroup` + semaphore for partial-failure tolerance (one failure does not cancel siblings)
@@ -189,6 +191,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Security: SafeEnv isolation, hook command validation, input sanitization
 - Mission history with persistence
 
+[1.15.0]: https://github.com/rk-senne/moonbase/compare/v1.14.0...v1.15.0
 [1.14.0]: https://github.com/rk-senne/moonbase/compare/v1.13.0...v1.14.0
 [1.13.0]: https://github.com/rk-senne/moonbase/compare/v1.12.0...v1.13.0
 [1.12.0]: https://github.com/rk-senne/moonbase/compare/v1.11.0...v1.12.0
