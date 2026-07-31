@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.17.0] - 2026-07-31
 
 ### Added
 - feat(skills): curated skills library (10 skills) scaffolded by `moonbase init` — testing-discipline, security-review, git-workflow, api-design, error-handling, docker-build, concurrency-patterns, observability, refactoring-safely, code-review
@@ -205,6 +205,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Security: SafeEnv isolation, hook command validation, input sanitization
 - Mission history with persistence
 
+[1.17.0]: https://github.com/rk-senne/moonbase/compare/v1.16.0...v1.17.0
 [1.16.0]: https://github.com/rk-senne/moonbase/compare/v1.15.0...v1.16.0
 [1.15.0]: https://github.com/rk-senne/moonbase/compare/v1.14.0...v1.15.0
 [1.14.0]: https://github.com/rk-senne/moonbase/compare/v1.13.0...v1.14.0
