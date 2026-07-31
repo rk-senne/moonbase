@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- feat(pipeline): adaptive pipeline depth — auto-classifies task complexity (trivial/simple/complex) and selects minimum viable pipeline depth
+- feat(pipeline): mid-pipeline escalation — promotes shallow pipelines to deeper depth when QA flags insufficient analysis (MEDIUM/HIGH risk)
+- feat(cli): `moonbase mission --full` flag to force all phases regardless of task complexity
+- feat(cli): `moonbase mission --depth trivial|simple|complex` flag to override auto-classification
+- feat(cli): `moonbase mission --dry-run` now shows depth classification and which phases are active/skipped
+- feat(flywheel): `depth`, `depth_reason`, `escalated_from`, `escalated_to` fields on FlywheelEntry for depth observability
+
 ## [1.15.0] - 2026-07-31
 
 ### Added
