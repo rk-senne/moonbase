@@ -7,7 +7,7 @@ A 14-agent AI development pipeline with spec-driven methodology, human interacti
 ```bash
 moonbase init                    # make any project agent-ready
 moonbase deploy 4 "check auth"  # deploy Numbuh 4 with a task
-moonbase mission "add pagination to /users API"  # run full pipeline
+moonbase mission "add pagination to /users API"  # run the pipeline (adaptive)
 ```
 
 ---
@@ -20,6 +20,12 @@ moonbase mission "add pagination to /users API"  # run full pipeline
 - **Risk-gated pipeline** — QA classifies risk, work loops back until it holds
 - **Project-aware** — discovers your stack, conventions, and specs before doing work
 - **Self-auditing** — agents can scan their own codebase for bugs and tech debt
+
+---
+
+## Documentation
+
+Full guides live in [`wiki/`](wiki/) — staged for the project **[GitHub Wiki](https://github.com/rk-senne/moonbase/wiki)**: Installation, CLI Reference, The Pipeline, Agents, Skills & Prompts, Flywheel & Observability, Configuration, Architecture, Kiro Native Interop, and Contributing. Design docs and feature specs are in [`docs/`](docs/) and [`.kiro/specs/`](.kiro/specs/).
 
 ---
 
@@ -110,10 +116,11 @@ moonbase status
 | `moonbase` | Launch the TUI dashboard |
 | `moonbase init` | Scaffold `.kiro/` in any project (specs, steering, agents) |
 | `moonbase deploy <n> [task]` | Deploy operative by numbuh (interactive kiro-cli session) |
-| `moonbase mission <task>` | Run full KND Council pipeline on a task |
+| `moonbase mission <task>` | Run the KND Council pipeline (auto-classifies depth, escalates on risk) |
 | `moonbase mission --fast <task>` | Skip analysis/architecture, run implementation + QA only (use for trivial/well-specified tasks) |
 | `moonbase mission --full <task>` | Force all 5 mandatory phases regardless of task complexity |
 | `moonbase mission --depth <level> <task>` | Override auto-classification (`trivial`, `simple`, `complex`) |
+| `moonbase mission --sequential <task>` | Disable parallel specialist fan-out for this mission |
 | `moonbase install [--all] [--global]` | Install agents to project's `.kiro/agents/` (or `~/.kiro/agents/` with `--global`) |
 | `moonbase compile [--out] [--validate] [--agent]` | Compile agents to Kiro-native JSON |
 | `moonbase setup` | Install agents globally to `~/.moonbase/agents/` |
@@ -127,7 +134,7 @@ moonbase status
 | `moonbase export <id>` | Export mission details |
 | `moonbase snippet save <name>` | Save a prompt snippet from stdin |
 | `moonbase snippet list` | List saved snippets |
-| `moonbase flywheel` | Show pipeline learning insights |
+| `moonbase flywheel` | Show pipeline learning insights (incl. token/cost) |
 | `moonbase version` | Print version information |
 
 **Pipe mode:**
@@ -198,6 +205,7 @@ routing:
   trusted: [numbuh-3, numbuh-5]
 pipeline_position: 4
 triggers: null
+mcp_servers: []          # optional MCP servers — compiled to Kiro's mcpServers
 ---
 
 # Numbuh 4 — QA / Verification
