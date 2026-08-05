@@ -141,8 +141,8 @@ func (r *SkillRegistry) LoadContent(name string) (string, error) {
 
 	body := stripFrontmatter(string(data))
 	body = strings.TrimSpace(body)
-	if len(body) > maxSkillSize {
-		body = body[:maxSkillSize] + "\n...(truncated)"
+	if r := []rune(body); len(r) > maxSkillSize {
+		body = string(r[:maxSkillSize]) + "\n...(truncated)"
 	}
 
 	entry.content = body

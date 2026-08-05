@@ -62,8 +62,9 @@ func ComposePrompt(agentPrompt string, context *ProjectContext, task string) str
 			// Strip frontmatter from steering content before including
 			content := stripFrontmatter(s.Content)
 			// SECURITY: Truncate oversized steering files to prevent context exhaustion
-			if len(content) > maxSteeringSize {
-				content = content[:maxSteeringSize] + "\n...(truncated for size)"
+			// (rune-safe: byte slicing can split a multi-byte char → invalid UTF-8)
+			if r := []rune(content); len(r) > maxSteeringSize {
+				content = string(r[:maxSteeringSize]) + "\n...(truncated for size)"
 			}
 			steeringBlock.WriteString(content)
 			steeringBlock.WriteString("\n\n")
@@ -91,9 +92,10 @@ func ComposePrompt(agentPrompt string, context *ProjectContext, task string) str
 			specBlock.WriteString(fmt.Sprintf("## Feature: %s\n\n", feature))
 			for _, f := range files {
 				// SECURITY: Truncate per-file spec content
+				// (rune-safe: byte slicing can split a multi-byte char → invalid UTF-8)
 				content := f.Content
-				if len(content) > maxSpecSize {
-					content = content[:maxSpecSize] + "\n...(truncated)"
+				if r := []rune(content); len(r) > maxSpecSize {
+					content = string(r[:maxSpecSize]) + "\n...(truncated)"
 				}
 				specBlock.WriteString(fmt.Sprintf("### %s.md\n\n%s\n\n", f.Type, content))
 			}

@@ -254,8 +254,11 @@ func readREADME(projectDir string) string {
 		content, err := os.ReadFile(path)
 		if err == nil {
 			s := string(content)
-			if len(s) > 2000 {
-				s = s[:2000] + "\n...(truncated)"
+			// Rune-safe truncation: slicing by bytes can cut a multi-byte UTF-8
+			// character in half, producing an invalid string that downstream
+			// arg-parsers (e.g. kiro-cli) reject with "invalid UTF-8".
+			if r := []rune(s); len(r) > 2000 {
+				s = string(r[:2000]) + "\n...(truncated)"
 			}
 			return s
 		}
