@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"bytes"
 	"context"
 	"time"
 
@@ -22,6 +23,13 @@ type PipelineModel struct {
 	Ctx          context.Context
 	Cancel       context.CancelFunc
 	StreamCh     <-chan chat.StreamChunk
+
+	// Streaming pipeline phase state (separate from COMMS StreamCh above).
+	PhaseStreamCh     <-chan chat.StreamChunk
+	PhaseStreamBuf    *bytes.Buffer
+	PhaseStreamStart  time.Time
+	PhaseStreamCancel context.CancelFunc
+	PhaseStreamPhase  int
 }
 
 // NewPipelineModel constructs a PipelineModel with defaults.

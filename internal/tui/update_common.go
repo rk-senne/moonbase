@@ -144,6 +144,11 @@ func (a App) handlePipelineAborted() (tea.Model, tea.Cmd) {
 	if a.views.Pipeline.Cancel != nil {
 		a.views.Pipeline.Cancel()
 	}
+	// Cancel any in-flight phase stream (kills process, closes channel)
+	if a.views.Pipeline.PhaseStreamCancel != nil {
+		a.views.Pipeline.PhaseStreamCancel()
+		a.views.Pipeline.PhaseStreamCancel = nil
+	}
 	if a.views.Pipeline.State != nil {
 		a.views.Pipeline.State.Stop("Aborted by human")
 		a.views.Pipeline.Chat = append(a.views.Pipeline.Chat,

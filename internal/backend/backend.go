@@ -4,7 +4,10 @@
 package backend
 
 import (
+	"context"
+
 	"github.com/rk-senne/moonbase/internal/agents"
+	"github.com/rk-senne/moonbase/internal/chat"
 	"github.com/rk-senne/moonbase/internal/discovery"
 	"github.com/rk-senne/moonbase/internal/logging"
 )
@@ -24,6 +27,25 @@ type Backend interface {
 // the full prompt including project context, steering, and per-phase input.
 type RawDeployer interface {
 	DeployRaw(composed string, task string) (string, error)
+}
+
+// StreamingBackend is an optional interface backends can implement to provide
+// incremental output as a channel of chat.StreamChunk. The pipeline uses this
+// for live-streaming agent output to the TUI.
+type StreamingBackend interface {
+	Backend
+	DeployStream(ctx context.Context, agent agents.Agent,
+		pc *discovery.ProjectContext, task string) (<-chan chat.StreamChunk, error)
+}
+
+// AsStream returns a chunk channel for ANY backend: native stream if the
+// backend implements StreamingBackend, else a one-shot stream wrapping Deploy.
+func AsStream(ctx context.Context, be Backend, agent agents.Agent,
+	pc *discovery.ProjectContext, task string) (<-chan chat.StreamChunk, error) {
+	if sb, ok := be.(StreamingBackend); ok {
+		return sb.DeployStream(ctx, agent, pc, task)
+	}
+	return oneShotStream(ctx, be, agent, pc, task), nil
 }
 
 // DetectAll checks which backends are available on this system.

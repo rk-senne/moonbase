@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"testing"
@@ -213,19 +214,42 @@ func TestExecutePhase_Success(t *testing.T) {
 
 	cmd := executePhase(context.Background(), phase, reg, be, nil, pctx, 120*time.Second)
 	msg := cmd()
-	result := msg.(PhaseResultMsg)
 
-	if result.Err != nil {
-		t.Errorf("expected no error, got %v", result.Err)
+	// executePhase now returns phaseStreamStartedMsg (streaming flow)
+	started, ok := msg.(phaseStreamStartedMsg)
+	if !ok {
+		t.Fatalf("expected phaseStreamStartedMsg, got %T", msg)
 	}
-	if result.Output != "Requirements gathered successfully." {
-		t.Errorf("unexpected output: %s", result.Output)
+	if started.Phase != 1 {
+		t.Errorf("expected phase=1, got %d", started.Phase)
 	}
-	if result.Phase != 1 {
-		t.Errorf("expected phase=1, got %d", result.Phase)
-	}
-	if result.Elapsed <= 0 {
-		t.Error("expected positive elapsed time")
+
+	// Drive the poll loop to get the final PhaseResultMsg
+	buf := &bytes.Buffer{}
+	for {
+		pollCmd := pollPhaseStream(started.Phase, started.Ch, started.Start, started.Cancel, buf)
+		pollMsg := pollCmd()
+		switch m := pollMsg.(type) {
+		case PhaseChunkMsg:
+			buf.WriteString(m.Text)
+			continue
+		case PhaseResultMsg:
+			if m.Err != nil {
+				t.Errorf("expected no error, got %v", m.Err)
+			}
+			if m.Output != "Requirements gathered successfully." {
+				t.Errorf("unexpected output: %s", m.Output)
+			}
+			if m.Phase != 1 {
+				t.Errorf("expected phase=1, got %d", m.Phase)
+			}
+			if m.Elapsed <= 0 {
+				t.Error("expected positive elapsed time")
+			}
+			return
+		default:
+			t.Fatalf("unexpected msg type: %T", pollMsg)
+		}
 	}
 }
 
@@ -243,10 +267,29 @@ func TestExecutePhase_BackendError(t *testing.T) {
 
 	cmd := executePhase(context.Background(), phase, reg, be, nil, pctx, 120*time.Second)
 	msg := cmd()
-	result := msg.(PhaseResultMsg)
 
-	if result.Err == nil {
-		t.Error("expected error from backend failure")
+	// With streaming: backend error surfaces via phaseStreamStartedMsg → poll → Done with error
+	started, ok := msg.(phaseStreamStartedMsg)
+	if !ok {
+		t.Fatalf("expected phaseStreamStartedMsg, got %T", msg)
+	}
+
+	buf := &bytes.Buffer{}
+	for {
+		pollCmd := pollPhaseStream(started.Phase, started.Ch, started.Start, started.Cancel, buf)
+		pollMsg := pollCmd()
+		switch m := pollMsg.(type) {
+		case PhaseChunkMsg:
+			buf.WriteString(m.Text)
+			continue
+		case PhaseResultMsg:
+			if m.Err == nil {
+				t.Error("expected error from backend failure")
+			}
+			return
+		default:
+			t.Fatalf("unexpected msg type: %T", pollMsg)
+		}
 	}
 }
 
@@ -267,7 +310,21 @@ func TestExecutePhase_ContextCancelled(t *testing.T) {
 
 	cmd := executePhase(ctx, phase, reg, be, nil, pctx, 120*time.Second)
 	msg := cmd()
-	result := msg.(PhaseResultMsg)
+
+	// With a pre-cancelled context, executePhase returns phaseStreamStartedMsg
+	// and the first poll returns a PhaseResultMsg with a context error.
+	started, ok := msg.(phaseStreamStartedMsg)
+	if !ok {
+		t.Fatalf("expected phaseStreamStartedMsg, got %T", msg)
+	}
+
+	buf := &bytes.Buffer{}
+	pollCmd := pollPhaseStream(started.Phase, started.Ch, started.Start, started.Cancel, buf)
+	pollMsg := pollCmd()
+	result, ok := pollMsg.(PhaseResultMsg)
+	if !ok {
+		t.Fatalf("expected PhaseResultMsg, got %T", pollMsg)
+	}
 
 	if result.Err == nil {
 		t.Error("expected error from cancelled context")

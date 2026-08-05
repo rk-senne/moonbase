@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"strings"
@@ -9,6 +10,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/rk-senne/moonbase/internal/agents"
 	"github.com/rk-senne/moonbase/internal/backend"
+	"github.com/rk-senne/moonbase/internal/chat"
 	"github.com/rk-senne/moonbase/internal/discovery"
 	"github.com/rk-senne/moonbase/internal/logging"
 	"github.com/rk-senne/moonbase/internal/pipeline"
@@ -69,50 +71,58 @@ func executePhase(
 
 		// Execute with timeout
 		timeoutCtx, cancel := context.WithTimeout(ctx, phaseTimeout)
-		defer cancel()
 
-		// Run backend deployment in a channel so we can respect timeout
-		type result struct {
-			output string
-			err    error
-		}
-		ch := make(chan result, 1)
-		go func() {
-			// Wrap with retry for transient failures (5xx, timeout, connection refused).
-			// Clipboard backend is never retried (local operation).
-			if be.Name() == "clipboard" {
-				output, err := be.Deploy(*agent, projectCtx, composed)
-				ch <- result{output, err}
-			} else {
-				output, err := backend.WithRetryCtx(timeoutCtx, func() (string, error) {
-					return be.Deploy(*agent, projectCtx, composed)
-				}, backend.DefaultMaxAttempts)
-				ch <- result{output, err}
-			}
-		}()
-
-		select {
-		case <-timeoutCtx.Done():
-			if ctx.Err() != nil {
-				return PhaseResultMsg{
-					Phase:   phase.Number,
-					Err:     fmt.Errorf("phase %d cancelled", phase.Number),
-					Elapsed: time.Since(start),
-				}
-			}
+		// Start streaming backend
+		ch, err := backend.AsStream(timeoutCtx, be, *agent, projectCtx, composed)
+		if err != nil {
+			cancel()
 			return PhaseResultMsg{
 				Phase:   phase.Number,
-				Err:     fmt.Errorf("phase %d timed out after %s", phase.Number, phaseTimeout),
-				Elapsed: time.Since(start),
-			}
-		case r := <-ch:
-			return PhaseResultMsg{
-				Phase:   phase.Number,
-				Output:  r.output,
-				Err:     r.err,
+				Err:     fmt.Errorf("stream start: %w", err),
 				Elapsed: time.Since(start),
 			}
 		}
+
+		return phaseStreamStartedMsg{
+			Phase:  phase.Number,
+			Ch:     ch,
+			Start:  start,
+			Cancel: cancel,
+		}
+	}
+}
+
+// phaseStreamStartedMsg is sent when a phase stream has been successfully
+// started. The Update loop stores the channel and cancel on PipelineModel,
+// then kicks pollPhaseStream to begin consuming chunks.
+type phaseStreamStartedMsg struct {
+	Phase  int
+	Ch     <-chan chat.StreamChunk
+	Start  time.Time
+	Cancel context.CancelFunc
+}
+
+// pollPhaseStream reads ONE chunk from the phase stream channel.
+// On Done or channel close → PhaseResultMsg (with accumulated output).
+// On text chunk → PhaseChunkMsg.
+func pollPhaseStream(phase int, ch <-chan chat.StreamChunk, start time.Time,
+	cancel context.CancelFunc, buf *bytes.Buffer) tea.Cmd {
+	return func() tea.Msg {
+		chunk, ok := <-ch
+		if !ok || chunk.Done {
+			cancel()
+			var chunkErr error
+			if ok {
+				chunkErr = chunk.Err
+			}
+			return PhaseResultMsg{
+				Phase:   phase,
+				Output:  buf.String(),
+				Err:     chunkErr,
+				Elapsed: time.Since(start),
+			}
+		}
+		return PhaseChunkMsg{Phase: phase, Text: chunk.Text}
 	}
 }
 

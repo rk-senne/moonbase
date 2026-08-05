@@ -132,6 +132,23 @@ func (a App) renderPipeline() string {
 	if maxLines < 5 {
 		maxLines = 5
 	}
+
+	// If a phase is actively streaming, render the live tail of StreamBuf
+	// at the end of the chat (appending ephemeral lines).
+	streamTail := ""
+	if a.views.Pipeline.Running && a.views.Pipeline.PhaseStreamBuf != nil &&
+		a.views.Pipeline.PhaseStreamBuf.Len() > 0 {
+		raw := a.views.Pipeline.PhaseStreamBuf.String()
+		lines := strings.Split(raw, "\n")
+		// Show last 8 lines of streaming output
+		tailCount := 8
+		if len(lines) < tailCount {
+			tailCount = len(lines)
+		}
+		tail := lines[len(lines)-tailCount:]
+		streamTail = strings.Join(tail, "\n")
+	}
+
 	start := 0
 	if len(a.views.Pipeline.Chat) > maxLines {
 		start = len(a.views.Pipeline.Chat) - maxLines
@@ -180,7 +197,14 @@ func (a App) renderPipeline() string {
 		}
 	}
 
+	// Render streaming tail if active (light touch: show below the chat)
+	if streamTail != "" {
+		streamStyle := lipgloss.NewStyle().Foreground(a.theme.Data.Muted)
+		main.WriteString(streamStyle.Render(streamTail) + "\n")
+	}
+
 	mainPanel := a.theme.Styles.Panel.Width(mainWidth).Render(main.String())
+
 	body := lipgloss.JoinHorizontal(lipgloss.Top, phaseSidebar, " ", mainPanel)
 
 	var statusBar string

@@ -222,6 +222,12 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case PhaseResultMsg:
 		return a.handlePhaseResultUpdate(msg)
 
+	case phaseStreamStartedMsg:
+		return a.handlePhaseStreamStarted(msg)
+
+	case PhaseChunkMsg:
+		return a.handlePhaseChunk(msg)
+
 	case FanOutCompleteMsg:
 		if cmd := a.handleFanOutComplete(msg); cmd != nil {
 			return a, cmd

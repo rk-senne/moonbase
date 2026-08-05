@@ -1,6 +1,8 @@
 package backend
 
 import (
+	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -76,6 +78,67 @@ func (k *Kiro) DeployNative(agentName string) ([]string, error) {
 
 	return append([]string{"kiro-cli"}, args...), nil
 }
+
+// DeployStream implements StreamingBackend for Kiro. It launches kiro-cli with
+// the same arguments as DeployRaw, but reads stdout incrementally via StdoutPipe
+// + bufio.Scanner, emitting one StreamChunk per line. On process exit, a terminal
+// Done chunk (carrying any non-zero-exit error) is emitted. The channel is closed
+// after the Done chunk.
+//
+// Timeout/cancel: exec.CommandContext kills the process on ctx cancellation.
+// The goroutine also checks ctx.Done() on each send to avoid blocking on a full channel.
+func (k *Kiro) DeployStream(ctx context.Context, agent agents.Agent,
+	pc *discovery.ProjectContext, task string) (<-chan chat.StreamChunk, error) {
+
+	// task is the pre-composed prompt (same as DeployRaw receives via composed)
+	args := []string{"chat"}
+	if k.TrustTools {
+		args = append(args, "--trust-all-tools", "--no-interactive")
+	}
+	args = append(args, "--", task)
+
+	cmd := exec.CommandContext(ctx, "kiro-cli", args...)
+	cmd.Env = SafeEnv()
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, fmt.Errorf("kiro-cli stdout pipe: %w", err)
+	}
+	// Fold stderr into stdout for CombinedOutput parity
+	cmd.Stderr = cmd.Stdout
+
+	if err := cmd.Start(); err != nil {
+		return nil, fmt.Errorf("kiro-cli start: %w", err)
+	}
+
+	ch := make(chan chat.StreamChunk)
+	go func() {
+		defer close(ch)
+		sc := bufio.NewScanner(stdout)
+		sc.Buffer(make([]byte, 64*1024), 1024*1024) // 1 MB max line
+
+		for sc.Scan() {
+			line := sc.Text() + "\n"
+			select {
+			case ch <- chat.StreamChunk{Text: line}:
+			case <-ctx.Done():
+				_ = cmd.Process.Kill()
+				return
+			}
+		}
+
+		werr := cmd.Wait()
+		select {
+		case ch <- chat.StreamChunk{Done: true, Err: werr}:
+		case <-ctx.Done():
+		}
+	}()
+
+	return ch, nil
+}
+
+// Compile-time assertion: Kiro implements StreamingBackend.
+var _ StreamingBackend = (*Kiro)(nil)
 
 // Codex deploys agents via OpenAI Codex CLI
 type Codex struct{}
