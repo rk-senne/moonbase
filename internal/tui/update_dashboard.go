@@ -15,6 +15,10 @@ import (
 // been checked). This covers ViewDashboard, ViewDossier, ViewPipeline,
 // ViewHelp, ViewHistory, and other non-specific key handling.
 func (a App) handleDashboardKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	// Pipeline conversation scrollback takes priority over roster/phase keys.
+	if m, cmd, handled := a.handlePipelineScroll(msg); handled {
+		return m, cmd
+	}
 	switch {
 	case key.Matches(msg, a.keys.Quit):
 		if a.views.Pipeline.Cancel != nil {
@@ -36,6 +40,10 @@ func (a App) handleDashboardKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 					// Second esc within 3s — actually abort
 					if a.views.Pipeline.Cancel != nil {
 						a.views.Pipeline.Cancel()
+					}
+					if a.views.Pipeline.PhaseStreamCancel != nil {
+						a.views.Pipeline.PhaseStreamCancel()
+						a.views.Pipeline.PhaseStreamCancel = nil
 					}
 					a.flushLiveBuf()
 					a.views.Pipeline.State.Stop("Aborted by human")

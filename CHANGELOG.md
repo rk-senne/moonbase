@@ -20,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - feat(tui): always-visible "mission in progress" indicator in the header (`⚡ <phase> P<done>/<total>`) so a running mission stays visible from any view.
 
 ### Fixed
+- fix(tui): the pipeline conversation shows a persona header above the *live* streaming output (`▸ Numbuh 2 · Hoagie Gilligan  ⣿ streaming…`), so agent handoffs are visible while output is still arriving — not just after a phase completes.
+- fix(tui): the pipeline conversation is scrollable — `↑/↓` (line), `pgup/pgdn` (page), `home`/`end` (top / follow-latest), with `▲/▼` "more" indicators; auto-follows the newest output when pinned to the bottom.
+- fix(tui): interrupting a mission is responsive — pipeline stream chunks are coalesced per poll so a fast stream no longer starves the event loop (keys like `esc` register immediately), and both `esc esc` (abort) and `s` (skip) now cancel the running phase's backend so the agent actually stops.
 - fix(tui): `m` now opens a new mission from ANY stage — the dashboard file browser no longer swallows the key. (Global key intercept added ahead of the browser/view handlers.)
 - fix(tui): pressing Enter to submit a mission reliably starts the pipeline and never navigates backwards; empty/whitespace briefings now prompt for an objective instead of silently doing nothing.
 - fix(tui): submitting a new mission while one is running cleanly supersedes the prior run — its context/stream is cancelled and its late phase messages are discarded via a mission-generation guard (no cross-mission corruption).

@@ -116,12 +116,12 @@ type phaseStreamStartedMsg struct {
 func pollPhaseStream(phase int, ch <-chan chat.StreamChunk, start time.Time,
 	cancel context.CancelFunc, buf *bytes.Buffer, gen int) tea.Cmd {
 	return func() tea.Msg {
-		chunk, ok := <-ch
-		if !ok || chunk.Done {
+		first, ok := <-ch
+		if !ok || first.Done {
 			cancel()
 			var chunkErr error
 			if ok {
-				chunkErr = chunk.Err
+				chunkErr = first.Err
 			}
 			return PhaseResultMsg{
 				Phase:   phase,
@@ -131,7 +131,39 @@ func pollPhaseStream(phase int, ch <-chan chat.StreamChunk, start time.Time,
 				Gen:     gen,
 			}
 		}
-		return PhaseChunkMsg{Phase: phase, Text: chunk.Text, Gen: gen}
+
+		// Coalesce: drain any chunks already sitting in the channel into a single
+		// message. Under a fast stream this collapses hundreds of per-token
+		// messages into one per frame, so the Elm event loop stays responsive to
+		// key input (e.g. esc to interrupt) instead of being starved by chunks.
+		text := first.Text
+	drain:
+		for i := 0; i < 512; i++ {
+			select {
+			case c, ok := <-ch:
+				if !ok || c.Done {
+					// Stream ended mid-drain: flush the coalesced text into the
+					// accumulation buffer and finish with the phase result.
+					buf.WriteString(text)
+					cancel()
+					var chunkErr error
+					if ok {
+						chunkErr = c.Err
+					}
+					return PhaseResultMsg{
+						Phase:   phase,
+						Output:  buf.String(),
+						Err:     chunkErr,
+						Elapsed: time.Since(start),
+						Gen:     gen,
+					}
+				}
+				text += c.Text
+			default:
+				break drain
+			}
+		}
+		return PhaseChunkMsg{Phase: phase, Text: text, Gen: gen}
 	}
 }
 

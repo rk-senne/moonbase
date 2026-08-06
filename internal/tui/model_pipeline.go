@@ -44,6 +44,11 @@ type PipelineModel struct {
 	LiveAgent string
 	LiveBuf   string
 
+	// ChatScroll is how many lines the operator has scrolled UP from the bottom
+	// of the conversation. 0 = pinned to the latest output (auto-follow); >0 =
+	// reviewing history. Clamped to the available range on each key event.
+	ChatScroll int
+
 	// Gen is a monotonically increasing mission generation. It is incremented
 	// each time a new mission is submitted so that in-flight phase messages
 	// from a prior (cancelled) mission are ignored instead of corrupting the

@@ -390,7 +390,7 @@ func (k KeyMap) keysFor(view View, searching bool, termActive bool, browsing boo
 	case ViewDossier:
 		return []key.Binding{k.Enter, k.CopyPrompt, k.SpawnHook, k.Up, k.Down, k.Back}
 	case ViewPipeline:
-		return []key.Binding{k.NextPhase, k.RetryPhase, k.SkipPhase, k.NewMission, k.Back}
+		return []key.Binding{k.Up, k.Down, k.NextPhase, k.RetryPhase, k.SkipPhase, k.NewMission, k.Back}
 	case ViewHelp:
 		return []key.Binding{k.Back}
 	case ViewMission:

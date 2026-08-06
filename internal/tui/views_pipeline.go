@@ -11,8 +11,8 @@ import (
 
 func (a App) renderPipeline() string {
 	header := a.renderHeader("Pipeline")
-	sidebarWidth := 24
-	mainWidth := a.width - sidebarWidth - 1 // 1 space separator
+	sidebarWidth := pipelineSidebarWidth
+	mainWidth := a.pipelineMainWidth()
 
 	var phases strings.Builder
 	phases.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Brand).Bold(true).Render("◆ PIPELINE") + "\n")
@@ -126,105 +126,31 @@ func (a App) renderPipeline() string {
 		main.WriteString(dimStyle.Render("━━━ AWAITING MISSION ━━━") + "\n\n")
 	}
 
-	// Render pipeline chat with phase sections
-	maxLines := a.height - 12
-	if maxLines < 5 {
-		maxLines = 5
+	// Build the whole conversation as styled lines, then show a scrollable
+	// window into it (ChatScroll = lines up from the bottom; 0 = follow latest).
+	lines := a.pipelineChatLines(mainWidth)
+	chatH := a.pipelineChatHeight()
+	total := len(lines)
+	scroll := a.views.Pipeline.ChatScroll
+	if maxScroll := total - chatH; scroll > maxScroll {
+		scroll = maxScroll
 	}
-
-	// If a phase is actively streaming, render the live buffer as plain
-	// wrapped text (no glamour) so high-frequency chunks don't trigger
-	// expensive re-renders (AC-1.1/1.2). The live buffer is flushed into a
-	// normal PipelineMsg on phase completion.
-	streamTail := ""
-	if a.views.Pipeline.Running && a.views.Pipeline.LiveBuf != "" {
-		raw := a.views.Pipeline.LiveBuf
-		wrapped := wordWrap(raw, mainWidth-4)
-		lines := strings.Split(wrapped, "\n")
-		// Show last 12 lines of streaming output for better visibility.
-		tailCount := 12
-		if len(lines) < tailCount {
-			tailCount = len(lines)
-		}
-		tail := lines[len(lines)-tailCount:]
-		streamTail = strings.Join(tail, "\n")
+	if scroll < 0 {
+		scroll = 0
 	}
-
-	start := 0
-	if len(a.views.Pipeline.Chat) > maxLines {
-		start = len(a.views.Pipeline.Chat) - maxLines
+	end := total - scroll
+	begin := end - chatH
+	if begin < 0 {
+		begin = 0
 	}
-	prevAgent := ""
-	for i := start; i < len(a.views.Pipeline.Chat); i++ {
-		msg := a.views.Pipeline.Chat[i]
-		if msg.Agent == "" {
-			prevAgent = ""
-			// System message — phase headers, risk gates, dividers
-			content := msg.Content
-			if strings.HasPrefix(content, "────") || strings.HasPrefix(content, "━━━") {
-				// Phase header or divider — use brand colour
-				main.WriteString(titleStyle.Render(content) + "\n")
-			} else if strings.Contains(content, "Risk Gate") || strings.Contains(content, "🎯") {
-				// Risk gate — use appropriate colour
-				if strings.Contains(content, "LOW") {
-					main.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Active).Bold(true).Render("  "+content) + "\n")
-				} else if strings.Contains(content, "MEDIUM") {
-					main.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Warning).Bold(true).Render("  "+content) + "\n")
-				} else if strings.Contains(content, "HIGH") || strings.Contains(content, "CRITICAL") {
-					main.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Error).Bold(true).Render("  "+content) + "\n")
-				} else {
-					main.WriteString(dimStyle.Render("  "+content) + "\n")
-				}
-			} else if strings.HasPrefix(content, "└──") {
-				// Phase completion footer
-				if strings.Contains(content, "✅") {
-					main.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Active).Render(content) + "\n")
-				} else if strings.Contains(content, "❌") {
-					main.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Error).Render(content) + "\n")
-				} else {
-					main.WriteString(dimStyle.Render(content) + "\n")
-				}
-			} else if strings.Contains(content, "⏭️") || strings.Contains(content, "⚡") {
-				// Conditional trigger/skip
-				main.WriteString(dimStyle.Render("  "+content) + "\n")
-			} else {
-				main.WriteString(dimStyle.Render(" "+content) + "\n")
-			}
-		} else {
-			// Agent output — show a persona header (who + personality) the first
-			// time this operative speaks in a contiguous block, then the content
-			// with a persona-coloured gutter so each voice is visually distinct.
-			persona := personaFor(msg.Agent)
-			if msg.Agent != prevAgent {
-				headerStyle := lipgloss.NewStyle().Foreground(persona.Color).Bold(true)
-				header := "▸ " + persona.Operative
-				if persona.Designation != "" && persona.Designation != persona.Operative {
-					header += " · " + persona.Designation
-				}
-				header = truncateToWidth(header, mainWidth-2)
-				main.WriteString(headerStyle.Render(header) + "\n")
-				if persona.Personality != "" {
-					main.WriteString(lipgloss.NewStyle().Foreground(persona.Color).Italic(true).Render("  "+persona.Personality) + "\n")
-				}
-			}
-			prevAgent = msg.Agent
-			gutter := lipgloss.NewStyle().Foreground(persona.Color)
-			rendered := renderMarkdown(msg.Content, mainWidth-4)
-			lines := strings.Split(rendered, "\n")
-			for _, line := range lines {
-				main.WriteString(gutter.Render("│ ") + line + "\n")
-			}
-		}
+	if begin > 0 {
+		main.WriteString(dimStyle.Render(fmt.Sprintf("  ▲ %d more above (↑/pgup to scroll)", begin)) + "\n")
 	}
-
-	// Render streaming tail if active (plain wrapped text, persona-coloured gutter)
-	if streamTail != "" {
-		persona := personaFor(a.views.Pipeline.LiveAgent)
-		gutter := lipgloss.NewStyle().Foreground(persona.Color)
-		streamLines := strings.Split(streamTail, "\n")
-		for _, line := range streamLines {
-			main.WriteString(gutter.Render("│ ") + lipgloss.NewStyle().Foreground(a.theme.Data.Muted).Render(line) + "\n")
-		}
+	for _, ln := range lines[begin:end] {
+		main.WriteString(ln + "\n")
+	}
+	if end < total {
+		main.WriteString(dimStyle.Render(fmt.Sprintf("  ▼ %d below · press End to follow", total-end)) + "\n")
 	}
 
 	mainPanel := a.theme.Styles.Panel.Width(mainWidth).Render(main.String())
@@ -238,4 +164,124 @@ func (a App) renderPipeline() string {
 		statusBar = a.renderContextualStatusBar()
 	}
 	return lipgloss.JoinVertical(lipgloss.Left, header, body, statusBar)
+}
+
+// pipelineSidebarWidth is the fixed width of the phase sidebar column.
+const pipelineSidebarWidth = 24
+
+// pipelineMainWidth is the width of the conversation panel.
+func (a App) pipelineMainWidth() int {
+	w := a.width - pipelineSidebarWidth - 1
+	if w < 20 {
+		w = 20
+	}
+	return w
+}
+
+// pipelineChatHeight is the number of conversation lines visible at once. Used
+// by both the renderer and the scroll handler so they agree on the window.
+func (a App) pipelineChatHeight() int {
+	h := a.height - 14 // header + mission title + indicators + status bar
+	if h < 4 {
+		h = 4
+	}
+	return h
+}
+
+// pipelineChatLines builds the entire conversation as styled display lines:
+// completed messages (system lines + per-agent persona blocks) followed by the
+// live streaming block. The live block is prefixed with a persona header so the
+// operator can always see WHICH operative is currently speaking — making agent
+// handoffs visible even mid-stream. Both the renderer and the scroll handler
+// call this so the scrollable window is computed from the same content.
+func (a App) pipelineChatLines(mainWidth int) []string {
+	titleStyle := lipgloss.NewStyle().Foreground(a.theme.Data.Brand).Bold(true)
+	dimStyle := lipgloss.NewStyle().Foreground(a.theme.Data.Dim)
+
+	var lines []string
+	prevAgent := ""
+	for _, msg := range a.views.Pipeline.Chat {
+		if msg.Agent == "" {
+			prevAgent = ""
+			content := msg.Content
+			switch {
+			case strings.HasPrefix(content, "────") || strings.HasPrefix(content, "━━━"):
+				lines = append(lines, titleStyle.Render(content))
+			case strings.Contains(content, "Risk Gate") || strings.Contains(content, "🎯"):
+				st := dimStyle
+				if strings.Contains(content, "LOW") {
+					st = lipgloss.NewStyle().Foreground(a.theme.Data.Active).Bold(true)
+				} else if strings.Contains(content, "MEDIUM") {
+					st = lipgloss.NewStyle().Foreground(a.theme.Data.Warning).Bold(true)
+				} else if strings.Contains(content, "HIGH") || strings.Contains(content, "CRITICAL") {
+					st = lipgloss.NewStyle().Foreground(a.theme.Data.Error).Bold(true)
+				}
+				lines = append(lines, st.Render("  "+content))
+			case strings.Contains(content, "⏭️") || strings.Contains(content, "⚡"):
+				lines = append(lines, dimStyle.Render("  "+content))
+			case strings.HasPrefix(content, "└──"):
+				st := dimStyle
+				if strings.Contains(content, "✅") {
+					st = lipgloss.NewStyle().Foreground(a.theme.Data.Active)
+				} else if strings.Contains(content, "❌") {
+					st = lipgloss.NewStyle().Foreground(a.theme.Data.Error)
+				}
+				lines = append(lines, st.Render(content))
+			default:
+				lines = append(lines, dimStyle.Render(" "+content))
+			}
+			continue
+		}
+
+		// Agent block: persona header once per contiguous speaker, then content.
+		persona := personaFor(msg.Agent)
+		if msg.Agent != prevAgent {
+			lines = append(lines, personaHeaderLine(persona, mainWidth, ""))
+			if persona.Personality != "" {
+				lines = append(lines, lipgloss.NewStyle().Foreground(persona.Color).Italic(true).Render("  "+persona.Personality))
+			}
+		}
+		prevAgent = msg.Agent
+		gutter := lipgloss.NewStyle().Foreground(persona.Color)
+		for _, line := range strings.Split(renderMarkdown(msg.Content, mainWidth-4), "\n") {
+			lines = append(lines, gutter.Render("│ ")+line)
+		}
+	}
+
+	// Live streaming block — always labelled with the current operative so the
+	// handoff is visible while output is still arriving.
+	if a.views.Pipeline.Running && a.views.Pipeline.LiveBuf != "" {
+		persona := personaFor(a.views.Pipeline.LiveAgent)
+		lines = append(lines, personaHeaderLine(persona, mainWidth, a.spinner.View()+" streaming…"))
+		// Bound the work: wrap only the tail of the buffer, show the last lines.
+		raw := a.views.Pipeline.LiveBuf
+		if len(raw) > 4000 {
+			raw = raw[len(raw)-4000:]
+		}
+		wrapped := strings.Split(wordWrap(raw, mainWidth-4), "\n")
+		const liveTail = 40
+		if len(wrapped) > liveTail {
+			wrapped = wrapped[len(wrapped)-liveTail:]
+		}
+		gutter := lipgloss.NewStyle().Foreground(persona.Color)
+		muted := lipgloss.NewStyle().Foreground(a.theme.Data.Muted)
+		for _, line := range wrapped {
+			lines = append(lines, gutter.Render("│ ")+muted.Render(line))
+		}
+	}
+
+	return lines
+}
+
+// personaHeaderLine renders an operative's header ("▸ Numbuh 2 · Hoagie Gilligan"),
+// optionally with a trailing status (e.g. a spinner + "streaming…").
+func personaHeaderLine(persona AgentPersona, mainWidth int, status string) string {
+	header := "▸ " + persona.Operative
+	if persona.Designation != "" && persona.Designation != persona.Operative {
+		header += " · " + persona.Designation
+	}
+	if status != "" {
+		header += "  " + status
+	}
+	return lipgloss.NewStyle().Foreground(persona.Color).Bold(true).Render(truncateToWidth(header, mainWidth-2))
 }

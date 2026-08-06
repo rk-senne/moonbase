@@ -87,6 +87,7 @@ func (a *App) supersedeRunningMission() {
 	a.views.Pipeline.PhaseStreamBuf = nil
 	a.views.Pipeline.LiveBuf = ""
 	a.views.Pipeline.LiveAgent = ""
+	a.views.Pipeline.ChatScroll = 0
 	a.views.Pipeline.Running = false
 	a.views.Pipeline.AbortPending = false
 	a.views.Pipeline.Gen++
