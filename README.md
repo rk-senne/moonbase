@@ -397,7 +397,7 @@ catalog of critical and cool terminal tools:
 
 | Critical | Cool & Stable |
 |----------|---------------|
-| git, ripgrep, fzf, jq, tmux, neovim, lazygit, GitHub CLI | btop, bat, eza, zoxide, git-delta, fish, starship, **oh-my-posh**, lazydocker, cmux |
+| git, ripgrep, fzf, jq, tmux, neovim, lazygit, GitHub CLI | btop, bat, eza, zoxide, git-delta, fish, starship, **oh-my-posh**, lazydocker, fd, tree, tig, direnv, duf, yq, just, hyperfine, dust, procs, tealdeer, glow, yazi, zellij, atuin, difftastic, k9s, cmux — plus macOS-only: **mas**, **trash**, **terminal-notifier** |
 
 Each tool shows a live install status (✓/✗). Select one and moonbase installs it
 via your platform's package manager — **Homebrew on macOS; the native manager

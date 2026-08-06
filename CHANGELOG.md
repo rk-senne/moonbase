@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- feat(tools): expanded the dev-tools catalog with 20 cool & useful additions — `fd`, `tree`, `tig`, `direnv`, `duf`, `yq`, `just`, `hyperfine`, `dust`, `procs`, `tealdeer` (tldr), `glow`, `yazi`, `zellij`, `atuin`, `difftastic`, `k9s` — plus macOS-only gems `mas`, `trash`, and `terminal-notifier`. All appear in the Settings **macOS** section (and the **Linux** section where a native package exists).
 - feat(mux): new `internal/mux` package — one unified integration for **both** tmux and cmux (detect, notifications, split-pane execution, windows/workspaces, send-keys). OS-aware (cmux preferred on macOS, tmux elsewhere), and a safe no-op when neither is installed. Previously only cmux had any of these capabilities.
 - feat(cli): `moonbase deploy --pane` deploys an operative into a **split pane** of the active multiplexer — tmux *or* cmux (with a helpful error if you're not inside a tmux session). `--cmux` is kept as an alias.
 - feat(tui): Settings dev-environment is now **OS-aware** — a **macOS** section and a **Linux** section, with the running OS highlighted (`✓ · this machine`) and the other grayed out (view-only). Each section has an **Install all** action that installs every missing recommended tool for that OS in one package-manager command (after the usual `y/n` confirmation showing the exact command).
