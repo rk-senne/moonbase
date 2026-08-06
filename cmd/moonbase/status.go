@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/rk-senne/moonbase/internal/compile"
 	"github.com/rk-senne/moonbase/internal/config"
 	"github.com/rk-senne/moonbase/internal/discovery"
+	"github.com/rk-senne/moonbase/internal/mux"
 )
 
 // runStatus prints a quick health check of the moonbase environment.
@@ -36,11 +36,15 @@ func runStatus() {
 	}
 	fmt.Printf("   Backend:    %s\n", backendStatus)
 
-	// cmux
-	if _, cmuxErr := exec.LookPath("cmux"); cmuxErr == nil {
-		fmt.Println("   Cmux:       ✅ available")
+	// Terminal multiplexer (tmux / cmux) — the active integration target.
+	if m := mux.Detect(); m.Available() {
+		session := ""
+		if m.InSession() {
+			session = " · in-session"
+		}
+		fmt.Printf("   Multiplexer:✅ %s%s (notify + split-pane + windows)\n", m.Name(), session)
 	} else {
-		fmt.Println("   Cmux:       ─ not installed")
+		fmt.Println("   Multiplexer:─ none (install tmux or, on macOS, cmux)")
 	}
 
 	// Agents

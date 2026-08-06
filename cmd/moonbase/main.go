@@ -14,6 +14,7 @@ import (
 	clip "github.com/rk-senne/moonbase/internal/clipboard"
 	"github.com/rk-senne/moonbase/internal/config"
 	"github.com/rk-senne/moonbase/internal/discovery"
+	"github.com/rk-senne/moonbase/internal/mux"
 )
 
 // maxPipeInputSize is the maximum bytes accepted from piped stdin (1MB).
@@ -294,13 +295,21 @@ func runDeploy(numbuh string, taskArg string) {
 	// Compose prompt with project context and task
 	composed := discovery.ComposePrompt(agent.Prompt, ctx, task)
 
-	// If --cmux flag set, deploy in a cmux split pane
-	if deployCmux {
-		if _, cmuxErr := exec.LookPath("cmux"); cmuxErr != nil {
-			fmt.Fprintln(os.Stderr, "❌ cmux not available. Install from: https://github.com/manaflow-ai/cmux")
+	// If --pane/--cmux set, deploy the agent in a split pane of the active
+	// terminal multiplexer (tmux or cmux).
+	if deployPane || deployCmux {
+		m := mux.Detect()
+		if !m.Available() {
+			fmt.Fprintln(os.Stderr, "❌ No terminal multiplexer available.")
+			fmt.Fprintln(os.Stderr, "   Install tmux (Linux) or cmux (macOS: https://github.com/manaflow-ai/cmux).")
 			osExit(1)
 		}
-		// Build the command to run in the cmux pane
+		if m.Kind == mux.Tmux && !m.InSession() {
+			fmt.Fprintln(os.Stderr, "❌ Not inside a tmux session — cannot split.")
+			fmt.Fprintln(os.Stderr, "   Start/attach one first:  tmux new -s moonbase")
+			osExit(1)
+		}
+		// Build the command to run in the pane.
 		kiroArgs := []string{"kiro-cli", "chat"}
 		localAgent := filepath.Join(cwd, ".kiro", "agents", agent.Name+".md")
 		if _, statErr := os.Stat(localAgent); statErr == nil {
@@ -310,12 +319,11 @@ func runDeploy(numbuh string, taskArg string) {
 			kiroArgs = append(kiroArgs, task)
 		}
 		shellCmd := strings.Join(kiroArgs, " ")
-		cmd := exec.Command("cmux", "split", "--direction", "right", "--command", shellCmd)
-		if err := cmd.Run(); err != nil {
-			fmt.Fprintf(os.Stderr, "❌ cmux split failed: %v\n", err)
+		if err := m.SplitRun(mux.Right, shellCmd); err != nil {
+			fmt.Fprintf(os.Stderr, "❌ %s split failed: %v\n", m.Name(), err)
 			osExit(1)
 		}
-		fmt.Printf("✅ Deployed %s in cmux split pane\n", agent.Name)
+		fmt.Printf("✅ Deployed %s in a %s split pane\n", agent.Name, m.Name())
 		return
 	}
 

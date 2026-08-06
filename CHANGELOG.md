@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- feat(mux): new `internal/mux` package — one unified integration for **both** tmux and cmux (detect, notifications, split-pane execution, windows/workspaces, send-keys). OS-aware (cmux preferred on macOS, tmux elsewhere), and a safe no-op when neither is installed. Previously only cmux had any of these capabilities.
+- feat(cli): `moonbase deploy --pane` deploys an operative into a **split pane** of the active multiplexer — tmux *or* cmux (with a helpful error if you're not inside a tmux session). `--cmux` is kept as an alias.
 - feat(tui): Settings view — press `S` from any view. Provides a **Reboot & update moonbase** action that pulls the latest source, rebuilds/reinstalls the binary (or self-updates from a GitHub release), and relaunches the TUI in place (it closes and reopens on the new version) — no manual `git pull` needed.
 - feat(tui): Settings dev-environment catalog — install Homebrew itself plus common runtimes (Python, Node/npm, Go, Rust, Ruby, Deno, Bun, OpenJDK) and the full terminal-tool catalog, each via the OS package manager after an explicit `y/n` confirmation that shows the exact command. Homebrew installs via its official bootstrap script (shown before running).
 - feat(reboot): new `internal/reboot` package — locates a moonbase source checkout (config `source_dir`, `MOONBASE_SRC`, or by resolving the executable symlink up to the repo root) and selects a source-rebuild vs. release-self-update strategy.
@@ -37,6 +39,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - perf(tui): eliminated pipeline-view lag by caching glamour markdown rendering (one renderer per width + memoized output) instead of re-rendering the entire chat every frame.
 - perf(tui): the agent registry now reloads only when agent files actually change (mtime-gated `ReloadIfChanged`) instead of reparsing every 2s; the 30s tool-availability refresh now runs off the UI update loop.
 - perf(tui): stream chunk coalescing — in-flight streaming renders as plain wrapped text (no glamour per token); glamour is applied once on phase completion, eliminating the dominant frame cost (AC-1).
+- change(tui): pipeline notifications (phase complete, CRITICAL risk, mission complete) now fire through the active multiplexer via `internal/mux`, so **tmux** users get them too — not just cmux.
+- change(cli): `moonbase status` now reports the active terminal multiplexer (tmux/cmux) and whether you're in a session, replacing the cmux-only line.
 - change(tui): terminal multiplexer launch (`M`) is now OS-aware — tmux on Linux, cmux (falling back to tmux) on macOS.
 - change(tools): script-install tools (starship, oh-my-posh) now show download→verify(SHA256)→run guidance instead of bare `curl | bash` (AC-5).
 

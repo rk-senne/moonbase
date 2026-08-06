@@ -13,6 +13,7 @@ import (
 	"github.com/rk-senne/moonbase/internal/chat"
 	"github.com/rk-senne/moonbase/internal/discovery"
 	"github.com/rk-senne/moonbase/internal/logging"
+	"github.com/rk-senne/moonbase/internal/mux"
 	"github.com/rk-senne/moonbase/internal/pipeline"
 )
 
@@ -276,15 +277,12 @@ func (a *App) handlePhaseResult(msg PhaseResultMsg) tea.Cmd {
 	}
 	a.views.Pipeline.State.Context.RecordPhase(msg.Phase, msg.Output)
 
-	// Send cmux notification on phase completion
-	if backend.CmuxAvailable() {
-		phase := a.views.Pipeline.State.CurrentPhase()
-		if phase != nil {
-			backend.CmuxNotify(
-				fmt.Sprintf("Phase %d Complete", msg.Phase),
-				fmt.Sprintf("%s — %s", phase.Name, phase.Operative),
-			)
-		}
+	// Notify via the active multiplexer (tmux or cmux) on phase completion.
+	if phase := a.views.Pipeline.State.CurrentPhase(); phase != nil {
+		mux.Detect().Notify(
+			fmt.Sprintf("Phase %d Complete", msg.Phase),
+			fmt.Sprintf("%s — %s", phase.Name, phase.Operative),
+		)
 	}
 
 	// Show summary in chat (truncated)
@@ -309,10 +307,7 @@ func (a *App) handlePhaseResult(msg PhaseResultMsg) tea.Cmd {
 			a.views.Pipeline.Chat = append(a.views.Pipeline.Chat,
 				PipelineMsg{"", "🛑 CRITICAL — Pipeline stopped. Human intervention required."},
 			)
-			// Notify via cmux on critical risk
-			if backend.CmuxAvailable() {
-				backend.CmuxNotify("🛑 CRITICAL Risk", "Pipeline stopped. Human intervention required.")
-			}
+			mux.Detect().Notify("🛑 CRITICAL Risk", "Pipeline stopped. Human intervention required.")
 			return nil
 		}
 		if err != nil {
@@ -342,10 +337,7 @@ func (a *App) handlePhaseResult(msg PhaseResultMsg) tea.Cmd {
 			PipelineMsg{"", "━━━ MISSION COMPLETE ━━━"},
 		)
 		a.addIntel("Mission complete: %s", a.views.Pipeline.State.Task)
-		// Notify via cmux on mission completion
-		if backend.CmuxAvailable() {
-			backend.CmuxNotify("━━━ MISSION COMPLETE ━━━", a.views.Pipeline.State.Task)
-		}
+		mux.Detect().Notify("━━━ MISSION COMPLETE ━━━", a.views.Pipeline.State.Task)
 		return nil
 	}
 

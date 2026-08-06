@@ -12,6 +12,7 @@ import (
 
 var deployTask string
 var deployCmux bool
+var deployPane bool
 var deployNative bool
 
 var deployCmd = &cobra.Command{
@@ -49,7 +50,8 @@ var deployCmd = &cobra.Command{
 
 func init() {
 	deployCmd.Flags().StringVarP(&deployTask, "task", "t", "", "task description for the operative")
-	deployCmd.Flags().BoolVar(&deployCmux, "cmux", false, "deploy agent in a cmux split pane")
+	deployCmd.Flags().BoolVar(&deployPane, "pane", false, "deploy the agent in a split pane of the active multiplexer (tmux or cmux)")
+	deployCmd.Flags().BoolVar(&deployCmux, "cmux", false, "alias for --pane (deploy in a split pane)")
 	deployCmd.Flags().BoolVar(&deployNative, "native", false, "deploy via Kiro-native compiled JSON (kiro-cli chat --agent)")
 }
 
