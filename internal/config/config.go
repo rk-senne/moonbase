@@ -54,6 +54,7 @@ type Config struct {
 	// Parallel specialist fan-out configuration.
 	ParallelSpecialists      bool `yaml:"parallel_specialists,omitempty"`       // Enable concurrent specialists (default true)
 	MaxSpecialistConcurrency int  `yaml:"max_specialist_concurrency,omitempty"` // Concurrency cap (default 4, range 1–16)
+	SpecialistPanes          bool `yaml:"specialist_panes,omitempty"`           // Opt-in: deploy triggered specialists into split panes (tmux/cmux) instead of headless (default false)
 
 	// Kiro Native Interop configuration.
 	Compile CompileConfig `yaml:"compile,omitempty"` // Compilation settings

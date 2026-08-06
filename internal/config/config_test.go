@@ -731,6 +731,26 @@ func TestDefaultConfig_ParallelSpecialists(t *testing.T) {
 	}
 }
 
+func TestSpecialistPanes_DefaultOff(t *testing.T) {
+	if DefaultConfig().SpecialistPanes {
+		t.Error("expected SpecialistPanes=false by default (opt-in)")
+	}
+}
+
+func TestSpecialistPanes_EnabledViaYAML(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yaml")
+	os.WriteFile(configPath, []byte("default_backend: kiro-cli\nspecialist_panes: true\n"), 0o600)
+
+	loaded, err := loadFromFile(configPath)
+	if err != nil {
+		t.Fatalf("load failed: %v", err)
+	}
+	if !loaded.SpecialistPanes {
+		t.Error("expected SpecialistPanes=true when set in YAML")
+	}
+}
+
 func TestParallelSpecialists_DisabledViaYAML(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.yaml")

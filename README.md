@@ -183,7 +183,10 @@ Human Approval
 **Parallel fan-out:** Independent specialists (read-only, no write tools) execute
 concurrently after QA returns LOW risk. Bounded to `max_specialist_concurrency`
 (default 4). One failure does not cancel siblings. Disable with
-`parallel_specialists: false` in config or `--sequential` on the CLI.
+`parallel_specialists: false` in config or `--sequential` on the CLI. Set
+`specialist_panes: true` (and run moonbase inside a tmux/cmux session) to deploy
+each triggered specialist into its own **split pane** — live and interactive —
+instead of running them headless.
 
 ---
 
@@ -404,7 +407,18 @@ macOS-only, like cmux) show manual guidance and are never auto-run. Install
 commands are assembled solely from an allowlisted catalog, never from user input.
 
 The terminal multiplexer launcher (`M`) is **OS-aware: tmux on Linux, cmux on
-macOS** (falling back to tmux when cmux isn't installed).
+macOS** (falling back to tmux when cmux isn't installed). moonbase integrates
+with **both tmux and cmux** through one layer (`internal/mux`): pipeline
+notifications (phase complete, CRITICAL risk, mission complete) fire through
+whichever is active, `moonbase status` reports the detected multiplexer and
+whether you're in a session, and `moonbase deploy <n> --pane` deploys an
+operative into a **split pane** of the active multiplexer.
+
+The **Settings** view (`S`) is **OS-aware**: it shows a **macOS** section and a
+**Linux** section, with the running OS highlighted (`✓ · this machine`) and the
+other grayed out. Each section has an **Install all** action that installs every
+missing recommended tool for that OS in one package-manager command (after a
+`y/n` confirmation showing the exact command).
 
 ### Live Mission Visibility
 

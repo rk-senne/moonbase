@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
@@ -52,12 +53,16 @@ func (a App) handleSettingsKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		case "y", "Y":
 			pending := sm.Confirm
 			sm.Confirm = ""
-			if pending == "reboot" {
+			switch {
+			case pending == "reboot":
 				return a.triggerReboot()
-			}
-			if tool, ok := sm.toolByID(pending); ok {
-				sm.Result = fmt.Sprintf("Installing %s…", tool.Display)
-				return a.settingsInstall(tool)
+			case strings.HasPrefix(pending, "installall:"):
+				return a.settingsInstallAll(strings.TrimPrefix(pending, "installall:"))
+			default:
+				if tool, ok := sm.toolByID(pending); ok {
+					sm.Result = fmt.Sprintf("Installing %s…", tool.Display)
+					return a.settingsInstall(tool)
+				}
 			}
 			return a, nil
 		default:
@@ -71,24 +76,64 @@ func (a App) handleSettingsKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, a.keys.Back):
 		a.view = ViewDashboard
 	case key.Matches(msg, a.keys.Up):
-		if sm.Cursor > 0 {
-			sm.Cursor--
-		}
+		sm.moveCursor(-1)
 	case key.Matches(msg, a.keys.Down):
-		if sm.Cursor < sm.rowCount()-1 {
-			sm.Cursor++
-		}
+		sm.moveCursor(1)
 	case key.Matches(msg, a.keys.Enter), key.Matches(msg, a.keys.Settings):
-		if sm.Cursor == settingsActionReboot {
+		row := sm.current()
+		switch row.Kind {
+		case rowReboot:
 			sm.Confirm = "reboot"
 			sm.Result = ""
-			return a, nil
-		}
-		if tool, ok := sm.selectedTool(); ok {
-			a.requestSettingsInstall(tool)
+		case rowInstallAll:
+			a.requestInstallAll(row.OS)
+		case rowTool:
+			a.requestSettingsInstall(row.Tool)
 		}
 	}
 	return a, nil
+}
+
+// requestInstallAll arms the y/n confirmation for a batch install of every
+// missing tool in the given OS section, or records why there is nothing to do.
+func (a *App) requestInstallAll(goos string) {
+	sm := &a.views.Settings
+	mgr, ok := tools.DetectManager()
+	if !ok {
+		sm.Result = "No supported package manager detected — install one first (e.g. Homebrew)."
+		return
+	}
+	_, _, ok = tools.InstallAllPlan(tools.ToolsForOS(goos), mgr)
+	if !ok {
+		sm.Result = "Nothing to install — all recommended tools are already present."
+		return
+	}
+	sm.Confirm = "installall:" + goos
+	sm.Result = ""
+}
+
+// settingsInstallAll runs the batch package-manager install for the OS section
+// via ExecProcess so the operator sees output (and any sudo prompt).
+func (a App) settingsInstallAll(goos string) (tea.Model, tea.Cmd) {
+	mgr, ok := tools.DetectManager()
+	if !ok {
+		a.views.Settings.Result = "No supported package manager detected."
+		return a, nil
+	}
+	plan, skipped, ok := tools.InstallAllPlan(tools.ToolsForOS(goos), mgr)
+	if !ok {
+		a.views.Settings.Result = "Nothing to install — all recommended tools are already present."
+		return a, nil
+	}
+	a.views.Settings.Result = fmt.Sprintf("Installing all missing tools via %s…", plan.Manager)
+	label := "all recommended tools"
+	if len(skipped) > 0 {
+		label = fmt.Sprintf("all recommended tools (skipping %d manual/bootstrap)", len(skipped))
+	}
+	c := exec.Command(plan.Bin, plan.Args...)
+	return a, tea.ExecProcess(c, func(err error) tea.Msg {
+		return toolInstallDoneMsg{display: label, ok: err == nil, err: err}
+	})
 }
 
 // requestSettingsInstall validates a tool can be installed and arms the y/n

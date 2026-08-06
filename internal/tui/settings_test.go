@@ -18,8 +18,8 @@ func TestGlobalKeys_OpensSettings(t *testing.T) {
 	if result.view != ViewSettings {
 		t.Fatalf("expected ViewSettings after 'S', got %d", result.view)
 	}
-	if len(result.views.Settings.Catalog) == 0 {
-		t.Error("expected the dev catalog to be populated in Settings")
+	if len(result.views.Settings.Rows) == 0 {
+		t.Error("expected the dev catalog rows to be populated in Settings")
 	}
 	if result.views.Browser.Active {
 		t.Error("expected the file browser released for the settings view")
@@ -30,15 +30,79 @@ func TestSettingsKeys_Navigation(t *testing.T) {
 	app := NewApp()
 	app.boot.Ready = true
 	app.enterSettingsView()
+	sm := app.views.Settings
 
-	// Cursor starts on the reboot action (0); down moves into the catalog.
+	// Cursor starts on the reboot action (0); down moves to the next SELECTABLE
+	// row — which is host-dependent (the current OS's section), so assert by
+	// selectability rather than a fixed index (CI runs on Linux, dev on macOS).
 	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyDown})
-	if model.(App).views.Settings.Cursor != 1 {
-		t.Errorf("expected cursor 1 after down, got %d", model.(App).views.Settings.Cursor)
+	down := model.(App).views.Settings
+	if down.Cursor == settingsActionReboot {
+		t.Fatal("expected cursor to advance off the reboot row on down")
 	}
+	if !down.Rows[down.Cursor].selectable(sm.CurrentOS) {
+		t.Errorf("cursor landed on a non-selectable (grayed) row %d", down.Cursor)
+	}
+	// The landing row must belong to the current OS section (not the grayed one).
+	if down.Rows[down.Cursor].OS != sm.CurrentOS {
+		t.Errorf("expected navigation to stay in the %s section, got OS %q", sm.CurrentOS, down.Rows[down.Cursor].OS)
+	}
+	// Up returns to the reboot action.
 	model, _ = model.(App).Update(tea.KeyPressMsg{Code: tea.KeyUp})
-	if model.(App).views.Settings.Cursor != 0 {
-		t.Errorf("expected cursor back to 0 (reboot action) after up, got %d", model.(App).views.Settings.Cursor)
+	if model.(App).views.Settings.Cursor != settingsActionReboot {
+		t.Errorf("expected cursor back to reboot action after up, got %d", model.(App).views.Settings.Cursor)
+	}
+}
+
+// The non-current OS section is present but never selectable (grayed out).
+func TestSettingsModel_OtherOSGrayed(t *testing.T) {
+	m := newSettingsModelFor("linux")
+	var sawMac, sawLinuxSelectable bool
+	for _, r := range m.Rows {
+		if r.OS == "darwin" {
+			sawMac = true
+			if r.selectable("linux") {
+				t.Error("macOS rows must not be selectable when running on Linux")
+			}
+		}
+		if r.OS == "linux" && r.selectable("linux") {
+			sawLinuxSelectable = true
+		}
+	}
+	if !sawMac {
+		t.Error("expected a macOS section to exist even on Linux")
+	}
+	if !sawLinuxSelectable {
+		t.Error("expected the Linux section to be selectable on Linux")
+	}
+}
+
+// Enter on an install-all row (current OS) arms the batch confirmation.
+func TestSettingsKeys_InstallAllArm(t *testing.T) {
+	app := NewApp()
+	app.boot.Ready = true
+	app.enterSettingsView()
+	sm := &app.views.Settings
+
+	// Move the cursor to the current OS's install-all row.
+	idx := -1
+	for i, r := range sm.Rows {
+		if r.Kind == rowInstallAll && r.OS == sm.CurrentOS {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		t.Fatal("no install-all row for the current OS")
+	}
+	sm.Cursor = idx
+
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	got := model.(App).views.Settings.Confirm
+	// Either armed for a batch install, or a benign "nothing to install" result
+	// when every recommended tool already happens to be present in the env.
+	if got != "installall:"+sm.CurrentOS && got != "" {
+		t.Fatalf("unexpected confirm state after install-all enter: %q", got)
 	}
 }
 
@@ -120,7 +184,7 @@ func TestRenderSettings_Content(t *testing.T) {
 	app.enterSettingsView()
 
 	out := app.renderSettings()
-	for _, want := range []string{"SETTINGS", "Reboot", "Homebrew", "Python", "Node", "MOONBASE", "DEV ENVIRONMENT"} {
+	for _, want := range []string{"SETTINGS", "Current OS", "Reboot", "MOONBASE", "DEV ENVIRONMENT", "macOS", "Linux", "Install all", "Homebrew", "Python"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("expected settings render to contain %q", want)
 		}

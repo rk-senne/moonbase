@@ -132,6 +132,76 @@ func IsInstalled(id string) bool {
 	return err == nil
 }
 
+// ToolsForOS returns the recommended dev tools installable on the given OS, in
+// DevCatalog order. macOS gets Homebrew-installable tools (and mac-only ones like
+// cmux); Linux gets tools with an apt/dnf/pacman package (or the Homebrew
+// bootstrap for Linuxbrew), excluding mac-only tools.
+func ToolsForOS(goos string) []Tool {
+	var out []Tool
+	for _, t := range DevCatalog() {
+		if goos == "darwin" {
+			if t.Bootstrap || t.MacOnly || t.Brew != "" {
+				out = append(out, t)
+			}
+			continue
+		}
+		// Linux and others.
+		if t.MacOnly {
+			continue
+		}
+		if t.Bootstrap || t.Apt != "" || t.Dnf != "" || t.Pacman != "" {
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
+// InstallAllPlan builds a single package-manager command that installs every
+// not-yet-installed tool in list that has a package for mgr, in one invocation
+// (e.g. `brew install a b c`). It returns the plan, the display names of tools
+// that were skipped (already installed, bootstrap, or manual/no-package), and
+// ok=false when there is nothing installable to run.
+func InstallAllPlan(list []Tool, mgr Manager) (InstallPlan, []string, bool) {
+	return installAllPlan(list, mgr, IsInstalled)
+}
+
+// installAllPlan is the injectable core of InstallAllPlan (installed reports
+// whether a tool's binary is already present — real PATH lookup in production,
+// a fake in tests).
+func installAllPlan(list []Tool, mgr Manager, installed func(string) bool) (InstallPlan, []string, bool) {
+	var pkgs, skipped []string
+	for _, t := range list {
+		if installed(t.ID) {
+			continue // already present — nothing to do
+		}
+		if t.Bootstrap {
+			skipped = append(skipped, t.Display+" (bootstrap installer)")
+			continue
+		}
+		pkg := t.pkgFor(mgr.Name)
+		if pkg == "" {
+			skipped = append(skipped, t.Display+" (manual)")
+			continue
+		}
+		pkgs = append(pkgs, pkg)
+	}
+	if len(pkgs) == 0 {
+		return InstallPlan{}, skipped, false
+	}
+
+	args := append([]string{}, mgr.baseArgs...)
+	args = append(args, pkgs...)
+	if mgr.NeedsSudo {
+		return InstallPlan{
+			Manager: mgr.Name,
+			Bin:     "sudo",
+			Args:    append([]string{mgr.Bin}, args...),
+			Sudo:    true,
+		}, skipped, true
+	}
+	return InstallPlan{Manager: mgr.Name, Bin: mgr.Bin, Args: args, Sudo: false}, skipped, true
+}
+
 // DevCatalog is the broader catalog surfaced in the Settings view: Homebrew
 // itself, common language runtimes, and the full terminal-tool catalog. Ordered
 // bootstrap → runtimes → critical → cool.
@@ -234,6 +304,13 @@ func (t Tool) pkgFor(mgr string) string {
 		return t.Pacman
 	}
 	return ""
+}
+
+// InstallableWith reports whether the tool has a package for mgr (and is thus
+// eligible for a batch "install all"). Bootstrap and manual-only tools return
+// false.
+func (t Tool) InstallableWith(mgr Manager) bool {
+	return !t.Bootstrap && t.pkgFor(mgr.Name) != ""
 }
 
 // InstallPlan is a fully-resolved, ready-to-run install command.

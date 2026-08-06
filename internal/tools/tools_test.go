@@ -244,3 +244,103 @@ func TestPackageManagerInstalls_Unchanged(t *testing.T) {
 		t.Errorf("unexpected brew command: %s", plan.Display())
 	}
 }
+
+// === ToolsForOS ===
+
+func TestToolsForOS(t *testing.T) {
+	mac := ToolsForOS("darwin")
+	linux := ToolsForOS("linux")
+
+	has := func(list []Tool, id string) bool {
+		for _, x := range list {
+			if x.ID == id {
+				return true
+			}
+		}
+		return false
+	}
+
+	// cmux is macOS-only: present on darwin, absent on linux.
+	if !has(mac, "cmux") {
+		t.Error("expected cmux in macOS tools")
+	}
+	if has(linux, "cmux") {
+		t.Error("cmux (MacOnly) must not appear in Linux tools")
+	}
+	// Homebrew bootstrap belongs to both (Linuxbrew).
+	if !has(mac, "brew") || !has(linux, "brew") {
+		t.Error("expected Homebrew in both OS lists")
+	}
+	// Cross-platform staples appear on both.
+	for _, id := range []string{"git", "rg", "jq", "tmux"} {
+		if !has(mac, id) || !has(linux, id) {
+			t.Errorf("expected %q on both macOS and Linux", id)
+		}
+	}
+	// Linux entries must never be MacOnly.
+	for _, x := range linux {
+		if x.MacOnly {
+			t.Errorf("Linux list contains MacOnly tool %q", x.ID)
+		}
+	}
+}
+
+// === InstallAllPlan ===
+
+func TestInstallAllPlan_Brew(t *testing.T) {
+	mgr, ok := detectManager("darwin", lookProvides("brew"))
+	if !ok {
+		t.Fatal("expected brew manager")
+	}
+	// Nothing installed yet → all installable macOS tools go into one command.
+	none := func(string) bool { return false }
+	plan, skipped, ok := installAllPlan(ToolsForOS("darwin"), mgr, none)
+	if !ok {
+		t.Fatal("expected an install plan when nothing is installed")
+	}
+	if plan.Bin != mgr.Bin || len(plan.Args) < 2 || plan.Args[0] != "install" {
+		t.Fatalf("unexpected brew plan: %+v", plan)
+	}
+	// Homebrew itself (bootstrap) and cmux (manual, no brew formula) are skipped.
+	joined := strings.Join(skipped, " | ")
+	if !strings.Contains(joined, "Homebrew") {
+		t.Errorf("expected Homebrew bootstrap skipped, got %q", joined)
+	}
+	// git's formula should be in the batch.
+	if !contains(plan.Args, "git") {
+		t.Errorf("expected git in batch args: %v", plan.Args)
+	}
+}
+
+func TestInstallAllPlan_AptNeedsSudo(t *testing.T) {
+	mgr, ok := detectManager("linux", lookProvides("apt-get"))
+	if !ok {
+		t.Fatal("expected apt manager")
+	}
+	none := func(string) bool { return false }
+	plan, _, ok := installAllPlan(ToolsForOS("linux"), mgr, none)
+	if !ok {
+		t.Fatal("expected an install plan")
+	}
+	if !plan.Sudo || plan.Bin != "sudo" || plan.Args[0] != mgr.Bin {
+		t.Fatalf("apt plan should be sudo-prefixed: %+v", plan)
+	}
+}
+
+func TestInstallAllPlan_NothingToDo(t *testing.T) {
+	mgr, _ := detectManager("darwin", lookProvides("brew"))
+	all := func(string) bool { return true } // everything already installed
+	_, _, ok := installAllPlan(ToolsForOS("darwin"), mgr, all)
+	if ok {
+		t.Error("expected ok=false when every tool is already installed")
+	}
+}
+
+func contains(s []string, v string) bool {
+	for _, x := range s {
+		if x == v {
+			return true
+		}
+	}
+	return false
+}

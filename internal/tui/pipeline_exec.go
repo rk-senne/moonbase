@@ -11,6 +11,7 @@ import (
 	"github.com/rk-senne/moonbase/internal/agents"
 	"github.com/rk-senne/moonbase/internal/backend"
 	"github.com/rk-senne/moonbase/internal/chat"
+	"github.com/rk-senne/moonbase/internal/config"
 	"github.com/rk-senne/moonbase/internal/discovery"
 	"github.com/rk-senne/moonbase/internal/logging"
 	"github.com/rk-senne/moonbase/internal/mux"
@@ -36,6 +37,10 @@ type PhaseResultMsg struct {
 type FanOutCompleteMsg struct {
 	Results []pipeline.FanOutResult
 	Gen     int // owning mission generation (see PipelineModel.Gen)
+	// Delegated is the number of specialists launched into split panes instead of
+	// run headless (opt-in config.SpecialistPanes). When >0, Results is empty and
+	// the pipeline advances to Review noting the delegation.
+	Delegated int
 }
 
 // PipelineAbortedMsg is sent when the user aborts the pipeline.
@@ -350,6 +355,7 @@ func (a *App) handlePhaseResult(msg PhaseResultMsg) tea.Cmd {
 // runs them concurrently via RunSpecialists, and returns a FanOutCompleteMsg.
 func (a *App) startFanOut() tea.Cmd {
 	gen := a.views.Pipeline.Gen
+	usePanes := config.Load().SpecialistPanes
 	return func() tea.Msg {
 		state := a.views.Pipeline.State
 		if state == nil {
@@ -369,6 +375,18 @@ func (a *App) startFanOut() tea.Cmd {
 
 		if len(triggered) == 0 {
 			return FanOutCompleteMsg{Results: nil, Gen: gen}
+		}
+
+		// Opt-in: deploy each triggered specialist into its own split pane of the
+		// active multiplexer (tmux/cmux) for the operator to watch/drive, instead
+		// of running them headless. This is a distinct, opt-in mode — their output
+		// lives in the panes and is not merged back into the pipeline context.
+		if usePanesForFanOut(usePanes, mux.Detect()) {
+			m := mux.Detect()
+			for _, cmd := range specialistPaneCommands(triggered, state.Task) {
+				_ = m.SplitRun(mux.Right, cmd)
+			}
+			return FanOutCompleteMsg{Delegated: len(triggered), Gen: gen}
 		}
 
 		cfg := pipeline.FanOutConfig{
@@ -407,7 +425,14 @@ func (a *App) handleFanOutComplete(msg FanOutCompleteMsg) tea.Cmd {
 
 	state := a.views.Pipeline.State
 
-	if len(msg.Results) == 0 {
+	if msg.Delegated > 0 {
+		// Specialists were launched into split panes (opt-in). Their findings live
+		// in the panes; the pipeline notes the delegation and advances to Review.
+		a.views.Pipeline.Chat = append(a.views.Pipeline.Chat,
+			PipelineMsg{"", fmt.Sprintf("  🪟 %d specialist(s) deployed to split panes — review their findings there.", msg.Delegated)},
+		)
+		mux.Detect().Notify("Specialists deployed", fmt.Sprintf("%d specialist(s) running in split panes", msg.Delegated))
+	} else if len(msg.Results) == 0 {
 		// No specialists triggered — skip to Phase 5 directly.
 		a.views.Pipeline.Chat = append(a.views.Pipeline.Chat,
 			PipelineMsg{"", "  ⏭️ No specialists triggered — advancing to Review."},
