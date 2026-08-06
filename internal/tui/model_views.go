@@ -13,4 +13,5 @@ type ViewsModel struct {
 	CtxFile     ContextFileModel
 	Docs        *DocsState
 	ProjectNav  *ProjectsState
+	Tools       ToolsModel
 }

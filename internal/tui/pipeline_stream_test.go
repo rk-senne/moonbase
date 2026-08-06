@@ -25,7 +25,7 @@ func TestPollPhaseStream_DoneBuildsPhaseResult(t *testing.T) {
 	start := time.Now().Add(-2 * time.Second) // pretend started 2s ago
 	cancel := func() {}                        // no-op cancel for test
 
-	cmd := pollPhaseStream(3, ch, start, cancel, buf)
+	cmd := pollPhaseStream(3, ch, start, cancel, buf, 0)
 	msg := cmd()
 
 	result, ok := msg.(PhaseResultMsg)
@@ -59,7 +59,7 @@ func TestPollPhaseStream_DoneWithError(t *testing.T) {
 	cancelled := false
 	cancel := func() { cancelled = true }
 
-	cmd := pollPhaseStream(1, ch, start, cancel, buf)
+	cmd := pollPhaseStream(1, ch, start, cancel, buf, 0)
 	msg := cmd()
 
 	result, ok := msg.(PhaseResultMsg)
@@ -87,7 +87,7 @@ func TestPollPhaseStream_TextChunk(t *testing.T) {
 	start := time.Now()
 	cancel := func() {}
 
-	cmd := pollPhaseStream(2, ch, start, cancel, buf)
+	cmd := pollPhaseStream(2, ch, start, cancel, buf, 0)
 	msg := cmd()
 
 	chunk, ok := msg.(PhaseChunkMsg)
@@ -114,7 +114,7 @@ func TestPollPhaseStream_ClosedChannel(t *testing.T) {
 	cancelled := false
 	cancel := func() { cancelled = true }
 
-	cmd := pollPhaseStream(1, ch, start, cancel, buf)
+	cmd := pollPhaseStream(1, ch, start, cancel, buf, 0)
 	msg := cmd()
 
 	result, ok := msg.(PhaseResultMsg)
@@ -149,11 +149,6 @@ func TestHandlePhaseChunk_AppendsAndRepolls(t *testing.T) {
 	app.views.Pipeline.PhaseStreamCancel = cancel
 	app.views.Pipeline.PhaseStreamPhase = 1
 
-	// Add an initial agent message to append to
-	app.views.Pipeline.Chat = append(app.views.Pipeline.Chat,
-		PipelineMsg{"numbuh-1", ""},
-	)
-
 	msg := PhaseChunkMsg{Phase: 1, Text: "streaming text\n"}
 	model, cmd := app.Update(msg)
 	result := model.(App)
@@ -164,10 +159,15 @@ func TestHandlePhaseChunk_AppendsAndRepolls(t *testing.T) {
 			result.views.Pipeline.PhaseStreamBuf.String())
 	}
 
-	// Chat should have the text appended to the last agent message
-	lastChat := result.views.Pipeline.Chat[len(result.views.Pipeline.Chat)-1]
-	if lastChat.Content != "streaming text\n" {
-		t.Errorf("expected last chat content to be 'streaming text\\n', got %q", lastChat.Content)
+	// LiveBuf should have the text (AC-1: chunks accumulate in live buffer)
+	if result.views.Pipeline.LiveBuf != "streaming text\n" {
+		t.Errorf("expected LiveBuf to contain 'streaming text\\n', got %q",
+			result.views.Pipeline.LiveBuf)
+	}
+
+	// LiveAgent should be set to the current phase's operative
+	if result.views.Pipeline.LiveAgent != "Numbuh 1" {
+		t.Errorf("expected LiveAgent='Numbuh 1', got %q", result.views.Pipeline.LiveAgent)
 	}
 
 	// Should return a re-poll command

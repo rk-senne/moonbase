@@ -42,14 +42,18 @@ func TestDashboardKeys_NumberJump(t *testing.T) {
 	app.boot.Ready = true
 	app.views.Browser.Active = false
 	app.views.Terminal.Active = false
+	app.registry = newTestRegistry()
 
 	model, _ := app.Update(tea.KeyPressMsg{Code: '3', Text: "3"})
 	result := model.(App)
-	if result.views.Dashboard.Cursor != 3 {
-		t.Errorf("expected cursor=3 after '3', got %d", result.views.Dashboard.Cursor)
-	}
 	if result.view != ViewDossier {
 		t.Errorf("expected ViewDossier after number key, got %d", result.view)
+	}
+	// The digit must select the agent LABELLED '3' (numbuh-3), regardless of its
+	// registry index — not a coincidental index.
+	sel := result.registry.Get(result.views.Dashboard.Selected)
+	if extractSidebarKey(sel.Name) != "3" {
+		t.Errorf("expected '3' to select the agent keyed '3' (numbuh-3), got %s (key %q)", sel.Name, extractSidebarKey(sel.Name))
 	}
 }
 
@@ -272,6 +276,7 @@ func TestDefaultKeyMap_AllActionsHaveKeysAndHelp(t *testing.T) {
 		{"CopyPrompt", km.CopyPrompt},
 		{"SpawnHook", km.SpawnHook},
 		{"JumpToAgent", km.JumpToAgent},
+		{"Tools", km.Tools},
 		{"LaunchLazygit", km.LaunchLazygit},
 		{"LaunchBtop", km.LaunchBtop},
 		{"LaunchNvim", km.LaunchNvim},

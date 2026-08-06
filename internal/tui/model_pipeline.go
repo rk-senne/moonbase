@@ -30,6 +30,25 @@ type PipelineModel struct {
 	PhaseStreamStart  time.Time
 	PhaseStreamCancel context.CancelFunc
 	PhaseStreamPhase  int
+
+	// LiveAgent is the operative currently streaming. LiveBuf accumulates
+	// in-flight chunks so they can be rendered as plain wrapped text (no
+	// glamour) on each frame. On phase completion the buffer is flushed into
+	// a normal PipelineMsg (which renders through cached glamour once).
+	//
+	// LiveBuf is a plain string, NOT a strings.Builder: the whole App (and thus
+	// this struct) is copied by value on every Bubble Tea Update, and copying a
+	// non-zero strings.Builder panics ("illegal use of non-zero Builder copied
+	// by value"). A string is value-copy-safe; per-phase output is bounded
+	// (MaxOutputSize), so incremental concatenation cost is negligible.
+	LiveAgent string
+	LiveBuf   string
+
+	// Gen is a monotonically increasing mission generation. It is incremented
+	// each time a new mission is submitted so that in-flight phase messages
+	// from a prior (cancelled) mission are ignored instead of corrupting the
+	// freshly started pipeline. See app.go message guards.
+	Gen int
 }
 
 // NewPipelineModel constructs a PipelineModel with defaults.

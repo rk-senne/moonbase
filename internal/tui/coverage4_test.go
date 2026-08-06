@@ -183,7 +183,7 @@ func TestExecutePhase_AgentNotFound(t *testing.T) {
 	be := &mockBackend{name: "test", available: true, output: "done"}
 	pctx := pipeline.NewPipelineContext("test task")
 
-	cmd := executePhase(context.Background(), phase, reg, be, nil, pctx, 120*time.Second)
+	cmd := executePhase(context.Background(), phase, reg, be, nil, pctx, 120*time.Second, 0)
 	if cmd == nil {
 		t.Fatal("expected non-nil cmd")
 	}
@@ -212,7 +212,7 @@ func TestExecutePhase_Success(t *testing.T) {
 	be := &mockBackend{name: "test-backend", available: true, output: "Requirements gathered successfully."}
 	pctx := pipeline.NewPipelineContext("add pagination")
 
-	cmd := executePhase(context.Background(), phase, reg, be, nil, pctx, 120*time.Second)
+	cmd := executePhase(context.Background(), phase, reg, be, nil, pctx, 120*time.Second, 0)
 	msg := cmd()
 
 	// executePhase now returns phaseStreamStartedMsg (streaming flow)
@@ -227,7 +227,7 @@ func TestExecutePhase_Success(t *testing.T) {
 	// Drive the poll loop to get the final PhaseResultMsg
 	buf := &bytes.Buffer{}
 	for {
-		pollCmd := pollPhaseStream(started.Phase, started.Ch, started.Start, started.Cancel, buf)
+		pollCmd := pollPhaseStream(started.Phase, started.Ch, started.Start, started.Cancel, buf, 0)
 		pollMsg := pollCmd()
 		switch m := pollMsg.(type) {
 		case PhaseChunkMsg:
@@ -265,7 +265,7 @@ func TestExecutePhase_BackendError(t *testing.T) {
 	be := &mockBackend{name: "clipboard", available: true, err: fmt.Errorf("clipboard failed")}
 	pctx := pipeline.NewPipelineContext("test")
 
-	cmd := executePhase(context.Background(), phase, reg, be, nil, pctx, 120*time.Second)
+	cmd := executePhase(context.Background(), phase, reg, be, nil, pctx, 120*time.Second, 0)
 	msg := cmd()
 
 	// With streaming: backend error surfaces via phaseStreamStartedMsg → poll → Done with error
@@ -276,7 +276,7 @@ func TestExecutePhase_BackendError(t *testing.T) {
 
 	buf := &bytes.Buffer{}
 	for {
-		pollCmd := pollPhaseStream(started.Phase, started.Ch, started.Start, started.Cancel, buf)
+		pollCmd := pollPhaseStream(started.Phase, started.Ch, started.Start, started.Cancel, buf, 0)
 		pollMsg := pollCmd()
 		switch m := pollMsg.(type) {
 		case PhaseChunkMsg:
@@ -308,7 +308,7 @@ func TestExecutePhase_ContextCancelled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // cancel immediately
 
-	cmd := executePhase(ctx, phase, reg, be, nil, pctx, 120*time.Second)
+	cmd := executePhase(ctx, phase, reg, be, nil, pctx, 120*time.Second, 0)
 	msg := cmd()
 
 	// With a pre-cancelled context, executePhase returns phaseStreamStartedMsg
@@ -319,7 +319,7 @@ func TestExecutePhase_ContextCancelled(t *testing.T) {
 	}
 
 	buf := &bytes.Buffer{}
-	pollCmd := pollPhaseStream(started.Phase, started.Ch, started.Start, started.Cancel, buf)
+	pollCmd := pollPhaseStream(started.Phase, started.Ch, started.Start, started.Cancel, buf, 0)
 	pollMsg := pollCmd()
 	result, ok := pollMsg.(PhaseResultMsg)
 	if !ok {

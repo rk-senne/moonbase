@@ -133,10 +133,34 @@ func (a App) handleFileBrowserKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 
 // handlePhaseResultUpdate processes a pipeline phase result message.
 func (a App) handlePhaseResultUpdate(msg PhaseResultMsg) (tea.Model, tea.Cmd) {
+	// Ignore results from a superseded mission generation.
+	if msg.Gen != a.views.Pipeline.Gen {
+		return a, nil
+	}
+
+	// Flush the live streaming buffer into a normal chat message so it renders
+	// through cached glamour from now on (AC-1.2: glamour on completion only).
+	a.flushLiveBuf()
+
 	if cmd := a.handlePhaseResult(msg); cmd != nil {
 		return a, cmd
 	}
 	return a, nil
+}
+
+// flushLiveBuf moves any in-flight streamed text into the chat history as a
+// completed message (rendered through cached glamour thereafter) and clears the
+// live buffer + operative label. No-op when the buffer is empty. Centralizing
+// this prevents the live buffer from bleeding across phase/mission boundaries.
+func (a *App) flushLiveBuf() {
+	if a.views.Pipeline.LiveBuf == "" {
+		a.views.Pipeline.LiveAgent = ""
+		return
+	}
+	a.views.Pipeline.Chat = append(a.views.Pipeline.Chat,
+		PipelineMsg{a.views.Pipeline.LiveAgent, a.views.Pipeline.LiveBuf})
+	a.views.Pipeline.LiveBuf = ""
+	a.views.Pipeline.LiveAgent = ""
 }
 
 // handlePipelineAborted processes a pipeline abort message.
@@ -150,6 +174,7 @@ func (a App) handlePipelineAborted() (tea.Model, tea.Cmd) {
 		a.views.Pipeline.PhaseStreamCancel = nil
 	}
 	if a.views.Pipeline.State != nil {
+		a.flushLiveBuf()
 		a.views.Pipeline.State.Stop("Aborted by human")
 		a.views.Pipeline.Chat = append(a.views.Pipeline.Chat,
 			PipelineMsg{"", "🛑 Mission aborted by human."},

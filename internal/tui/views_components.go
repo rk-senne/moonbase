@@ -23,6 +23,17 @@ func (a App) renderHeader(breadcrumb string) string {
 	if a.projectCtx != nil && a.projectCtx.HasSpecs() {
 		rightParts = append(rightParts, "◆")
 	}
+
+	// Mission-in-progress indicator: always visible from every view except the
+	// pipeline view itself (which already dedicates the screen to the mission),
+	// so the operator never loses sight of a running mission.
+	if a.view != ViewPipeline {
+		if seg, ok := a.missionIndicator(); ok {
+			seg = truncateToWidth(seg, a.width/3)
+			rightParts = append([]string{seg}, rightParts...)
+		}
+	}
+
 	right := strings.Join(rightParts, " │ ")
 
 	// Time
@@ -42,7 +53,7 @@ func (a App) renderHeader(breadcrumb string) string {
 			maxLeft = 4
 		}
 		if leftW > maxLeft {
-			left = left[:maxLeft] + "…"
+			left = truncateToWidth(left, maxLeft)
 		}
 		gap = 1
 	}
@@ -63,9 +74,20 @@ func (a App) renderSidebar(width int, maxH int) string {
 		roleWidth = 0
 	}
 
+	// Build all roster lines (agents + group headers) to compute the visible
+	// window. Each entry is tagged with its registry index (-1 for non-agent rows
+	// like group headers and blank lines) so we can apply scroll-offset logic.
+	type rosterLine struct {
+		text       string
+		agentIndex int // -1 for non-agent lines (headers, blanks)
+	}
+
+	var rosterLines []rosterLine
+
 	for _, group := range groups {
 		// Section header
-		s.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Brand).Bold(true).Render("◆ "+group.title) + "\n")
+		headerText := lipgloss.NewStyle().Foreground(a.theme.Data.Brand).Bold(true).Render("◆ " + group.title)
+		rosterLines = append(rosterLines, rosterLine{text: headerText, agentIndex: -1})
 
 		for _, entry := range group.entries {
 			isSelected := entry.index == a.views.Dashboard.Cursor
@@ -86,7 +108,7 @@ func (a App) renderSidebar(width int, maxH int) string {
 			// Key hint
 			hint := ""
 			if showHints {
-				hint = lipgloss.NewStyle().Foreground(a.theme.Data.Dim).Render("["+entry.key+"]")
+				hint = lipgloss.NewStyle().Foreground(a.theme.Data.Dim).Render("[" + entry.key + "]")
 			}
 
 			// Name (truncate if needed)
@@ -96,7 +118,6 @@ func (a App) renderSidebar(width int, maxH int) string {
 				maxName = width - roleWidth - 6
 			}
 			if lipgloss.Width(name) > maxName {
-				// Truncate by runes, not bytes
 				runes := []rune(name)
 				for len(runes) > 0 && lipgloss.Width(string(runes)) > maxName {
 					runes = runes[:len(runes)-1]
@@ -111,7 +132,6 @@ func (a App) renderSidebar(width int, maxH int) string {
 				if len(r) > roleWidth {
 					r = r[:roleWidth]
 				}
-				// Use visual widths for gap calculation (handles unicode badges/prefix)
 				usedW := lipgloss.Width(prefix) + lipgloss.Width(badge) + 1 + lipgloss.Width(name) + lipgloss.Width(r) + 4
 				if hint != "" {
 					usedW += 3
@@ -123,45 +143,122 @@ func (a App) renderSidebar(width int, maxH int) string {
 				role = roleStyle.Render(strings.Repeat(" ", gap) + r)
 			}
 
+			var line string
 			if hint != "" {
-				s.WriteString(fmt.Sprintf("%s%s%s %s%s\n", prefix, hint, badge, nameStyle.Render(name), role))
+				line = fmt.Sprintf("%s%s%s %s%s", prefix, hint, badge, nameStyle.Render(name), role)
 			} else {
-				s.WriteString(fmt.Sprintf("%s%s %s%s\n", prefix, badge, nameStyle.Render(name), role))
+				line = fmt.Sprintf("%s%s %s%s", prefix, badge, nameStyle.Render(name), role)
 			}
+			rosterLines = append(rosterLines, rosterLine{text: line, agentIndex: entry.index})
 		}
+		// Trailing blank line after group
+		rosterLines = append(rosterLines, rosterLine{text: "", agentIndex: -1})
+	}
+
+	// Determine the line index where the cursor is so we can scroll to it.
+	cursorLineIdx := 0
+	for i, rl := range rosterLines {
+		if rl.agentIndex == a.views.Dashboard.Cursor {
+			cursorLineIdx = i
+			break
+		}
+	}
+
+	// Reserve lines for tools + backend sections (shown when space permits).
+	toolsLines := 3 + 7  // header + separator + 7 tools
+	backendLines := 3 + len(a.env.Backend.Available) // header + separator + backends
+	extraLines := 2 + toolsLines + 1 + backendLines  // blanks + tools + blank + backend
+
+	// Available height for the roster portion (leave room for extras if possible).
+	var rosterMaxH int
+	showExtras := false
+	if maxH > len(rosterLines)+extraLines {
+		// Enough room to show everything without scrolling.
+		rosterMaxH = len(rosterLines)
+		showExtras = true
+	} else if maxH > len(rosterLines) {
+		// Roster fits entirely but extras may be partial — show roster, skip extras.
+		rosterMaxH = len(rosterLines)
+	} else {
+		// Roster doesn't fit — dedicate all space to it minus a scroll indicator line.
+		rosterMaxH = maxH - 2
+		if rosterMaxH < 5 {
+			rosterMaxH = 5
+		}
+	}
+
+	// Apply scroll offset to keep cursor visible within the roster window.
+	offset := a.views.Dashboard.ScrollOffset
+	if cursorLineIdx < offset {
+		offset = cursorLineIdx
+	}
+	if cursorLineIdx >= offset+rosterMaxH {
+		offset = cursorLineIdx - rosterMaxH + 1
+	}
+	// Clamp offset
+	if offset < 0 {
+		offset = 0
+	}
+	maxOffset := len(rosterLines) - rosterMaxH
+	if maxOffset < 0 {
+		maxOffset = 0
+	}
+	if offset > maxOffset {
+		offset = maxOffset
+	}
+
+	// Render the visible portion of the roster.
+	end := offset + rosterMaxH
+	if end > len(rosterLines) {
+		end = len(rosterLines)
+	}
+
+	// Scroll-up indicator
+	if offset > 0 {
+		s.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Dim).Render("  ▲ more") + "\n")
+	}
+
+	for i := offset; i < end; i++ {
+		s.WriteString(rosterLines[i].text + "\n")
+	}
+
+	// Scroll-down indicator
+	if end < len(rosterLines) {
+		s.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Dim).Render("  ▼ more") + "\n")
+	}
+
+	// Tools section (only when space permits)
+	if showExtras {
 		s.WriteString("\n")
-	}
-
-	// Tools section
-	s.WriteString("\n")
-	s.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Brand).Bold(true).Render("◆ TOOLS") + "\n")
-	s.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Dim).Render("──────────────────") + "\n")
-	tools := []string{"lazygit", "docker", "btop", "nvim", "cmux", "tmux", "fish"}
-	for _, tool := range tools {
-		mark := "✗"
-		st := a.theme.Styles.Inactive
-		if a.isToolAvailable(tool) {
-			mark = "✓"
-			st = lipgloss.NewStyle().Foreground(a.theme.Data.Active)
-		}
-		s.WriteString(st.Render(fmt.Sprintf(" %s %s", mark, tool)) + "\n")
-	}
-
-	// Backend section
-	s.WriteString("\n")
-	s.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Brand).Bold(true).Render("◆ BACKEND") + "\n")
-	s.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Dim).Render("──────────────────") + "\n")
-	for _, b := range a.env.Backend.Available {
-		mark := "✗"
-		st := a.theme.Styles.Inactive
-		if b.Available() {
-			mark = "●"
-			st = lipgloss.NewStyle().Foreground(a.theme.Data.Active)
-			if a.chrome.Blink {
-				mark = "◉"
+		s.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Brand).Bold(true).Render("◆ TOOLS") + "\n")
+		s.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Dim).Render("──────────────────") + "\n")
+		tools := []string{"lazygit", "docker", "btop", "nvim", "cmux", "tmux", "fish"}
+		for _, tool := range tools {
+			mark := "✗"
+			st := a.theme.Styles.Inactive
+			if a.isToolAvailable(tool) {
+				mark = "✓"
+				st = lipgloss.NewStyle().Foreground(a.theme.Data.Active)
 			}
+			s.WriteString(st.Render(fmt.Sprintf(" %s %s", mark, tool)) + "\n")
 		}
-		s.WriteString(st.Render(fmt.Sprintf(" %s %s", mark, b.Name())) + "\n")
+
+		// Backend section
+		s.WriteString("\n")
+		s.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Brand).Bold(true).Render("◆ BACKEND") + "\n")
+		s.WriteString(lipgloss.NewStyle().Foreground(a.theme.Data.Dim).Render("──────────────────") + "\n")
+		for _, b := range a.env.Backend.Available {
+			mark := "✗"
+			st := a.theme.Styles.Inactive
+			if b.Available() {
+				mark = "●"
+				st = lipgloss.NewStyle().Foreground(a.theme.Data.Active)
+				if a.chrome.Blink {
+					mark = "◉"
+				}
+			}
+			s.WriteString(st.Render(fmt.Sprintf(" %s %s", mark, b.Name())) + "\n")
+		}
 	}
 
 	return a.theme.Styles.Sidebar.

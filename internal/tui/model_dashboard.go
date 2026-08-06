@@ -9,8 +9,9 @@ import (
 // (Cursor) and which is selected (Selected) for detail views. It is a value type
 // with Update method — deliberately NOT a tea.Model implementation.
 type DashboardModel struct {
-	Cursor   int
-	Selected int
+	Cursor       int
+	Selected     int
+	ScrollOffset int // first visible agent index in the sidebar roster
 }
 
 // NewDashboardModel constructs a DashboardModel with defaults.

@@ -2,6 +2,8 @@ package tui
 
 import (
 	"strings"
+
+	"charm.land/lipgloss/v2"
 )
 
 func extractPersonality(prompt string) string {
@@ -18,6 +20,24 @@ func extractPersonality(prompt string) string {
 		}
 	}
 	return ""
+}
+
+// truncateToWidth truncates s so its visual width (as measured by
+// lipgloss.Width, which handles emoji, CJK, and combining characters) does
+// not exceed max cells. An ellipsis is appended when truncation occurs.
+// Returns s unchanged if it already fits.
+func truncateToWidth(s string, max int) string {
+	if max <= 0 {
+		return ""
+	}
+	if lipgloss.Width(s) <= max {
+		return s
+	}
+	runes := []rune(s)
+	for len(runes) > 0 && lipgloss.Width(string(runes)) > max-1 {
+		runes = runes[:len(runes)-1]
+	}
+	return string(runes) + "…"
 }
 
 func wordWrap(text string, width int) string {

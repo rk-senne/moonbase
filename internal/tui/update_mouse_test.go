@@ -46,25 +46,26 @@ func TestMouse_DashboardWheelMovesCursor(t *testing.T) {
 	app.registry = newTestRegistry()
 	app.views.Browser.Active = false // not in file-browser sub-mode
 	app.views.Terminal.Active = false
-	app.views.Dashboard.Cursor = 0
-
-	if app.registry.Count() < 2 {
-		t.Skip("need >=2 agents for cursor movement")
+	order := sidebarDisplayOrder(app.registry)
+	if len(order) < 2 {
+		t.Skip("need >=2 displayed agents for cursor movement")
 	}
+	app.views.Dashboard.Cursor = order[0]
+	app.views.Dashboard.Selected = order[0]
 
 	m, _ := app.Update(wheelDown())
 	down := m.(App)
-	if down.views.Dashboard.Cursor != 1 {
-		t.Errorf("wheel down: expected cursor 1, got %d", down.views.Dashboard.Cursor)
+	if down.views.Dashboard.Cursor != order[1] {
+		t.Errorf("wheel down: expected cursor %d (2nd displayed), got %d", order[1], down.views.Dashboard.Cursor)
 	}
-	if down.views.Dashboard.Selected != 1 {
-		t.Errorf("wheel down: expected Selected to track cursor (1), got %d", down.views.Dashboard.Selected)
+	if down.views.Dashboard.Selected != order[1] {
+		t.Errorf("wheel down: expected Selected to track cursor (%d), got %d", order[1], down.views.Dashboard.Selected)
 	}
 
 	m2, _ := down.Update(wheelUp())
 	up := m2.(App)
-	if up.views.Dashboard.Cursor != 0 {
-		t.Errorf("wheel up: expected cursor 0, got %d", up.views.Dashboard.Cursor)
+	if up.views.Dashboard.Cursor != order[0] {
+		t.Errorf("wheel up: expected cursor %d (1st displayed), got %d", order[0], up.views.Dashboard.Cursor)
 	}
 }
 

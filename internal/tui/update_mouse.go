@@ -83,13 +83,9 @@ func (a App) mouseScroll(dir int) App {
 		}
 	case ViewDashboard:
 		// Roster selection — only when not in a sub-mode that owns the panel.
+		// Uses display-order navigation so the wheel never skips grouped agents.
 		if !a.views.Terminal.Active && !a.views.Browser.Active && a.registry != nil {
-			if dir < 0 && a.views.Dashboard.Cursor > 0 {
-				a.views.Dashboard.Cursor--
-			} else if dir > 0 && a.views.Dashboard.Cursor < a.registry.Count()-1 {
-				a.views.Dashboard.Cursor++
-			}
-			a.views.Dashboard.Selected = a.views.Dashboard.Cursor
+			a.moveSidebarCursor(dir)
 		}
 	}
 	return a

@@ -136,35 +136,36 @@ func TestApp_CursorBounds(t *testing.T) {
 	app.views.Browser.Active = false
 	app.views.Terminal.Active = false
 	app.registry = newTestRegistry()
-	app.views.Dashboard.Cursor = 0
-	app.views.Dashboard.Selected = 0
 
-	if app.registry.Count() < 2 {
-		t.Skip("need at least 2 agents in registry for cursor test")
+	order := sidebarDisplayOrder(app.registry)
+	if len(order) < 2 {
+		t.Skip("need at least 2 displayed agents for cursor test")
 	}
 
-	// Try to go up past 0
+	// Start at the first displayed agent; going up must stay there.
+	app.views.Dashboard.Cursor = order[0]
+	app.views.Dashboard.Selected = order[0]
 	model, _ := app.Update(tea.KeyPressMsg{Code: 'k', Text: "k"})
 	result := model.(App)
-	if result.views.Dashboard.Cursor != 0 {
-		t.Errorf("expected cursor to stay at 0 when going up, got %d", result.views.Dashboard.Cursor)
+	if result.views.Dashboard.Cursor != order[0] {
+		t.Errorf("expected cursor to stay at first displayed (%d) when going up, got %d", order[0], result.views.Dashboard.Cursor)
 	}
 
-	// Go down
+	// Go down → second displayed agent.
 	model, _ = result.Update(tea.KeyPressMsg{Code: 'j', Text: "j"})
 	result = model.(App)
-	if result.views.Dashboard.Cursor != 1 {
-		t.Errorf("expected cursor=1 after down, got %d", result.views.Dashboard.Cursor)
+	if result.views.Dashboard.Cursor != order[1] {
+		t.Errorf("expected cursor=%d (2nd displayed) after down, got %d", order[1], result.views.Dashboard.Cursor)
 	}
 
-	// Go to max and try to exceed
-	count := app.registry.Count()
-	result.views.Dashboard.Cursor = count - 1
-	result.views.Dashboard.Selected = count - 1
+	// At the last displayed agent, going down must stay.
+	last := order[len(order)-1]
+	result.views.Dashboard.Cursor = last
+	result.views.Dashboard.Selected = last
 	model, _ = result.Update(tea.KeyPressMsg{Code: 'j', Text: "j"})
 	result = model.(App)
-	if result.views.Dashboard.Cursor != count-1 {
-		t.Errorf("expected cursor to stay at max (%d), got %d", count-1, result.views.Dashboard.Cursor)
+	if result.views.Dashboard.Cursor != last {
+		t.Errorf("expected cursor to stay at last displayed (%d), got %d", last, result.views.Dashboard.Cursor)
 	}
 }
 

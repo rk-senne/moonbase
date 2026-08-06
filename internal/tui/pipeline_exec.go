@@ -26,6 +26,7 @@ type PhaseResultMsg struct {
 	Output  string
 	Err     error
 	Elapsed time.Duration
+	Gen     int // owning mission generation (see PipelineModel.Gen)
 }
 
 // FanOutCompleteMsg carries all specialist results as a single batch from the
@@ -33,6 +34,7 @@ type PhaseResultMsg struct {
 // PhaseResultMsg events with a single atomic update for deterministic merging.
 type FanOutCompleteMsg struct {
 	Results []pipeline.FanOutResult
+	Gen     int // owning mission generation (see PipelineModel.Gen)
 }
 
 // PipelineAbortedMsg is sent when the user aborts the pipeline.
@@ -50,6 +52,7 @@ func executePhase(
 	projectCtx *discovery.ProjectContext,
 	pipelineCtx *pipeline.PipelineContext,
 	phaseTimeout time.Duration,
+	gen int,
 ) tea.Cmd {
 	return func() tea.Msg {
 		start := time.Now()
@@ -60,6 +63,7 @@ func executePhase(
 				Phase:   phase.Number,
 				Err:     fmt.Errorf("agent %s not found", phase.AgentName),
 				Elapsed: time.Since(start),
+				Gen:     gen,
 			}
 		}
 
@@ -80,6 +84,7 @@ func executePhase(
 				Phase:   phase.Number,
 				Err:     fmt.Errorf("stream start: %w", err),
 				Elapsed: time.Since(start),
+				Gen:     gen,
 			}
 		}
 
@@ -88,6 +93,7 @@ func executePhase(
 			Ch:     ch,
 			Start:  start,
 			Cancel: cancel,
+			Gen:    gen,
 		}
 	}
 }
@@ -100,13 +106,15 @@ type phaseStreamStartedMsg struct {
 	Ch     <-chan chat.StreamChunk
 	Start  time.Time
 	Cancel context.CancelFunc
+	Gen    int
 }
 
 // pollPhaseStream reads ONE chunk from the phase stream channel.
 // On Done or channel close → PhaseResultMsg (with accumulated output).
-// On text chunk → PhaseChunkMsg.
+// On text chunk → PhaseChunkMsg. Emitted messages carry gen so the Update
+// loop can discard results from a superseded mission.
 func pollPhaseStream(phase int, ch <-chan chat.StreamChunk, start time.Time,
-	cancel context.CancelFunc, buf *bytes.Buffer) tea.Cmd {
+	cancel context.CancelFunc, buf *bytes.Buffer, gen int) tea.Cmd {
 	return func() tea.Msg {
 		chunk, ok := <-ch
 		if !ok || chunk.Done {
@@ -120,9 +128,10 @@ func pollPhaseStream(phase int, ch <-chan chat.StreamChunk, start time.Time,
 				Output:  buf.String(),
 				Err:     chunkErr,
 				Elapsed: time.Since(start),
+				Gen:     gen,
 			}
 		}
-		return PhaseChunkMsg{Phase: phase, Text: chunk.Text}
+		return PhaseChunkMsg{Phase: phase, Text: chunk.Text, Gen: gen}
 	}
 }
 
@@ -195,6 +204,7 @@ func (a *App) startNextPhase() tea.Cmd {
 		a.projectCtx,
 		a.views.Pipeline.State.Context,
 		a.views.Pipeline.State.PhaseTimeout,
+		a.views.Pipeline.Gen,
 	)
 }
 
@@ -315,10 +325,11 @@ func (a *App) handlePhaseResult(msg PhaseResultMsg) tea.Cmd {
 // It identifies triggered specialists from the pipeline's conditional phases,
 // runs them concurrently via RunSpecialists, and returns a FanOutCompleteMsg.
 func (a *App) startFanOut() tea.Cmd {
+	gen := a.views.Pipeline.Gen
 	return func() tea.Msg {
 		state := a.views.Pipeline.State
 		if state == nil {
-			return FanOutCompleteMsg{Results: nil}
+			return FanOutCompleteMsg{Results: nil, Gen: gen}
 		}
 
 		// Identify conditional phases that are pending (eligible for fan-out).
@@ -333,7 +344,7 @@ func (a *App) startFanOut() tea.Cmd {
 		triggered := pipeline.TriggeredSpecialists(candidates, state.Context)
 
 		if len(triggered) == 0 {
-			return FanOutCompleteMsg{Results: nil}
+			return FanOutCompleteMsg{Results: nil, Gen: gen}
 		}
 
 		cfg := pipeline.FanOutConfig{
@@ -356,7 +367,7 @@ func (a *App) startFanOut() tea.Cmd {
 		}
 
 		results := pipeline.RunSpecialists(a.views.Pipeline.Ctx, triggered, execute, cfg)
-		return FanOutCompleteMsg{Results: results}
+		return FanOutCompleteMsg{Results: results, Gen: gen}
 	}
 }
 
@@ -484,5 +495,6 @@ func (a *App) startNextPhaseFrom(idx int) tea.Cmd {
 		a.projectCtx,
 		a.views.Pipeline.State.Context,
 		a.views.Pipeline.State.PhaseTimeout,
+		a.views.Pipeline.Gen,
 	)
 }

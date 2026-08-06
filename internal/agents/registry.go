@@ -1,6 +1,7 @@
 package agents
 
 import (
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -17,9 +18,10 @@ const (
 
 // Registry holds all loaded agents and provides lookup by name, index, or role.
 type Registry struct {
-	dir    string
-	agents []Agent
-	byName map[string]*Agent
+	dir     string
+	agents  []Agent
+	byName  map[string]*Agent
+	lastSig int64 // latest mtime (unix nano) of dir + *.md files seen by ReloadIfChanged
 }
 
 // NewRegistry creates a new Registry that will load agents from the given directory.
@@ -79,6 +81,47 @@ func (r *Registry) Reload() {
 		r.agents = agents
 		r.rebuildIndex()
 	}
+}
+
+// dirSignature returns the most recent modification time (unix nanoseconds)
+// across the agents directory and its .md files. It is a cheap stat-only probe
+// (readdir + stat, no file reads or YAML parsing) used to decide whether a
+// reload is necessary.
+func (r *Registry) dirSignature() int64 {
+	info, err := os.Stat(r.dir)
+	if err != nil {
+		return 0
+	}
+	sig := info.ModTime().UnixNano()
+	entries, err := os.ReadDir(r.dir)
+	if err != nil {
+		return sig
+	}
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".md") {
+			continue
+		}
+		if fi, err := e.Info(); err == nil {
+			if m := fi.ModTime().UnixNano(); m > sig {
+				sig = m
+			}
+		}
+	}
+	return sig
+}
+
+// ReloadIfChanged reloads agents from disk only when the directory or one of
+// its .md files has changed since the previous check. It returns true when a
+// reload occurred. This replaces an unconditional Reload on a fixed timer,
+// eliminating repeated file reads + YAML parsing in the TUI hot path.
+func (r *Registry) ReloadIfChanged() bool {
+	sig := r.dirSignature()
+	if sig == 0 || sig == r.lastSig {
+		return false
+	}
+	r.lastSig = sig
+	r.Reload()
+	return true
 }
 
 // Count returns the number of loaded agents.

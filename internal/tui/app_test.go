@@ -1,21 +1,22 @@
 package tui
 
 import (
+	"path/filepath"
 	"reflect"
+	"runtime"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/rk-senne/moonbase/internal/agents"
 )
 
-// newTestRegistry creates a registry pre-loaded with agents from the real agents directory.
+// newTestRegistry creates a registry pre-loaded with agents from the real agents
+// directory. The path is resolved from THIS source file's location (not the
+// process CWD) so the registry is immune to os.Chdir side effects from other
+// tests (e.g. the file browser's Enter/Back), keeping agent count deterministic.
 func newTestRegistry() *agents.Registry {
-	// When running tests, CWD is the package dir. Walk up to project root.
-	dir, err := agents.FindAgentsDir("")
-	if err != nil {
-		// Fallback: try the relative path from package to project root
-		dir = "../../agents"
-	}
+	_, filename, _, _ := runtime.Caller(0)
+	dir := filepath.Join(filepath.Dir(filename), "..", "..", "agents")
 	reg := agents.NewRegistry(dir)
 	reg.Reload()
 	return reg
@@ -135,19 +136,28 @@ func TestApp_KeyNavigation_CursorUpDown(t *testing.T) {
 	app.views.Terminal.Active = false
 	app.registry = newTestRegistry()
 
+	// Navigation follows the sidebar's VISUAL display order, not raw registry
+	// index order (which would appear to skip grouped agents).
+	order := sidebarDisplayOrder(app.registry)
+	if len(order) < 2 {
+		t.Skip("need at least 2 displayed agents")
+	}
+	app.views.Dashboard.Cursor = order[0]
+	app.views.Dashboard.Selected = order[0]
+
 	model, _ := app.Update(tea.KeyPressMsg{Code: 'j', Text: "j"})
 	result := model.(App)
-	if result.views.Dashboard.Cursor != 1 {
-		t.Errorf("expected cursor=1 after 'j', got %d", result.views.Dashboard.Cursor)
+	if result.views.Dashboard.Cursor != order[1] {
+		t.Errorf("expected cursor=%d (2nd displayed) after 'j', got %d", order[1], result.views.Dashboard.Cursor)
 	}
-	if result.views.Dashboard.Selected != 1 {
-		t.Errorf("expected selected=1 after 'j', got %d", result.views.Dashboard.Selected)
+	if result.views.Dashboard.Selected != order[1] {
+		t.Errorf("expected selected=%d after 'j', got %d", order[1], result.views.Dashboard.Selected)
 	}
 
 	model, _ = result.Update(tea.KeyPressMsg{Code: 'k', Text: "k"})
 	result = model.(App)
-	if result.views.Dashboard.Cursor != 0 {
-		t.Errorf("expected cursor=0 after 'k', got %d", result.views.Dashboard.Cursor)
+	if result.views.Dashboard.Cursor != order[0] {
+		t.Errorf("expected cursor=%d (1st displayed) after 'k', got %d", order[0], result.views.Dashboard.Cursor)
 	}
 }
 

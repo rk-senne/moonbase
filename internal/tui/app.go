@@ -31,6 +31,7 @@ const (
 	ViewDocs
 	ViewProjects
 	ViewProtocol
+	ViewTools
 )
 
 // Buffer size limits for TUI state
@@ -179,7 +180,7 @@ func NewApp() App {
 			Comms:    CommsModel{Input: ci},
 			CtxFile:  ContextFileModel{Input: fi},
 			Terminal: term,
-			Browser:  BrowserModel{FileBrowser: newFileBrowser(), Active: true}, // start in file browser mode
+			Browser:  BrowserModel{FileBrowser: newFileBrowser(), Active: false}, // opt-in via ` from the dashboard
 		},
 		theme:        ThemeModel{Name: "moonbase", Data: initialTheme, Styles: initialStyles},
 		chrome: ChromeModel{
@@ -229,6 +230,9 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a.handlePhaseChunk(msg)
 
 	case FanOutCompleteMsg:
+		if msg.Gen != a.views.Pipeline.Gen {
+			return a, nil
+		}
 		if cmd := a.handleFanOutComplete(msg); cmd != nil {
 			return a, cmd
 		}
@@ -242,10 +246,18 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case clockTickMsg:
 		a.chrome.Clock = time.Time(msg).Format("15:04:05")
-		// Refresh tool cache every 30 seconds
+		// Refresh tool cache every 30 seconds — off the Update goroutine so PATH
+		// lookups never stall input handling. Stamp the time now to avoid
+		// dispatching more than one refresh per window.
 		if time.Since(a.env.Infra.ToolCacheTime) > 30*time.Second {
-			a.env.Infra.ToolCache = refreshToolCache()
 			a.env.Infra.ToolCacheTime = time.Now()
+			return a, refreshToolCacheCmd()
+		}
+		return a, nil
+
+	case toolCacheMsg:
+		if msg.cache != nil {
+			a.env.Infra.ToolCache = msg.cache
 		}
 		return a, nil
 
@@ -287,6 +299,9 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case toolExitMsg:
 		a.addIntel("Tool exited: %s", msg.tool)
 
+	case toolInstallDoneMsg:
+		return a.handleToolInstallDone(msg)
+
 	case streamChunkMsg:
 		return a.handleStreamChunk(msg)
 
@@ -294,7 +309,8 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a.handleFileChange(msg)
 
 	case agentReloadMsg:
-		a.registry.Reload()
+		// Cheap stat-only check; only reparse agent files when they actually change.
+		a.registry.ReloadIfChanged()
 		return a, nil
 
 	case prCreatedMsg:
@@ -335,6 +351,13 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if a.views.Terminal.Active && a.view == ViewDashboard {
 			return a.handleTerminalKeys(msg)
 		}
+		// Global keys (new mission, tools). These run before the file-browser
+		// and view-specific handlers so 'm'/'i' work from ANY stage — even when
+		// the file browser owns the dashboard panel — but never while typing in
+		// a text field (mission/comms inputs, search, terminal handled above).
+		if m, cmd, handled := a.handleGlobalKeys(msg); handled {
+			return m, cmd
+		}
 		// File browser
 		if a.views.Browser.Active && a.view == ViewDashboard && a.views.Browser.FileBrowser != nil {
 			return a.handleFileBrowserKeys(msg)
@@ -349,6 +372,8 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return a.handleDocsKeys(msg)
 		case ViewMission:
 			return a.handleMissionKeys(msg)
+		case ViewTools:
+			return a.handleToolsKeys(msg)
 		default:
 			return a.handleDashboardKeys(msg)
 		}
@@ -385,6 +410,8 @@ func (a App) renderFrame() string {
 		return a.renderProjects()
 	case ViewProtocol:
 		return a.renderProtocol()
+	case ViewTools:
+		return a.renderTools()
 	default:
 		return a.renderDashboard()
 	}

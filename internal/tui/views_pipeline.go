@@ -119,7 +119,6 @@ func (a App) renderPipeline() string {
 	var main strings.Builder
 	titleStyle := lipgloss.NewStyle().Foreground(a.theme.Data.Brand).Bold(true)
 	dimStyle := lipgloss.NewStyle().Foreground(a.theme.Data.Dim)
-	pipeStyle := lipgloss.NewStyle().Foreground(a.theme.Data.Muted)
 
 	if a.views.Pipeline.State != nil && a.views.Pipeline.State.Task != "" {
 		main.WriteString(titleStyle.Render(fmt.Sprintf("━━━ MISSION: %s ━━━", a.views.Pipeline.State.Task)) + "\n\n")
@@ -133,15 +132,17 @@ func (a App) renderPipeline() string {
 		maxLines = 5
 	}
 
-	// If a phase is actively streaming, render the live tail of StreamBuf
-	// at the end of the chat (appending ephemeral lines).
+	// If a phase is actively streaming, render the live buffer as plain
+	// wrapped text (no glamour) so high-frequency chunks don't trigger
+	// expensive re-renders (AC-1.1/1.2). The live buffer is flushed into a
+	// normal PipelineMsg on phase completion.
 	streamTail := ""
-	if a.views.Pipeline.Running && a.views.Pipeline.PhaseStreamBuf != nil &&
-		a.views.Pipeline.PhaseStreamBuf.Len() > 0 {
-		raw := a.views.Pipeline.PhaseStreamBuf.String()
-		lines := strings.Split(raw, "\n")
-		// Show last 8 lines of streaming output
-		tailCount := 8
+	if a.views.Pipeline.Running && a.views.Pipeline.LiveBuf != "" {
+		raw := a.views.Pipeline.LiveBuf
+		wrapped := wordWrap(raw, mainWidth-4)
+		lines := strings.Split(wrapped, "\n")
+		// Show last 12 lines of streaming output for better visibility.
+		tailCount := 12
 		if len(lines) < tailCount {
 			tailCount = len(lines)
 		}
@@ -153,9 +154,11 @@ func (a App) renderPipeline() string {
 	if len(a.views.Pipeline.Chat) > maxLines {
 		start = len(a.views.Pipeline.Chat) - maxLines
 	}
+	prevAgent := ""
 	for i := start; i < len(a.views.Pipeline.Chat); i++ {
 		msg := a.views.Pipeline.Chat[i]
 		if msg.Agent == "" {
+			prevAgent = ""
 			// System message — phase headers, risk gates, dividers
 			content := msg.Content
 			if strings.HasPrefix(content, "────") || strings.HasPrefix(content, "━━━") {
@@ -188,19 +191,40 @@ func (a App) renderPipeline() string {
 				main.WriteString(dimStyle.Render(" "+content) + "\n")
 			}
 		} else {
-			// Agent output — render through glamour
+			// Agent output — show a persona header (who + personality) the first
+			// time this operative speaks in a contiguous block, then the content
+			// with a persona-coloured gutter so each voice is visually distinct.
+			persona := personaFor(msg.Agent)
+			if msg.Agent != prevAgent {
+				headerStyle := lipgloss.NewStyle().Foreground(persona.Color).Bold(true)
+				header := "▸ " + persona.Operative
+				if persona.Designation != "" && persona.Designation != persona.Operative {
+					header += " · " + persona.Designation
+				}
+				header = truncateToWidth(header, mainWidth-2)
+				main.WriteString(headerStyle.Render(header) + "\n")
+				if persona.Personality != "" {
+					main.WriteString(lipgloss.NewStyle().Foreground(persona.Color).Italic(true).Render("  "+persona.Personality) + "\n")
+				}
+			}
+			prevAgent = msg.Agent
+			gutter := lipgloss.NewStyle().Foreground(persona.Color)
 			rendered := renderMarkdown(msg.Content, mainWidth-4)
 			lines := strings.Split(rendered, "\n")
 			for _, line := range lines {
-				main.WriteString(pipeStyle.Render("│ ") + line + "\n")
+				main.WriteString(gutter.Render("│ ") + line + "\n")
 			}
 		}
 	}
 
-	// Render streaming tail if active (light touch: show below the chat)
+	// Render streaming tail if active (plain wrapped text, persona-coloured gutter)
 	if streamTail != "" {
-		streamStyle := lipgloss.NewStyle().Foreground(a.theme.Data.Muted)
-		main.WriteString(streamStyle.Render(streamTail) + "\n")
+		persona := personaFor(a.views.Pipeline.LiveAgent)
+		gutter := lipgloss.NewStyle().Foreground(persona.Color)
+		streamLines := strings.Split(streamTail, "\n")
+		for _, line := range streamLines {
+			main.WriteString(gutter.Render("│ ") + lipgloss.NewStyle().Foreground(a.theme.Data.Muted).Render(line) + "\n")
+		}
 	}
 
 	mainPanel := a.theme.Styles.Panel.Width(mainWidth).Render(main.String())

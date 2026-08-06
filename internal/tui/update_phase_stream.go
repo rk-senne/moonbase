@@ -8,8 +8,16 @@ import (
 
 // handlePhaseStreamStarted processes a successfully started phase stream.
 // It stores the channel, cancel func, and buffer on the PipelineModel, then
-// kicks the first pollPhaseStream to begin consuming chunks.
+// kicks the first pollPhaseStream to begin consuming chunks. Streams belonging
+// to a superseded mission (msg.Gen != current) are cancelled and dropped.
 func (a App) handlePhaseStreamStarted(msg phaseStreamStartedMsg) (tea.Model, tea.Cmd) {
+	if msg.Gen != a.views.Pipeline.Gen {
+		if msg.Cancel != nil {
+			msg.Cancel()
+		}
+		return a, nil
+	}
+
 	a.views.Pipeline.PhaseStreamCh = msg.Ch
 	a.views.Pipeline.PhaseStreamStart = msg.Start
 	a.views.Pipeline.PhaseStreamCancel = msg.Cancel
@@ -22,33 +30,34 @@ func (a App) handlePhaseStreamStarted(msg phaseStreamStartedMsg) (tea.Model, tea
 		msg.Start,
 		msg.Cancel,
 		a.views.Pipeline.PhaseStreamBuf,
+		a.views.Pipeline.Gen,
 	)
 }
 
 // handlePhaseChunk appends the chunk text to the phase stream buffer and the
-// live pipeline chat, then re-polls for the next chunk.
+// live streaming buffer, then re-polls for the next chunk. The live buffer is
+// rendered as plain wrapped text (no glamour) on each frame — glamour is only
+// applied once the phase completes (AC-1.2). Chunks from a superseded mission
+// (msg.Gen != current) are dropped without re-polling (AC-1.3).
 func (a App) handlePhaseChunk(msg PhaseChunkMsg) (tea.Model, tea.Cmd) {
+	if msg.Gen != a.views.Pipeline.Gen {
+		return a, nil
+	}
+
 	if a.views.Pipeline.PhaseStreamBuf != nil {
 		a.views.Pipeline.PhaseStreamBuf.WriteString(msg.Text)
 	}
 
-	// Append to live pipeline chat so the operator sees the agent "typing"
-	if len(a.views.Pipeline.Chat) > 0 {
-		last := &a.views.Pipeline.Chat[len(a.views.Pipeline.Chat)-1]
-		// If the last message is from an agent (streaming content), append to it
-		if last.Agent != "" {
-			last.Content += msg.Text
-		} else {
-			// Start a new agent message block
-			operative := ""
-			if a.views.Pipeline.State != nil && a.views.Pipeline.State.CurrentPhase() != nil {
-				operative = a.views.Pipeline.State.CurrentPhase().Operative
-			}
-			a.views.Pipeline.Chat = append(a.views.Pipeline.Chat,
-				PipelineMsg{operative, msg.Text},
-			)
+	// Accumulate into the live buffer for plain-text rendering (AC-1.1/1.2).
+	// Determine the operative for the live buffer label.
+	if a.views.Pipeline.LiveAgent == "" {
+		operative := ""
+		if a.views.Pipeline.State != nil && a.views.Pipeline.State.CurrentPhase() != nil {
+			operative = a.views.Pipeline.State.CurrentPhase().Operative
 		}
+		a.views.Pipeline.LiveAgent = operative
 	}
+	a.views.Pipeline.LiveBuf += msg.Text
 
 	return a, pollPhaseStream(
 		a.views.Pipeline.PhaseStreamPhase,
@@ -56,5 +65,6 @@ func (a App) handlePhaseChunk(msg PhaseChunkMsg) (tea.Model, tea.Cmd) {
 		a.views.Pipeline.PhaseStreamStart,
 		a.views.Pipeline.PhaseStreamCancel,
 		a.views.Pipeline.PhaseStreamBuf,
+		a.views.Pipeline.Gen,
 	)
 }

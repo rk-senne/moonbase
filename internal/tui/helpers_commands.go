@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -262,23 +263,24 @@ func (a App) launchNvim() tea.Cmd {
 }
 
 func (a App) launchCmux() tea.Cmd {
-	// Prefer cmux over tmux when available
-	if cmuxBin, cmuxErr := exec.LookPath("cmux"); cmuxErr == nil {
-		c := exec.Command(cmuxBin, "workspace", "new", "--name", "moonbase")
+	// OS-aware: tmux on Linux, cmux (fallback tmux) on macOS.
+	choice, ok := selectMultiplexer(runtime.GOOS, exec.LookPath)
+	if !ok {
+		return func() tea.Msg { return toolExitMsg{tool: "tmux/cmux (not found)"} }
+	}
+
+	if choice.Tool == "cmux" {
+		c := exec.Command(choice.Bin, choice.Args...)
 		return tea.ExecProcess(c, func(err error) tea.Msg { return toolExitMsg{tool: "cmux"} })
 	}
 
-	// Fall back to tmux
-	bin, err := exec.LookPath("tmux")
-	if err != nil {
-		return func() tea.Msg { return toolExitMsg{tool: "cmux/tmux (not found)"} }
-	}
-	check := exec.Command(bin, "has-session", "-t", "moonbase")
+	// tmux: attach to the existing "moonbase" session or create it.
+	check := exec.Command(choice.Bin, "has-session", "-t", "moonbase")
 	if check.Run() == nil {
-		c := exec.Command(bin, "attach-session", "-t", "moonbase")
+		c := exec.Command(choice.Bin, "attach-session", "-t", "moonbase")
 		return tea.ExecProcess(c, func(err error) tea.Msg { return toolExitMsg{tool: "tmux"} })
 	}
-	c := exec.Command(bin, "new-session", "-s", "moonbase")
+	c := exec.Command(choice.Bin, "new-session", "-s", "moonbase")
 	return tea.ExecProcess(c, func(err error) tea.Msg { return toolExitMsg{tool: "tmux"} })
 }
 

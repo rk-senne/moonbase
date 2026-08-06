@@ -387,6 +387,36 @@ description: Docker multi-stage build patterns and CI integration.
 Agents automatically discover skills and display the catalog. Legacy skills without
 frontmatter are still loaded eagerly for backward compatibility.
 
+### Terminal Tools Arsenal
+
+The TUI ships a **Tools** view — press `i` from any stage to browse a curated
+catalog of critical and cool terminal tools:
+
+| Critical | Cool & Stable |
+|----------|---------------|
+| git, ripgrep, fzf, jq, tmux, neovim, lazygit, GitHub CLI | btop, bat, eza, zoxide, git-delta, fish, starship, **oh-my-posh**, lazydocker, cmux |
+
+Each tool shows a live install status (✓/✗). Select one and moonbase installs it
+via your platform's package manager — **Homebrew on macOS; Linuxbrew / apt / dnf /
+pacman on Linux** — but **only after an explicit `y/n` confirmation that shows the
+exact command it will run**. Tools with no package-manager path (or that are
+macOS-only, like cmux) show manual guidance and are never auto-run. Install
+commands are assembled solely from an allowlisted catalog, never from user input.
+
+The terminal multiplexer launcher (`M`) is **OS-aware: tmux on Linux, cmux on
+macOS** (falling back to tmux when cmux isn't installed).
+
+### Live Mission Visibility
+
+- Press `m` from **any** view to brief a new mission; `enter` reliably deploys the
+  council (an empty briefing simply asks for an objective — it never navigates away).
+- A **mission-in-progress indicator** (`⚡ <phase> P<done>/<total>`) stays in the
+  header from every view, so you never lose sight of a running mission.
+- Each operative's pipeline feedback is labelled with its **KND persona and voice**
+  (e.g. `▸ Numbuh 4 · Wallabee Beatles`) in the operative's colour, and the live
+  agent output streams into the pipeline view (markdown rendering is cached so the
+  view stays smooth).
+
 ---
 
 ## Build & Install

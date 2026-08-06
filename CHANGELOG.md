@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- feat(tui): Tools view — press `i` to open a curated arsenal of critical & cool terminal tools (oh-my-posh, starship, lazygit, btop, neovim, fzf, ripgrep, zoxide, eza, bat, git-delta, GitHub CLI, fish, tmux, jq, lazydocker, cmux). Shows live install status (✓/✗) and installs the selected tool via the host package manager — but only after an explicit `y/n` confirmation that shows the exact command.
+- feat(tools): new `internal/tools` package — curated catalog + package-manager-aware install builder (Homebrew on macOS; Linuxbrew/apt/dnf/pacman on Linux) with a fail-safe manual fallback. Install commands are assembled solely from allowlisted constants, never user input.
+- feat(tui): agent personality feedback — each operative's pipeline output is now labelled with its KND designation and voice (e.g. `▸ Numbuh 4 · Wallabee Beatles`) in the operative's colour, so you can tell who is working and how.
+- feat(tui): always-visible "mission in progress" indicator in the header (`⚡ <phase> P<done>/<total>`) so a running mission stays visible from any view.
+
+### Fixed
+- fix(tui): `m` now opens a new mission from ANY stage — the dashboard file browser no longer swallows the key. (Global key intercept added ahead of the browser/view handlers.)
+- fix(tui): pressing Enter to submit a mission reliably starts the pipeline and never navigates backwards; empty/whitespace briefings now prompt for an objective instead of silently doing nothing.
+- fix(tui): submitting a new mission while one is running cleanly supersedes the prior run — its context/stream is cancelled and its late phase messages are discarded via a mission-generation guard (no cross-mission corruption).
+- fix(tui): persona headers and mission indicator now truncate using visual width (`lipgloss.Width`), not byte length — emoji/CJK never overflow or corrupt the layout at narrow terminal widths (AC-3).
+- fix(tui): the file browser is now opt-in (press `` ` `` to open it) instead of active by default. Tab (cycle panel focus), Up/Down (agent roster), and Enter (open dossier) now work on the dashboard as expected, and Enter no longer performs filesystem I/O (removing the input lag).
+- fix(tui): sidebar Up/Down and the mouse wheel now navigate agents in the visual (grouped) display order, so no operatives are skipped when the sidebar order differs from registry-index order; the roster scrolls to keep the selection visible.
+- fix(tui): number keys jump to the operative labelled with that digit (e.g. `3` → Numbuh 3) instead of a coincidental registry index.
+- fix(test): `newTestRegistry` resolves the agents directory from the source-file location (immune to `os.Chdir` from the file browser), making golden and roster tests deterministic regardless of run order.
+
+### Changed
+- perf(tui): migrate markdown rendering to Glamour v2 (`charm.land/glamour/v2` v2.0.1) — replaces removed `WithAutoStyle()` with explicit dark style via `WithStandardStyle("dark")`; per-width renderer cache and memo cache preserved (AC-4).
+- perf(tui): eliminated pipeline-view lag by caching glamour markdown rendering (one renderer per width + memoized output) instead of re-rendering the entire chat every frame.
+- perf(tui): the agent registry now reloads only when agent files actually change (mtime-gated `ReloadIfChanged`) instead of reparsing every 2s; the 30s tool-availability refresh now runs off the UI update loop.
+- perf(tui): stream chunk coalescing — in-flight streaming renders as plain wrapped text (no glamour per token); glamour is applied once on phase completion, eliminating the dominant frame cost (AC-1).
+- change(tui): terminal multiplexer launch (`M`) is now OS-aware — tmux on Linux, cmux (falling back to tmux) on macOS.
+- change(tools): script-install tools (starship, oh-my-posh) now show download→verify(SHA256)→run guidance instead of bare `curl | bash` (AC-5).
+
 ## [1.17.0] - 2026-07-31
 
 ### Added

@@ -43,3 +43,34 @@ func PipelineStatusSummary(p *pipeline.Pipeline) string {
 	}
 	return fmt.Sprintf("Pipeline: %s\n%s", p.Task, strings.Join(lines, "\n")+"\n")
 }
+
+// missionIndicator returns a compact header segment describing the currently
+// running mission and its progress through the mandatory phases. The bool is
+// false when no mission is active, so callers can omit the segment entirely.
+// This is what makes a running mission visible from any view.
+func (a App) missionIndicator() (string, bool) {
+	st := a.views.Pipeline.State
+	if st == nil || !st.Active {
+		return "", false
+	}
+
+	mandatory, done := 0, 0
+	running := ""
+	for _, ph := range st.Phases {
+		if !ph.Conditional {
+			mandatory++
+			if ph.Status == pipeline.StatusComplete || ph.Status == pipeline.StatusSkipped {
+				done++
+			}
+		}
+		if ph.Status == pipeline.StatusRunning {
+			running = ph.Name
+		}
+	}
+
+	label := "mission"
+	if running != "" {
+		label = running
+	}
+	return fmt.Sprintf("⚡ %s P%d/%d", label, done, mandatory), true
+}

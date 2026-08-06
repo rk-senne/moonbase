@@ -93,3 +93,39 @@ func extractSidebarKey(name string) string {
 		return string(strings.ToUpper(name[:1]))
 	}
 }
+
+// sidebarDisplayOrder returns registry indices in the exact order they appear in
+// the rendered sidebar (grouped). Keyboard Up/Down navigate through THIS order
+// rather than raw registry-index order — otherwise agents appear to be "skipped"
+// whenever the grouped layout reorders them relative to the registry.
+func sidebarDisplayOrder(reg *agents.Registry) []int {
+	if reg == nil {
+		return nil
+	}
+	order := make([]int, 0, reg.Count())
+	for _, g := range buildSidebarGroups(reg) {
+		for _, e := range g.entries {
+			if e.index >= 0 {
+				order = append(order, e.index)
+			}
+		}
+	}
+	return order
+}
+
+// sidebarKeyToIndex maps a sidebar key hint (e.g. "3", "K", "Z") to the registry
+// index of the matching agent, so number/shortcut jumps select the agent that is
+// actually labelled with that key — not a coincidental registry index.
+func sidebarKeyToIndex(reg *agents.Registry, key string) (int, bool) {
+	if reg == nil {
+		return 0, false
+	}
+	for _, g := range buildSidebarGroups(reg) {
+		for _, e := range g.entries {
+			if e.index >= 0 && e.key == key {
+				return e.index, true
+			}
+		}
+	}
+	return 0, false
+}

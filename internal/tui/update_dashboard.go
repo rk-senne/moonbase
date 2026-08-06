@@ -37,6 +37,7 @@ func (a App) handleDashboardKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 					if a.views.Pipeline.Cancel != nil {
 						a.views.Pipeline.Cancel()
 					}
+					a.flushLiveBuf()
 					a.views.Pipeline.State.Stop("Aborted by human")
 					a.views.Pipeline.Chat = append(a.views.Pipeline.Chat,
 						PipelineMsg{"", "🛑 Mission aborted by human."},
@@ -65,18 +66,12 @@ func (a App) handleDashboardKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return a.handlePipelineSkip()
 	case key.Matches(msg, a.keys.Up):
 		if a.view == ViewDashboard || a.view == ViewDossier {
-			if a.views.Dashboard.Cursor > 0 {
-				a.views.Dashboard.Cursor--
-			}
-			a.views.Dashboard.Selected = a.views.Dashboard.Cursor
+			a.moveSidebarCursor(-1)
 			a.chrome.Anim.TriggerSelectPulse()
 		}
 	case key.Matches(msg, a.keys.Down):
 		if a.view == ViewDashboard || a.view == ViewDossier {
-			if a.views.Dashboard.Cursor < a.registry.Count()-1 {
-				a.views.Dashboard.Cursor++
-			}
-			a.views.Dashboard.Selected = a.views.Dashboard.Cursor
+			a.moveSidebarCursor(1)
 			a.chrome.Anim.TriggerSelectPulse()
 		}
 	case key.Matches(msg, a.keys.Enter):
@@ -95,10 +90,6 @@ func (a App) handleDashboardKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			a.openComms()
 			return a, textinput.Blink
 		}
-	case key.Matches(msg, a.keys.NewMission):
-		a.view = ViewMission
-		a.views.Mission.Input.Focus()
-		return a, textinput.Blink
 	case key.Matches(msg, a.keys.CycleTheme):
 		a.cycleTheme()
 		a.addIntel("Theme: %s", a.theme.Name)
@@ -112,6 +103,12 @@ func (a App) handleDashboardKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return a, a.runGitCmd("git status --short")
 	case key.Matches(msg, a.keys.Tab):
 		a.chrome.Focus = (a.chrome.Focus + 1) % 3
+	case key.Matches(msg, a.keys.TerminalToBrowser):
+		// "`" opens the file-browser / terminal workspace on demand. The browser
+		// is opt-in so Tab / Up-Down / Enter drive agent navigation by default.
+		if a.view == ViewDashboard {
+			a.views.Browser.Active = true
+		}
 	case key.Matches(msg, a.keys.LaunchLazygit):
 		return a, a.launchTool("lazygit")
 	case key.Matches(msg, a.keys.LaunchBtop):
@@ -157,11 +154,38 @@ func (a App) handleDashboardKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			return a, a.runSpawnHook()
 		}
 	case key.Matches(msg, a.keys.JumpToAgent):
-		idx := int(msg.String()[0] - '0')
-		a.views.Dashboard.Cursor = idx
-		a.views.Dashboard.Selected = a.views.Dashboard.Cursor
-		a.view = ViewDossier
+		if idx, ok := sidebarKeyToIndex(a.registry, msg.String()); ok {
+			a.views.Dashboard.Cursor = idx
+			a.views.Dashboard.Selected = idx
+			a.view = ViewDossier
+		}
 	}
 
 	return a, nil
+}
+
+// moveSidebarCursor moves the roster selection by delta in the sidebar's visual
+// display order, clamping at the ends. This prevents agents from appearing to be
+// "skipped" when the grouped sidebar order differs from registry-index order.
+func (a *App) moveSidebarCursor(delta int) {
+	order := sidebarDisplayOrder(a.registry)
+	if len(order) == 0 {
+		return
+	}
+	pos := 0
+	for i, idx := range order {
+		if idx == a.views.Dashboard.Cursor {
+			pos = i
+			break
+		}
+	}
+	pos += delta
+	if pos < 0 {
+		pos = 0
+	}
+	if pos >= len(order) {
+		pos = len(order) - 1
+	}
+	a.views.Dashboard.Cursor = order[pos]
+	a.views.Dashboard.Selected = a.views.Dashboard.Cursor
 }
