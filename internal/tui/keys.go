@@ -31,6 +31,7 @@ type KeyMap struct {
 	SpawnHook    key.Binding
 	JumpToAgent  key.Binding
 	Tools        key.Binding
+	Settings     key.Binding
 
 	// Tools
 	LaunchLazygit key.Binding
@@ -177,6 +178,10 @@ func DefaultKeyMap() KeyMap {
 		Tools: key.NewBinding(
 			key.WithKeys("i"),
 			key.WithHelp("i", "tools / install"),
+		),
+		Settings: key.NewBinding(
+			key.WithKeys("S"),
+			key.WithHelp("S", "settings / reboot"),
 		),
 
 		// Tools
@@ -354,7 +359,7 @@ func (k KeyMap) FullHelp() [][]key.Binding {
 		// Missions
 		{k.NewMission, k.NextPhase, k.RetryPhase, k.SkipPhase, k.History},
 		// Views
-		{k.Help, k.Protocol, k.Projects, k.Docs, k.OpenComms, k.CycleTheme},
+		{k.Help, k.Protocol, k.Projects, k.Docs, k.OpenComms, k.CycleTheme, k.Settings},
 		// Tools
 		{k.Tools, k.LaunchLazygit, k.LaunchBtop, k.LaunchNvim, k.LaunchCmux, k.LaunchFish},
 		// Comms
@@ -381,7 +386,7 @@ func (k KeyMap) keysFor(view View, searching bool, termActive bool, browsing boo
 
 	switch view {
 	case ViewDashboard:
-		return []key.Binding{k.Help, k.Up, k.Down, k.Enter, k.NewMission, k.Tools, k.Projects, k.Docs, k.Quit}
+		return []key.Binding{k.Help, k.Up, k.Down, k.Enter, k.NewMission, k.Tools, k.Settings, k.Projects, k.Quit}
 	case ViewDossier:
 		return []key.Binding{k.Enter, k.CopyPrompt, k.SpawnHook, k.Up, k.Down, k.Back}
 	case ViewPipeline:
@@ -401,6 +406,8 @@ func (k KeyMap) keysFor(view View, searching bool, termActive bool, browsing boo
 	case ViewProtocol:
 		return []key.Binding{k.Back, k.Protocol}
 	case ViewTools:
+		return []key.Binding{k.Up, k.Down, k.Enter, k.Back}
+	case ViewSettings:
 		return []key.Binding{k.Up, k.Down, k.Enter, k.Back}
 	default:
 		return k.ShortHelp()

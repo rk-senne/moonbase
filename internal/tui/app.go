@@ -32,6 +32,7 @@ const (
 	ViewProjects
 	ViewProtocol
 	ViewTools
+	ViewSettings
 )
 
 // Buffer size limits for TUI state
@@ -302,6 +303,9 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case toolInstallDoneMsg:
 		return a.handleToolInstallDone(msg)
 
+	case rebootDoneMsg:
+		return a.handleRebootDone(msg)
+
 	case streamChunkMsg:
 		return a.handleStreamChunk(msg)
 
@@ -374,6 +378,8 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return a.handleMissionKeys(msg)
 		case ViewTools:
 			return a.handleToolsKeys(msg)
+		case ViewSettings:
+			return a.handleSettingsKeys(msg)
 		default:
 			return a.handleDashboardKeys(msg)
 		}
@@ -412,6 +418,8 @@ func (a App) renderFrame() string {
 		return a.renderProtocol()
 	case ViewTools:
 		return a.renderTools()
+	case ViewSettings:
+		return a.renderSettings()
 	default:
 		return a.renderDashboard()
 	}

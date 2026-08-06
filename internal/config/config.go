@@ -33,6 +33,7 @@ type Config struct {
 	Theme          string   `yaml:"theme"`                 // TUI color theme name
 	AgentsDir      string   `yaml:"agents_dir,omitempty"`  // Custom agents directory (empty = auto-detect)
 	AgentOrder     []string `yaml:"agent_order,omitempty"` // Display order for agents in TUI sidebar
+	SourceDir      string   `yaml:"source_dir,omitempty"`  // moonbase source checkout, used by the TUI reboot action to rebuild dev builds
 
 	// Pipeline execution options (Enhancement 1, 2, 7)
 	TrustTools      bool   `yaml:"trust_tools,omitempty"`      // Pass --trust-all-tools to kiro-cli (enables headless execution)

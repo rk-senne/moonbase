@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- feat(tui): Settings view — press `S` from any view. Provides a **Reboot & update moonbase** action that pulls the latest source, rebuilds/reinstalls the binary (or self-updates from a GitHub release), and relaunches the TUI in place (it closes and reopens on the new version) — no manual `git pull` needed.
+- feat(tui): Settings dev-environment catalog — install Homebrew itself plus common runtimes (Python, Node/npm, Go, Rust, Ruby, Deno, Bun, OpenJDK) and the full terminal-tool catalog, each via the OS package manager after an explicit `y/n` confirmation that shows the exact command. Homebrew installs via its official bootstrap script (shown before running).
+- feat(reboot): new `internal/reboot` package — locates a moonbase source checkout (config `source_dir`, `MOONBASE_SRC`, or by resolving the executable symlink up to the repo root) and selects a source-rebuild vs. release-self-update strategy.
+- feat(config): `source_dir` — path to a moonbase source checkout used by the Settings reboot action to rebuild development builds.
+- feat(tools): `DevCatalog()` (Homebrew + language runtimes + terminal tools) and a `Runtime` tool category.
+
 - feat(tui): Tools view — press `i` to open a curated arsenal of critical & cool terminal tools (oh-my-posh, starship, lazygit, btop, neovim, fzf, ripgrep, zoxide, eza, bat, git-delta, GitHub CLI, fish, tmux, jq, lazydocker, cmux). Shows live install status (✓/✗) and installs the selected tool via the host package manager — but only after an explicit `y/n` confirmation that shows the exact command.
 - feat(tools): new `internal/tools` package — curated catalog + package-manager-aware install builder (Homebrew on macOS; Linuxbrew/apt/dnf/pacman on Linux) with a fail-safe manual fallback. Install commands are assembled solely from allowlisted constants, never user input.
 - feat(tui): agent personality feedback — each operative's pipeline output is now labelled with its KND designation and voice (e.g. `▸ Numbuh 4 · Wallabee Beatles`) in the operative's colour, so you can tell who is working and how.

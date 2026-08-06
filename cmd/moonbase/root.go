@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/rk-senne/moonbase/internal/backend"
@@ -78,9 +79,20 @@ Pipe Mode:
 		}
 
 		// Default: launch TUI
+		tui.SetVersion(version)
 		p := tea.NewProgram(tui.NewApp())
-		if _, err := p.Run(); err != nil {
+		finalModel, err := p.Run()
+		if err != nil {
 			return fmt.Errorf("TUI error: %w", err)
+		}
+		// If the operator triggered a reboot from Settings, the binary has been
+		// reinstalled — re-exec it so the TUI reopens on the new version.
+		if app, ok := finalModel.(tui.App); ok {
+			if bin, want := app.RebootInfo(); want && bin != "" {
+				if execErr := syscall.Exec(bin, []string{bin}, os.Environ()); execErr != nil {
+					return fmt.Errorf("reboot re-exec failed: %w", execErr)
+				}
+			}
 		}
 		return nil
 	},

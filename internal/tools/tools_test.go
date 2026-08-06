@@ -60,8 +60,53 @@ func TestCatalog_Integrity(t *testing.T) {
 }
 
 func TestCategory_String(t *testing.T) {
-	if Critical.String() != "critical" || Cool.String() != "cool" {
-		t.Errorf("unexpected category strings: %q %q", Critical.String(), Cool.String())
+	if Critical.String() != "critical" || Cool.String() != "cool" || Runtime.String() != "runtime" {
+		t.Errorf("unexpected category strings: %q %q %q", Critical.String(), Cool.String(), Runtime.String())
+	}
+}
+
+func TestDevCatalog_IncludesBrewAndRuntimes(t *testing.T) {
+	cat := DevCatalog()
+	want := map[string]bool{"brew": false, "python3": false, "node": false, "go": false, "java": false, "rustc": false}
+	var haveRuntime, haveBootstrap bool
+	for _, tool := range cat {
+		if _, ok := want[tool.ID]; ok {
+			want[tool.ID] = true
+		}
+		if tool.Category == Runtime {
+			haveRuntime = true
+		}
+		if tool.ID == "brew" && tool.Bootstrap {
+			haveBootstrap = true
+		}
+	}
+	for id, found := range want {
+		if !found {
+			t.Errorf("DevCatalog missing expected entry %q", id)
+		}
+	}
+	if !haveRuntime {
+		t.Error("expected Runtime-category tools in DevCatalog")
+	}
+	if !haveBootstrap {
+		t.Error("expected Homebrew marked Bootstrap in DevCatalog")
+	}
+	// DevCatalog must include the terminal-tool catalog too.
+	if len(cat) <= len(Catalog()) {
+		t.Error("expected DevCatalog to extend the terminal-tool Catalog")
+	}
+}
+
+func TestHomebrewInstallPlan(t *testing.T) {
+	p := HomebrewInstallPlan()
+	if p.Bin != "/bin/bash" {
+		t.Errorf("expected bash bin, got %q", p.Bin)
+	}
+	d := p.Display()
+	for _, want := range []string{"curl", "Homebrew/install", "install.sh"} {
+		if !strings.Contains(d, want) {
+			t.Errorf("Homebrew installer command missing %q: %s", want, d)
+		}
 	}
 }
 

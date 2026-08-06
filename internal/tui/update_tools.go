@@ -124,15 +124,22 @@ func (a App) installTool(t tools.Tool) tea.Cmd {
 // handleToolInstallDone records the outcome and refreshes tool availability so
 // the ✓/✗ markers update.
 func (a App) handleToolInstallDone(msg toolInstallDoneMsg) (tea.Model, tea.Cmd) {
+	var result string
 	switch {
 	case msg.note != "":
-		a.views.Tools.Result = fmt.Sprintf("⚠️ %s: %s", msg.display, msg.note)
+		result = fmt.Sprintf("⚠️ %s: %s", msg.display, msg.note)
 	case msg.ok:
 		a.addIntel("Installed %s", msg.display)
-		a.views.Tools.Result = fmt.Sprintf("✅ %s installed.", msg.display)
+		result = fmt.Sprintf("✅ %s installed.", msg.display)
 	default:
 		a.addIntel("Install failed: %s (%v)", msg.display, msg.err)
-		a.views.Tools.Result = fmt.Sprintf("❌ %s install failed — see terminal output.", msg.display)
+		result = fmt.Sprintf("❌ %s install failed — see terminal output.", msg.display)
+	}
+	// Route the result to whichever install surface is active.
+	if a.view == ViewSettings {
+		a.views.Settings.Result = result
+	} else {
+		a.views.Tools.Result = result
 	}
 	return a, refreshToolCacheCmd()
 }

@@ -19,7 +19,7 @@ import (
 	"strings"
 )
 
-// Category classifies a tool as essential ("critical") or nice-to-have ("cool").
+// Category classifies a tool.
 type Category int
 
 const (
@@ -27,14 +27,21 @@ const (
 	Critical Category = iota
 	// Cool marks quality-of-life / aesthetic tools.
 	Cool
+	// Runtime marks language runtimes / package managers (python, node, go, …)
+	// and Homebrew itself.
+	Runtime
 )
 
 // String returns the lower-case category label.
 func (c Category) String() string {
-	if c == Cool {
+	switch c {
+	case Cool:
 		return "cool"
+	case Runtime:
+		return "runtime"
+	default:
+		return "critical"
 	}
-	return "critical"
 }
 
 // Tool describes a curated developer tool and how to install it per platform.
@@ -59,6 +66,10 @@ type Tool struct {
 
 	// MacOnly marks tools that only make sense on macOS (e.g. cmux).
 	MacOnly bool
+
+	// Bootstrap marks a tool that installs itself via its own official script
+	// rather than a package manager (Homebrew). Handled by BootstrapInstall.
+	Bootstrap bool
 }
 
 // Catalog returns the curated, ordered tool catalog (critical first, then cool).
@@ -119,6 +130,50 @@ func Catalog() []Tool {
 func IsInstalled(id string) bool {
 	_, err := exec.LookPath(id)
 	return err == nil
+}
+
+// DevCatalog is the broader catalog surfaced in the Settings view: Homebrew
+// itself, common language runtimes, and the full terminal-tool catalog. Ordered
+// bootstrap → runtimes → critical → cool.
+func DevCatalog() []Tool {
+	head := []Tool{
+		{ID: "brew", Display: "Homebrew", Description: "The package manager for macOS/Linux — prerequisite for everything below.", Category: Runtime, Bootstrap: true},
+
+		{ID: "python3", Display: "Python", Description: "Python 3 interpreter + pip.", Category: Runtime,
+			Brew: "python", Apt: "python3", Dnf: "python3", Pacman: "python"},
+		{ID: "node", Display: "Node / npm", Description: "Node.js runtime with the npm package manager.", Category: Runtime,
+			Brew: "node", Apt: "nodejs", Dnf: "nodejs", Pacman: "nodejs"},
+		{ID: "go", Display: "Go", Description: "The Go toolchain (compiler + modules).", Category: Runtime,
+			Brew: "go", Apt: "golang-go", Dnf: "golang", Pacman: "go"},
+		{ID: "rustc", Display: "Rust", Description: "Rust compiler + cargo.", Category: Runtime,
+			Brew: "rust", Apt: "rustc", Dnf: "rust", Pacman: "rust",
+			Manual: "Recommended: rustup — https://rustup.rs (review the script first)"},
+		{ID: "ruby", Display: "Ruby", Description: "Ruby interpreter + gem.", Category: Runtime,
+			Brew: "ruby", Apt: "ruby", Dnf: "ruby", Pacman: "ruby"},
+		{ID: "deno", Display: "Deno", Description: "Secure TypeScript/JavaScript runtime.", Category: Runtime,
+			Brew: "deno", Pacman: "deno",
+			Manual: "See https://docs.deno.com/runtime/manual/getting_started/installation"},
+		{ID: "bun", Display: "Bun", Description: "Fast all-in-one JavaScript runtime + package manager.", Category: Runtime,
+			Brew: "bun",
+			Manual: "See https://bun.sh/docs/installation"},
+		{ID: "java", Display: "OpenJDK", Description: "Java Development Kit (OpenJDK).", Category: Runtime,
+			Brew: "openjdk", Apt: "default-jdk", Dnf: "java-latest-openjdk", Pacman: "jdk-openjdk"},
+	}
+	return append(head, Catalog()...)
+}
+
+// HomebrewInstallPlan returns the official Homebrew bootstrap installer. This is
+// the only supported way to install Homebrew itself (it *is* the package
+// manager). It is run ONLY after an explicit y/n confirmation that shows this
+// exact command — the installer is the official one, fetched over HTTPS from
+// Homebrew's repository.
+func HomebrewInstallPlan() InstallPlan {
+	return InstallPlan{
+		Manager: "homebrew-installer",
+		Bin:     "/bin/bash",
+		Args:    []string{"-c", `NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`},
+		Sudo:    false,
+	}
 }
 
 // Manager identifies a system package manager and how to build its install

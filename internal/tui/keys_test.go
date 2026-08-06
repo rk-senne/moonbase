@@ -277,6 +277,7 @@ func TestDefaultKeyMap_AllActionsHaveKeysAndHelp(t *testing.T) {
 		{"SpawnHook", km.SpawnHook},
 		{"JumpToAgent", km.JumpToAgent},
 		{"Tools", km.Tools},
+		{"Settings", km.Settings},
 		{"LaunchLazygit", km.LaunchLazygit},
 		{"LaunchBtop", km.LaunchBtop},
 		{"LaunchNvim", km.LaunchNvim},

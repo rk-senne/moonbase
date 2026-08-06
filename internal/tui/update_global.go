@@ -31,6 +31,13 @@ func (a App) handleGlobalKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) {
 		}
 		a.enterToolsView()
 		return a, nil, true
+	case key.Matches(msg, a.keys.Settings):
+		// Inside Settings, 'S' selects the current row — let that view own it.
+		if a.view == ViewSettings {
+			return a, nil, false
+		}
+		a.enterSettingsView()
+		return a, nil, true
 	}
 
 	return a, nil, false

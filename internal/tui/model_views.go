@@ -14,4 +14,5 @@ type ViewsModel struct {
 	Docs        *DocsState
 	ProjectNav  *ProjectsState
 	Tools       ToolsModel
+	Settings    SettingsModel
 }
