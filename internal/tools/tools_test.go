@@ -121,10 +121,12 @@ func TestDetectManager(t *testing.T) {
 	}{
 		{"macOS brew", "darwin", lookProvides("brew"), "brew", false, true},
 		{"macOS no brew", "darwin", lookProvides(), "", false, false},
-		{"linux prefers linuxbrew", "linux", lookProvides("brew", "apt-get"), "brew", false, true},
+		{"linux prefers native apt over brew", "linux", lookProvides("brew", "apt-get"), "apt", true, true},
+		{"linux prefers native dnf over brew", "linux", lookProvides("brew", "dnf"), "dnf", true, true},
 		{"linux apt", "linux", lookProvides("apt-get"), "apt", true, true},
 		{"linux dnf", "linux", lookProvides("dnf"), "dnf", true, true},
 		{"linux pacman", "linux", lookProvides("pacman"), "pacman", true, true},
+		{"linux brew fallback when no native manager", "linux", lookProvides("brew"), "brew", false, true},
 		{"linux none", "linux", lookProvides(), "", false, false},
 	}
 	for _, tt := range tests {

@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - feat(tools): `DevCatalog()` (Homebrew + language runtimes + terminal tools) and a `Runtime` tool category.
 
 - feat(tui): Tools view — press `i` to open a curated arsenal of critical & cool terminal tools (oh-my-posh, starship, lazygit, btop, neovim, fzf, ripgrep, zoxide, eza, bat, git-delta, GitHub CLI, fish, tmux, jq, lazydocker, cmux). Shows live install status (✓/✗) and installs the selected tool via the host package manager — but only after an explicit `y/n` confirmation that shows the exact command.
-- feat(tools): new `internal/tools` package — curated catalog + package-manager-aware install builder (Homebrew on macOS; Linuxbrew/apt/dnf/pacman on Linux) with a fail-safe manual fallback. Install commands are assembled solely from allowlisted constants, never user input.
+- feat(tools): new `internal/tools` package — curated catalog + package-manager-aware install builder (Homebrew on macOS; native apt/dnf/pacman preferred on Linux, Linuxbrew as fallback) with a fail-safe manual fallback. Install commands are assembled solely from allowlisted constants, never user input.
 - feat(tui): agent personality feedback — each operative's pipeline output is now labelled with its KND designation and voice (e.g. `▸ Numbuh 4 · Wallabee Beatles`) in the operative's colour, so you can tell who is working and how.
 - feat(tui): always-visible "mission in progress" indicator in the header (`⚡ <phase> P<done>/<total>`) so a running mission stays visible from any view.
 
@@ -41,6 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - perf(tui): eliminated pipeline-view lag by caching glamour markdown rendering (one renderer per width + memoized output) instead of re-rendering the entire chat every frame.
 - perf(tui): the agent registry now reloads only when agent files actually change (mtime-gated `ReloadIfChanged`) instead of reparsing every 2s; the 30s tool-availability refresh now runs off the UI update loop.
 - perf(tui): stream chunk coalescing — in-flight streaming renders as plain wrapped text (no glamour per token); glamour is applied once on phase completion, eliminating the dominant frame cost (AC-1).
+- change(tools): on Linux, moonbase now prefers the **native** system package manager (apt → dnf → pacman) over Homebrew; Linuxbrew is used only when no native manager is present.
 - change(tui): pipeline notifications (phase complete, CRITICAL risk, mission complete) now fire through the active multiplexer via `internal/mux`, so **tmux** users get them too — not just cmux.
 - change(cli): `moonbase status` now reports the active terminal multiplexer (tmux/cmux) and whether you're in a session, replacing the cmux-only line.
 - change(tui): terminal multiplexer launch (`M`) is now OS-aware — tmux on Linux, cmux (falling back to tmux) on macOS.

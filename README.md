@@ -400,11 +400,12 @@ catalog of critical and cool terminal tools:
 | git, ripgrep, fzf, jq, tmux, neovim, lazygit, GitHub CLI | btop, bat, eza, zoxide, git-delta, fish, starship, **oh-my-posh**, lazydocker, cmux |
 
 Each tool shows a live install status (✓/✗). Select one and moonbase installs it
-via your platform's package manager — **Homebrew on macOS; Linuxbrew / apt / dnf /
-pacman on Linux** — but **only after an explicit `y/n` confirmation that shows the
-exact command it will run**. Tools with no package-manager path (or that are
-macOS-only, like cmux) show manual guidance and are never auto-run. Install
-commands are assembled solely from an allowlisted catalog, never from user input.
+via your platform's package manager — **Homebrew on macOS; the native manager
+(apt / dnf / pacman) on Linux**, with Linuxbrew used only as a fallback — but
+**only after an explicit `y/n` confirmation that shows the exact command it will
+run**. Tools with no package-manager path (or that are macOS-only, like cmux)
+show manual guidance and are never auto-run. Install commands are assembled
+solely from an allowlisted catalog, never from user input.
 
 The terminal multiplexer launcher (`M`) is **OS-aware: tmux on Linux, cmux on
 macOS** (falling back to tmux when cmux isn't installed). moonbase integrates

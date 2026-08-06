@@ -261,8 +261,9 @@ func DetectManager() (Manager, bool) {
 }
 
 // detectManager is the injectable core of DetectManager (testable across OSes).
-// macOS uses Homebrew. Linux tries Homebrew (Linuxbrew, no sudo) first, then the
-// common system managers in order.
+// macOS uses Homebrew. Linux prefers the native system package manager
+// (apt → dnf → pacman) and falls back to Homebrew (Linuxbrew) only when no
+// native manager is present.
 func detectManager(goos string, look func(string) (string, error)) (Manager, bool) {
 	brew := func() (Manager, bool) {
 		if bin, err := look("brew"); err == nil {
@@ -271,13 +272,13 @@ func detectManager(goos string, look func(string) (string, error)) (Manager, boo
 		return Manager{}, false
 	}
 
+	// macOS: Homebrew is the standard package manager.
 	if goos == "darwin" {
 		return brew()
 	}
 
-	if m, ok := brew(); ok { // Linuxbrew
-		return m, true
-	}
+	// Linux: prefer the native system package manager; only fall back to
+	// Homebrew (Linuxbrew) when none of them is installed.
 	if bin, err := look("apt-get"); err == nil {
 		return Manager{Name: "apt", Bin: bin, baseArgs: []string{"install", "-y"}, NeedsSudo: true}, true
 	}
@@ -286,6 +287,9 @@ func detectManager(goos string, look func(string) (string, error)) (Manager, boo
 	}
 	if bin, err := look("pacman"); err == nil {
 		return Manager{Name: "pacman", Bin: bin, baseArgs: []string{"-S", "--noconfirm"}, NeedsSudo: true}, true
+	}
+	if m, ok := brew(); ok { // Linuxbrew fallback
+		return m, true
 	}
 	return Manager{}, false
 }
