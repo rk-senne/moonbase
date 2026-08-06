@@ -66,6 +66,11 @@ func (a App) renderSettings() string {
 		}
 	}
 
+	// Detail line: why the focused tool is useful (only when a tool row is selected).
+	if row := sm.current(); row.Kind == rowTool && row.Tool.Why != "" {
+		b.WriteString("\n  " + curStyle.Render("💡 "+row.Tool.Display) + dimStyle.Render("  "+row.Tool.Why) + "\n")
+	}
+
 	// --- Confirmation / result / hint ---
 	b.WriteString("\n")
 	switch {

@@ -61,6 +61,13 @@ func (a App) renderTools() string {
 		}
 	}
 
+	// Detail: why the focused tool is useful.
+	if tm.Confirm == "" && tm.Cursor >= 0 && tm.Cursor < len(tm.Catalog) {
+		if ft := tm.Catalog[tm.Cursor]; ft.Why != "" {
+			b.WriteString("\n  " + lipgloss.NewStyle().Foreground(a.theme.Data.Active).Bold(true).Render("💡 "+ft.Display) + dimStyle.Render("  "+ft.Why) + "\n")
+		}
+	}
+
 	// Confirmation prompt (shows the exact command that will run).
 	b.WriteString("\n")
 	if tm.Confirm != "" {

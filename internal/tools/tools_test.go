@@ -30,6 +30,9 @@ func TestCatalog_Integrity(t *testing.T) {
 		if tool.ID == "" || tool.Display == "" || tool.Description == "" {
 			t.Errorf("tool %+v missing required display fields", tool)
 		}
+		if tool.Why == "" {
+			t.Errorf("tool %q missing Why (why it's useful)", tool.ID)
+		}
 		if seen[tool.ID] {
 			t.Errorf("duplicate tool ID %q", tool.ID)
 		}
@@ -345,4 +348,17 @@ func contains(s []string, v string) bool {
 		}
 	}
 	return false
+}
+
+// Every tool surfaced in the Settings dev catalog (runtimes + terminal tools)
+// must explain both what it is and why it's useful.
+func TestDevCatalog_AllHaveDescriptionAndWhy(t *testing.T) {
+	for _, tool := range DevCatalog() {
+		if tool.Description == "" {
+			t.Errorf("DevCatalog tool %q missing Description", tool.ID)
+		}
+		if tool.Why == "" {
+			t.Errorf("DevCatalog tool %q missing Why", tool.ID)
+		}
+	}
 }
