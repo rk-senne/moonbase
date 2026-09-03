@@ -10,12 +10,12 @@ import (
 // If configPath is non-empty, it is checked first (allows user override via config).
 // Resolution order:
 //
-//	0. Explicit config override (agents_dir in config.yaml)
-//	1. Relative to executable (development builds: bin/../agents, bin/agents)
-//	2. Global user install (~/.moonbase/agents — installed via `make install`)
-//	3. XDG config path (~/.config/moonbase/agents)
-//	4. CWD/agents (running from moonbase source checkout)
-//	5. Project-local .kiro/agents (per-project override)
+//  0. Explicit config override (agents_dir in config.yaml)
+//  1. Relative to executable (development builds: bin/../agents, bin/agents)
+//  2. Global user install (~/.moonbase/agents — installed via `make install`)
+//  3. XDG config path (~/.config/moonbase/agents)
+//  4. CWD/agents (running from moonbase source checkout)
+//  5. Project-local .kiro/agents (per-project override)
 //
 // Returns the resolved path or an error if no agents directory can be found.
 func FindAgentsDir(configPath string) (string, error) {
@@ -124,4 +124,3 @@ func FindAllAgentDirs(configPath string) (builtIn, user, project string, err err
 
 	return
 }
-

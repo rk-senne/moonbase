@@ -316,10 +316,10 @@ func TestExtractBinary(t *testing.T) {
 func TestUpdateResult_VersionComparison(t *testing.T) {
 	// Test the logic used in CheckForUpdate for version comparison
 	tests := []struct {
-		name         string
-		current      string
-		latest       string
-		wantNeeded   bool
+		name       string
+		current    string
+		latest     string
+		wantNeeded bool
 	}{
 		{name: "same version", current: "1.4.0", latest: "1.4.0", wantNeeded: false},
 		{name: "newer available", current: "1.3.0", latest: "1.4.0", wantNeeded: true},

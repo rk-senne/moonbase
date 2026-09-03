@@ -17,7 +17,7 @@ var historyCmd = &cobra.Command{
 	Use:     "history",
 	Aliases: []string{"h", "log"},
 	Short:   "Show past missions",
-	Long:  "List past mission executions with ID, date, task, outcome, and duration.\n\nExamples:\n  moonbase history\n  moonbase h                             (alias)\n  moonbase history --all\n  moonbase history --limit 5\n  moonbase history --json",
+	Long:    "List past mission executions with ID, date, task, outcome, and duration.\n\nExamples:\n  moonbase history\n  moonbase h                             (alias)\n  moonbase history --all\n  moonbase history --limit 5\n  moonbase history --json",
 	Run: func(cmd *cobra.Command, args []string) {
 		runHistory()
 	},

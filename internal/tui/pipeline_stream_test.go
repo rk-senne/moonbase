@@ -23,7 +23,7 @@ func TestPollPhaseStream_DoneBuildsPhaseResult(t *testing.T) {
 	close(ch)
 
 	start := time.Now().Add(-2 * time.Second) // pretend started 2s ago
-	cancel := func() {}                        // no-op cancel for test
+	cancel := func() {}                       // no-op cancel for test
 
 	cmd := pollPhaseStream(3, ch, start, cancel, buf, 0)
 	msg := cmd()

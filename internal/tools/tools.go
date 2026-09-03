@@ -2,7 +2,7 @@
 // moonbase can help install, plus package-manager-aware construction of the
 // install command for the host platform.
 //
-// SECURITY MODEL
+// # SECURITY MODEL
 //
 // The catalog is a fixed allowlist. Install commands are built ONLY from the
 // constant package names in the catalog and the detected system package manager
@@ -116,10 +116,10 @@ func Catalog() []Tool {
 			Brew: "starship", Pacman: "starship",
 			Manual: "1. Download: curl -sS https://starship.rs/install.sh -o install.sh\n2. Verify: shasum -a 256 install.sh (compare with https://starship.rs/install.sh.sha256)\n3. Run: sh install.sh"},
 		{ID: "oh-my-posh", Display: "oh-my-posh", Description: "Prompt theme engine for any shell.", Why: "Pick from rich, themeable prompts that work the same across shells and OSes.", Category: Cool,
-			Brew: "oh-my-posh",
+			Brew:   "oh-my-posh",
 			Manual: "1. Download: curl -s https://ohmyposh.dev/install.sh -o install.sh\n2. Verify: review the script or check SHA256 at https://ohmyposh.dev/docs/installation/linux\n3. Run: bash install.sh"},
 		{ID: "lazydocker", Display: "lazydocker", Description: "Terminal UI for Docker & docker-compose.", Why: "Inspect containers, logs, and images without long docker commands.", Category: Cool,
-			Brew: "lazydocker",
+			Brew:   "lazydocker",
 			Manual: "See https://github.com/jesseduffield/lazydocker#installation"},
 
 		// --- More cool & useful (great on macOS; cross-platform where noted) ---
@@ -283,7 +283,7 @@ func DevCatalog() []Tool {
 			Brew: "deno", Pacman: "deno",
 			Manual: "See https://docs.deno.com/runtime/manual/getting_started/installation"},
 		{ID: "bun", Display: "Bun", Description: "Fast all-in-one JavaScript runtime + package manager.", Why: "Install, bundle, test, and run JS extremely fast from one tool.", Category: Runtime,
-			Brew: "bun",
+			Brew:   "bun",
 			Manual: "See https://bun.sh/docs/installation"},
 		{ID: "java", Display: "OpenJDK", Description: "Java Development Kit (OpenJDK).", Why: "Run and build JVM projects (Java, Kotlin, Scala, Gradle/Maven).", Category: Runtime,
 			Brew: "openjdk", Apt: "default-jdk", Dnf: "java-latest-openjdk", Pacman: "jdk-openjdk"},

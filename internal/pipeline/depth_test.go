@@ -114,7 +114,7 @@ func TestClassifyTask(t *testing.T) {
 func TestClassifyTask_AmbiguityResolvesToSimple(t *testing.T) {
 	// Tasks with some complexity signal but short — should resolve to simple, not trivial
 	ambiguous := []string{
-		"add a test for the login flow",       // has "add" signal
+		"add a test for the login flow",        // has "add" signal
 		"create a helper function for parsing", // has "create" signal
 		"build the error handler for timeouts", // has "build" signal
 	}
@@ -360,9 +360,9 @@ func TestEscalate_AlreadyComplex(t *testing.T) {
 func TestEscalate_ReviewUnskipped(t *testing.T) {
 	// Any escalation should un-skip Phase 5 (Review)
 	tests := []struct {
-		name   string
-		from   Depth
-		to     Depth
+		name string
+		from Depth
+		to   Depth
 	}{
 		{"trivial to simple", DepthTrivial, DepthSimple},
 		{"trivial to complex", DepthTrivial, DepthComplex},
@@ -421,10 +421,10 @@ func TestEscalationTarget(t *testing.T) {
 
 func TestCountComplexitySignals(t *testing.T) {
 	tests := []struct {
-		name     string
-		task     string
-		wantMin  int
-		wantMax  int
+		name    string
+		task    string
+		wantMin int
+		wantMax int
 	}{
 		{"no signals", "fix typo in README", 0, 0},
 		{"one signal - add", "add a test", 1, 1},
@@ -445,9 +445,9 @@ func TestCountComplexitySignals(t *testing.T) {
 
 func TestCountFilePaths(t *testing.T) {
 	tests := []struct {
-		name  string
-		task  string
-		want  int
+		name string
+		task string
+		want int
 	}{
 		{"no paths", "fix the bug", 0},
 		{"one path", "update internal/pipeline/context.go", 1},

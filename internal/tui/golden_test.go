@@ -103,26 +103,26 @@ func newGoldenApp(t *testing.T) App {
 	}
 
 	app := App{
-		keys:          DefaultKeyMap(),
-		view:          ViewDashboard,
-		registry:      reg,
+		keys:     DefaultKeyMap(),
+		view:     ViewDashboard,
+		registry: reg,
 		views: ViewsModel{
 			Dashboard: DashboardModel{Cursor: 0, Selected: 0},
 			Mission:   MissionModel{History: []MissionEntry{{Name: "init scaffold", Status: "✅"}, {Name: "tui views", Status: "✅"}, {Name: "pipeline+deploy", Status: "✅"}}},
-			Browser:   BrowserModel{FileBrowser: nil, Active: false}, // avoid real FS reads, show terminal panel
+			Browser:   BrowserModel{FileBrowser: nil, Active: false},  // avoid real FS reads, show terminal panel
 			Terminal:  TerminalModel{Cwd: "/home/operative/moonbase"}, // fixed path for stable header
 		},
-		width:         100,
-		height:        30,
-		boot:          BootModel{Ready: true},
-		theme:         ThemeModel{Name: "moonbase", Data: moonbaseTheme, Styles: NewStyles(moonbaseTheme)},
+		width:  100,
+		height: 30,
+		boot:   BootModel{Ready: true},
+		theme:  ThemeModel{Name: "moonbase", Data: moonbaseTheme, Styles: NewStyles(moonbaseTheme)},
 		chrome: ChromeModel{
 			Clock:     "12:00:00",
 			StartTime: time.Now(),
 			Focus:     FocusSidebar,
 			Blink:     false,
 		},
-		intel:         []IntelEntry{},
+		intel: []IntelEntry{},
 		env: EnvModel{
 			Infra: InfraModel{
 				ToolCache:     toolCache,
@@ -153,11 +153,11 @@ func TestGolden_Pipeline(t *testing.T) {
 	// Build a deterministic pipeline state: phases 1-2 complete, 3 pending, rest pending.
 	// No running phase avoids spinner frame dependency.
 	ps := &pipeline.Pipeline{
-		Task:       "add pagination to /users API",
-		Active:     true,
-		MaxRework:  2,
-		TraceID:    "abc123def456",
-		Context:    pipeline.NewPipelineContext("add pagination to /users API"),
+		Task:      "add pagination to /users API",
+		Active:    true,
+		MaxRework: 2,
+		TraceID:   "abc123def456",
+		Context:   pipeline.NewPipelineContext("add pagination to /users API"),
 		Phases: []pipeline.Phase{
 			{Number: 1, Name: "Analysis", Operative: "Numbuh 1", AgentName: "numbuh-1", Status: pipeline.StatusComplete, StartedAt: time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC), CompletedAt: time.Date(2025, 1, 1, 12, 0, 3, 0, time.UTC)},
 			{Number: 2, Name: "Architecture", Operative: "Numbuh 2", AgentName: "numbuh-2", Status: pipeline.StatusComplete, StartedAt: time.Date(2025, 1, 1, 12, 0, 3, 0, time.UTC), CompletedAt: time.Date(2025, 1, 1, 12, 0, 5, 0, time.UTC)},

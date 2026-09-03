@@ -56,6 +56,9 @@ jobs:
       - name: Agent lint
         run: go run ./cmd/moonbase lint
 
+      - name: Formatting (gofmt)
+        run: ./scripts/check-gofmt.sh
+
       - name: File-size rule (ratchet)
         run: ./scripts/check-file-size.sh
 

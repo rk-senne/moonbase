@@ -18,8 +18,8 @@ type stubBackend struct {
 	err    error
 }
 
-func (s *stubBackend) Name() string      { return "stub" }
-func (s *stubBackend) Available() bool    { return true }
+func (s *stubBackend) Name() string    { return "stub" }
+func (s *stubBackend) Available() bool { return true }
 func (s *stubBackend) Deploy(_ agents.Agent, _ *discovery.ProjectContext, _ string) (string, error) {
 	return s.output, s.err
 }

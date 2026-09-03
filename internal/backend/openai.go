@@ -40,10 +40,10 @@ const openaiMaxErrorBody = 1 << 20
 
 // openaiRequest is the request body for POST /v1/chat/completions.
 type openaiRequest struct {
-	Model         string         `json:"model"`
+	Model         string          `json:"model"`
 	Messages      []openaiMessage `json:"messages"`
-	Stream        bool           `json:"stream"`
-	StreamOptions *streamOptions `json:"stream_options,omitempty"`
+	Stream        bool            `json:"stream"`
+	StreamOptions *streamOptions  `json:"stream_options,omitempty"`
 }
 
 type openaiMessage struct {

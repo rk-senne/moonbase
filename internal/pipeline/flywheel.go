@@ -32,7 +32,7 @@ type FlywheelEntry struct {
 	Phase         int       `json:"phase"`
 	Agent         string    `json:"agent"`
 	Task          string    `json:"task"`
-	Outcome       string    `json:"outcome"`      // "complete", "rework", "failed", "skipped", "budget_exceeded"
+	Outcome       string    `json:"outcome"` // "complete", "rework", "failed", "skipped", "budget_exceeded"
 	RiskLevel     string    `json:"risk_level,omitempty"`
 	DurationMs    int64     `json:"duration_ms"`
 	OutputSize    int       `json:"output_size"`
@@ -47,10 +47,10 @@ type FlywheelEntry struct {
 	// Parallel specialist fan-out correlation (added without schema version bump).
 	ParallelGroup string `json:"parallel_group,omitempty"` // Groups entries from same fan-out batch
 	// Adaptive pipeline depth observability (added without schema version bump per evolution contract).
-	Depth         string `json:"depth,omitempty"`           // Pipeline depth for this run
-	DepthReason   string `json:"depth_reason,omitempty"`    // Why this depth was selected
-	EscalatedFrom string `json:"escalated_from,omitempty"`  // Original depth before escalation
-	EscalatedTo   string `json:"escalated_to,omitempty"`    // New depth after escalation
+	Depth         string `json:"depth,omitempty"`          // Pipeline depth for this run
+	DepthReason   string `json:"depth_reason,omitempty"`   // Why this depth was selected
+	EscalatedFrom string `json:"escalated_from,omitempty"` // Original depth before escalation
+	EscalatedTo   string `json:"escalated_to,omitempty"`   // New depth after escalation
 }
 
 // FlywheelLog manages append-only JSONL logging for flywheel analysis.

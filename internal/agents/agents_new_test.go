@@ -178,8 +178,8 @@ func TestAgent_HasPostToolHooks_WithHooks(t *testing.T) {
 func TestAgent_HasPostToolHooks_OnlyOtherHooks(t *testing.T) {
 	a := &Agent{
 		Hooks: &HooksConfig{
-			OnActivate:  []Hook{{Command: "setup.sh"}},
-			PreToolUse:  []Hook{{Command: "validate.sh"}},
+			OnActivate: []Hook{{Command: "setup.sh"}},
+			PreToolUse: []Hook{{Command: "validate.sh"}},
 			// No PostToolUse
 		},
 	}

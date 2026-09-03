@@ -3202,7 +3202,7 @@ func TestNewApp_WithHistoryData(t *testing.T) {
 	// exercise: the "cap at 5" limit, and all three status mappings
 	// (complete -> ✅, aborted -> ❌, in-progress -> 🔄).
 	saved := []history.Mission{
-		{Task: "oldest complete", Outcome: "complete"},     // dropped by the 5-cap
+		{Task: "oldest complete", Outcome: "complete"}, // dropped by the 5-cap
 		{Task: "task complete", Outcome: "complete"},
 		{Task: "task aborted", Outcome: "aborted"},
 		{Task: "task in progress", Outcome: "in-progress"},

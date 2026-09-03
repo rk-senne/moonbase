@@ -183,8 +183,6 @@ func isTerminal() bool {
 	return fi.Mode()&os.ModeCharDevice != 0
 }
 
-
-
 // agentsDir locates the agents directory using the shared resolver.
 // Exits with an error if no agents directory can be found.
 func agentsDir() string {

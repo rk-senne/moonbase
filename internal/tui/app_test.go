@@ -408,9 +408,10 @@ func TestApp_CursorBoundsCheck(t *testing.T) {
 // 13 top-level fields.
 //
 // The views aggregate (ViewsModel) groups all per-view / panel / overlay state:
-//   DashboardModel, PipelineModel, TerminalModel, BrowserModel, CommsModel,
-//   MissionModel, SearchModel, SnippetPickerModel, ContextFileModel, DocsState,
-//   ProjectsState.
+//
+//	DashboardModel, PipelineModel, TerminalModel, BrowserModel, CommsModel,
+//	MissionModel, SearchModel, SnippetPickerModel, ContextFileModel, DocsState,
+//	ProjectsState.
 //
 // To LOWER this bound: extract another cohesive sub-model and decrement maxFields.
 // Never RAISE it to accommodate a new loose field — extract a sub-model instead.

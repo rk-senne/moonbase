@@ -38,12 +38,12 @@ func Test_renderMarkdown(t *testing.T) {
 func Test_renderMarkdown_Fallback(t *testing.T) {
 	// Edge cases that shouldn't crash
 	edgeCases := []string{
-		strings.Repeat("x", 10000),            // very long string
-		"\x00\x01\x02",                         // control characters
-		"```\nunclosed code block",             // unclosed code block
-		"# " + strings.Repeat("a", 1000),      // very long heading
-		"\n\n\n\n\n",                           // only newlines
-		"<!--comment-->",                       // HTML comment
+		strings.Repeat("x", 10000),       // very long string
+		"\x00\x01\x02",                   // control characters
+		"```\nunclosed code block",       // unclosed code block
+		"# " + strings.Repeat("a", 1000), // very long heading
+		"\n\n\n\n\n",                     // only newlines
+		"<!--comment-->",                 // HTML comment
 	}
 
 	for i, input := range edgeCases {

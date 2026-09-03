@@ -41,7 +41,19 @@ type Checkpoint struct {
 // SaveCheckpoint serializes the pipeline state to a JSON file.
 // Files are stored in dir/{traceID}.json with 0600 permissions.
 // Uses write-to-temp-then-rename for crash safety.
+//
+// Returns an error rather than panicking on an incomplete pipeline: checkpointing
+// runs on failure paths (a blown token budget, an aborted phase), and a nil
+// dereference there would turn a graceful stop into a crash that also loses the
+// checkpoint it was trying to write.
 func SaveCheckpoint(p *Pipeline, dir string) error {
+	if p == nil {
+		return fmt.Errorf("saving checkpoint: nil pipeline")
+	}
+	if p.Context == nil {
+		return fmt.Errorf("saving checkpoint for trace %s: pipeline has no context", p.TraceID)
+	}
+
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return fmt.Errorf("creating checkpoint directory: %w", err)
 	}
@@ -52,15 +64,15 @@ func SaveCheckpoint(p *Pipeline, dir string) error {
 	}
 
 	cp := Checkpoint{
-		SchemaVersion:  currentCheckpointVersion,
-		TraceID:        p.TraceID,
-		Task:           p.Task,
-		Current:        p.Current,
-		PhaseStatuses:  statuses,
-		PhaseOutputs:   p.Context.PhaseOutputs,
-		ReworkCount:    p.Context.ReworkCount,
-		RiskLevel:      p.Context.RiskLevel,
-		CreatedAt:      time.Now().UTC(),
+		SchemaVersion: currentCheckpointVersion,
+		TraceID:       p.TraceID,
+		Task:          p.Task,
+		Current:       p.Current,
+		PhaseStatuses: statuses,
+		PhaseOutputs:  p.Context.PhaseOutputs,
+		ReworkCount:   p.Context.ReworkCount,
+		RiskLevel:     p.Context.RiskLevel,
+		CreatedAt:     time.Now().UTC(),
 	}
 
 	data, err := json.MarshalIndent(cp, "", "  ")

@@ -4,8 +4,7 @@
 428 cmd/moonbase/flywheel_cmd.go
 340 cmd/moonbase/guide.go
 385 cmd/moonbase/init.go
-461 cmd/moonbase/main.go
-796 cmd/moonbase/mission.go
+459 cmd/moonbase/main.go
 312 internal/agents/registry.go
 328 internal/backend/backends.go
 477 internal/discovery/discovery.go

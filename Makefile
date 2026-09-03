@@ -7,7 +7,7 @@ COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
 DATE := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 LDFLAGS := -ldflags "-X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(DATE)"
 
-.PHONY: run build test clean install setup release lint coverage hooks metrics
+.PHONY: run build test clean install setup release lint coverage hooks metrics fmt
 
 run:
 	go run $(MAIN)
@@ -21,8 +21,13 @@ test:
 lint:
 	go vet ./...
 	go run ./cmd/moonbase lint
+	./scripts/check-gofmt.sh
 	./scripts/check-file-size.sh
 	./scripts/update-readme-metrics.sh --check
+
+# Format all Go files.
+fmt:
+	./scripts/check-gofmt.sh --fix
 
 # Regenerate the README metrics table from the codebase.
 metrics:

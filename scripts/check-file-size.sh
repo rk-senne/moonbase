@@ -31,10 +31,14 @@ cd "${repo_root}"
 
 baseline_file="scripts/file-size-baseline.txt"
 
-# List tracked Go production files (tests excluded — table-driven test files are
+# List Go production files (tests excluded — table-driven test files are
 # legitimately long and are not what the rule targets).
+#
+# Includes untracked-but-not-ignored files (--others --exclude-standard): a
+# newly written oversized file must be caught before it is committed, not after.
 list_files() {
-  git ls-files '*.go' | grep -v '_test\.go$' | sort
+  git ls-files --cached --others --exclude-standard '*.go' \
+    | grep -v '_test\.go$' | sort -u
 }
 
 # measure prints "lines path" for every production Go file over MAX_LINES.

@@ -19,19 +19,19 @@ type KeyMap struct {
 	SkipPhase  key.Binding
 
 	// Views
-	Help         key.Binding
-	Protocol     key.Binding
-	CycleTheme   key.Binding
-	OpenComms    key.Binding
-	Search       key.Binding
-	History      key.Binding
-	Docs         key.Binding
-	Projects     key.Binding
-	CopyPrompt   key.Binding
-	SpawnHook    key.Binding
-	JumpToAgent  key.Binding
-	Tools        key.Binding
-	Settings     key.Binding
+	Help        key.Binding
+	Protocol    key.Binding
+	CycleTheme  key.Binding
+	OpenComms   key.Binding
+	Search      key.Binding
+	History     key.Binding
+	Docs        key.Binding
+	Projects    key.Binding
+	CopyPrompt  key.Binding
+	SpawnHook   key.Binding
+	JumpToAgent key.Binding
+	Tools       key.Binding
+	Settings    key.Binding
 
 	// Tools
 	LaunchLazygit key.Binding

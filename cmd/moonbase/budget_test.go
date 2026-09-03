@@ -23,8 +23,8 @@ func TestEffectivePricing_MergesDefaults(t *testing.T) {
 func TestEffectivePricing_UserOverrideTakesPrecedence(t *testing.T) {
 	cfg := config.Config{
 		ModelPricing: map[string]pipeline.ModelPrice{
-			"gpt-4o": {PromptPer1M: 5.00, CompletionPer1M: 20.00}, // Override
-			"custom-model": {PromptPer1M: 1.00, CompletionPer1M: 3.00}, // New model
+			"gpt-4o":       {PromptPer1M: 5.00, CompletionPer1M: 20.00}, // Override
+			"custom-model": {PromptPer1M: 1.00, CompletionPer1M: 3.00},  // New model
 		},
 	}
 	pricing := effectivePricing(cfg)

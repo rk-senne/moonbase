@@ -15,8 +15,8 @@ var replayCmd = &cobra.Command{
 	Use:     "replay <mission-id>",
 	Aliases: []string{"re"},
 	Short:   "Re-run a past mission",
-	Long:  "Load a mission from history and re-execute it with the original task string.\n\nExamples:\n  moonbase replay 3\n  moonbase replay 3 --dry-run\n  moonbase re 3                          (alias)",
-	Args:  cobra.ExactArgs(1),
+	Long:    "Load a mission from history and re-execute it with the original task string.\n\nExamples:\n  moonbase replay 3\n  moonbase replay 3 --dry-run\n  moonbase re 3                          (alias)",
+	Args:    cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		runReplay(args[0])
 	},

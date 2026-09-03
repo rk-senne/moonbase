@@ -47,12 +47,12 @@ func TestHelpView_ContainsEveryBinding(t *testing.T) {
 
 func TestFooterShowsOnlyActiveViewKeys(t *testing.T) {
 	tests := []struct {
-		name       string
-		view       View
-		searching  bool
-		termActive bool
-		browsing   bool
-		mustHave   []key.Binding
+		name        string
+		view        View
+		searching   bool
+		termActive  bool
+		browsing    bool
+		mustHave    []key.Binding
 		mustNotHave []key.Binding
 	}{
 		{
@@ -70,24 +70,24 @@ func TestFooterShowsOnlyActiveViewKeys(t *testing.T) {
 			},
 		},
 		{
-			name:       "dashboard searching",
-			view:       ViewDashboard,
-			searching:  true,
-			mustHave:   []key.Binding{DefaultKeyMap().SearchConfirm, DefaultKeyMap().SearchCancel},
+			name:        "dashboard searching",
+			view:        ViewDashboard,
+			searching:   true,
+			mustHave:    []key.Binding{DefaultKeyMap().SearchConfirm, DefaultKeyMap().SearchCancel},
 			mustNotHave: []key.Binding{DefaultKeyMap().NewMission, DefaultKeyMap().Quit, DefaultKeyMap().Help},
 		},
 		{
-			name:       "dashboard terminal",
-			view:       ViewDashboard,
-			termActive: true,
-			mustHave:   []key.Binding{DefaultKeyMap().TerminalSubmit, DefaultKeyMap().TerminalToBrowser, DefaultKeyMap().TerminalEsc},
+			name:        "dashboard terminal",
+			view:        ViewDashboard,
+			termActive:  true,
+			mustHave:    []key.Binding{DefaultKeyMap().TerminalSubmit, DefaultKeyMap().TerminalToBrowser, DefaultKeyMap().TerminalEsc},
 			mustNotHave: []key.Binding{DefaultKeyMap().NewMission, DefaultKeyMap().SendMessage},
 		},
 		{
-			name:     "dashboard browsing",
-			view:     ViewDashboard,
-			browsing: true,
-			mustHave: []key.Binding{DefaultKeyMap().BrowserUp, DefaultKeyMap().BrowserDown, DefaultKeyMap().BrowserEnter},
+			name:        "dashboard browsing",
+			view:        ViewDashboard,
+			browsing:    true,
+			mustHave:    []key.Binding{DefaultKeyMap().BrowserUp, DefaultKeyMap().BrowserDown, DefaultKeyMap().BrowserEnter},
 			mustNotHave: []key.Binding{DefaultKeyMap().NewMission, DefaultKeyMap().SendMessage, DefaultKeyMap().NextPhase},
 		},
 		{
@@ -106,21 +106,21 @@ func TestFooterShowsOnlyActiveViewKeys(t *testing.T) {
 			},
 		},
 		{
-			name:    "comms view",
-			view:    ViewComms,
-			mustHave: []key.Binding{DefaultKeyMap().SendMessage, DefaultKeyMap().AttachFile, DefaultKeyMap().Back},
+			name:        "comms view",
+			view:        ViewComms,
+			mustHave:    []key.Binding{DefaultKeyMap().SendMessage, DefaultKeyMap().AttachFile, DefaultKeyMap().Back},
 			mustNotHave: []key.Binding{DefaultKeyMap().NewMission, DefaultKeyMap().NextPhase, DefaultKeyMap().LaunchLazygit},
 		},
 		{
-			name:    "help view",
-			view:    ViewHelp,
-			mustHave: []key.Binding{DefaultKeyMap().Back},
+			name:        "help view",
+			view:        ViewHelp,
+			mustHave:    []key.Binding{DefaultKeyMap().Back},
 			mustNotHave: []key.Binding{DefaultKeyMap().NewMission, DefaultKeyMap().SendMessage, DefaultKeyMap().NextPhase},
 		},
 		{
-			name:    "dossier view",
-			view:    ViewDossier,
-			mustHave: []key.Binding{DefaultKeyMap().Enter, DefaultKeyMap().CopyPrompt, DefaultKeyMap().Back},
+			name:        "dossier view",
+			view:        ViewDossier,
+			mustHave:    []key.Binding{DefaultKeyMap().Enter, DefaultKeyMap().CopyPrompt, DefaultKeyMap().Back},
 			mustNotHave: []key.Binding{DefaultKeyMap().SendMessage, DefaultKeyMap().NextPhase, DefaultKeyMap().LaunchLazygit},
 		},
 	}

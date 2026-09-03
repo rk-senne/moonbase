@@ -5,34 +5,34 @@ package agents
 
 // MCPServerConfig defines an MCP server available to the agent.
 type MCPServerConfig struct {
-	Name         string            `yaml:"name"`                          // Unique server name (required)
-	Command      string            `yaml:"command"`                       // Command to launch the MCP server (required)
-	Args         []string          `yaml:"args,omitempty"`                // Arguments for the command
-	Env          map[string]string `yaml:"env,omitempty"`                 // Environment variables for the server process
-	AllowedTools []string          `yaml:"allowed_tools,omitempty"`       // Scoped tool filtering for this server
+	Name         string            `yaml:"name"`                    // Unique server name (required)
+	Command      string            `yaml:"command"`                 // Command to launch the MCP server (required)
+	Args         []string          `yaml:"args,omitempty"`          // Arguments for the command
+	Env          map[string]string `yaml:"env,omitempty"`           // Environment variables for the server process
+	AllowedTools []string          `yaml:"allowed_tools,omitempty"` // Scoped tool filtering for this server
 }
 
 // Agent represents a KND operative loaded from a .md file with YAML frontmatter.
 type Agent struct {
 	// --- Frontmatter fields (parsed from YAML) ---
 
-	Name             string         `yaml:"name"`               // Unique identifier (e.g., "numbuh-4")
-	Designation      string         `yaml:"designation"`        // Character name (e.g., "Wallabee Beatles")
-	Role             string         `yaml:"role"`               // Functional role (e.g., "QA / Verification")
-	Description      string         `yaml:"description"`        // Brief description for display
-	Tools            []string       `yaml:"tools"`              // Allowed tools (read, shell, grep, etc.)
-	AutoTools        []string       `yaml:"auto_tools"`         // Tools that auto-approve without confirmation
-	Shell            *ShellConfig   `yaml:"shell,omitempty"`    // Shell command permissions
-	Write            *WriteConfig   `yaml:"write,omitempty"`    // File write permissions
-	Routing          *RoutingConfig `yaml:"routing,omitempty"`  // Which agents this operative can hand off to
-	Hooks            *HooksConfig      `yaml:"hooks,omitempty"`         // Lifecycle hook commands
-	Guardrails       *GuardrailsConfig `yaml:"guardrails,omitempty"`    // Runtime guardrails
-	Handoff          *HandoffConfig    `yaml:"handoff,omitempty"`       // Handoff format between agents
-	OutputSchema     string            `yaml:"output_schema,omitempty"` // Expected output format hint (e.g. 'json', 'markdown', 'structured')
+	Name             string            `yaml:"name"`                        // Unique identifier (e.g., "numbuh-4")
+	Designation      string            `yaml:"designation"`                 // Character name (e.g., "Wallabee Beatles")
+	Role             string            `yaml:"role"`                        // Functional role (e.g., "QA / Verification")
+	Description      string            `yaml:"description"`                 // Brief description for display
+	Tools            []string          `yaml:"tools"`                       // Allowed tools (read, shell, grep, etc.)
+	AutoTools        []string          `yaml:"auto_tools"`                  // Tools that auto-approve without confirmation
+	Shell            *ShellConfig      `yaml:"shell,omitempty"`             // Shell command permissions
+	Write            *WriteConfig      `yaml:"write,omitempty"`             // File write permissions
+	Routing          *RoutingConfig    `yaml:"routing,omitempty"`           // Which agents this operative can hand off to
+	Hooks            *HooksConfig      `yaml:"hooks,omitempty"`             // Lifecycle hook commands
+	Guardrails       *GuardrailsConfig `yaml:"guardrails,omitempty"`        // Runtime guardrails
+	Handoff          *HandoffConfig    `yaml:"handoff,omitempty"`           // Handoff format between agents
+	OutputSchema     string            `yaml:"output_schema,omitempty"`     // Expected output format hint (e.g. 'json', 'markdown', 'structured')
 	PipelinePosition *int              `yaml:"pipeline_position,omitempty"` // Position in core pipeline (nil = not a pipeline agent)
 	MCPServers       []MCPServerConfig `yaml:"mcp_servers,omitempty"`       // MCP servers available to this agent
-	Shortcut         string         `yaml:"shortcut"`           // Keyboard shortcut in TUI
-	Triggers         *string        `yaml:"triggers,omitempty"` // Trigger conditions for conditional specialists
+	Shortcut         string            `yaml:"shortcut"`                    // Keyboard shortcut in TUI
+	Triggers         *string           `yaml:"triggers,omitempty"`          // Trigger conditions for conditional specialists
 
 	// --- Derived fields (not from YAML) ---
 

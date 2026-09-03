@@ -19,8 +19,8 @@ var deployCmd = &cobra.Command{
 	Use:     "deploy [numbuh] [task...]",
 	Aliases: []string{"d", "run"},
 	Short:   "Deploy operative by numbuh",
-	Long:  "Deploy a KND operative to an interactive AI session.\nIf no numbuh is provided, an interactive picker is shown.\n\nExamples:\n  moonbase deploy 4\n  moonbase deploy 1 \"analyze the user auth flow\"\n  moonbase d 3                          (alias)\n  moonbase deploy -t \"check security\" 274\n  moonbase deploy                       (interactive picker)",
-	Args:  cobra.ArbitraryArgs,
+	Long:    "Deploy a KND operative to an interactive AI session.\nIf no numbuh is provided, an interactive picker is shown.\n\nExamples:\n  moonbase deploy 4\n  moonbase deploy 1 \"analyze the user auth flow\"\n  moonbase d 3                          (alias)\n  moonbase deploy -t \"check security\" 274\n  moonbase deploy                       (interactive picker)",
+	Args:    cobra.ArbitraryArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
 			// Interactive picker when no args provided

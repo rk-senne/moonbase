@@ -279,4 +279,3 @@ func (w *Watcher) Stop() {
 	w.running = false
 	w.w.Close()
 }
-

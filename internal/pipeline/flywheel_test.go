@@ -94,36 +94,36 @@ func TestFlywheelLog_AppendAndRead(t *testing.T) {
 
 	// Verify each entry deserialized correctly
 	tests := []struct {
-		name       string
-		wantPhase  int
-		wantAgent  string
+		name        string
+		wantPhase   int
+		wantAgent   string
 		wantOutcome string
-		wantRisk   string
-		wantTask   string
+		wantRisk    string
+		wantTask    string
 	}{
 		{
-			name:       "entry 1 - complete",
-			wantPhase:  1,
-			wantAgent:  "numbuh-1",
+			name:        "entry 1 - complete",
+			wantPhase:   1,
+			wantAgent:   "numbuh-1",
 			wantOutcome: "complete",
-			wantRisk:   "",
-			wantTask:   "add pagination",
+			wantRisk:    "",
+			wantTask:    "add pagination",
 		},
 		{
-			name:       "entry 2 - rework",
-			wantPhase:  3,
-			wantAgent:  "numbuh-3",
+			name:        "entry 2 - rework",
+			wantPhase:   3,
+			wantAgent:   "numbuh-3",
 			wantOutcome: "rework",
-			wantRisk:   "MEDIUM",
-			wantTask:   "add pagination",
+			wantRisk:    "MEDIUM",
+			wantTask:    "add pagination",
 		},
 		{
-			name:       "entry 3 - failed",
-			wantPhase:  4,
-			wantAgent:  "numbuh-4",
+			name:        "entry 3 - failed",
+			wantPhase:   4,
+			wantAgent:   "numbuh-4",
 			wantOutcome: "failed",
-			wantRisk:   "CRITICAL",
-			wantTask:   "fix auth bypass",
+			wantRisk:    "CRITICAL",
+			wantTask:    "fix auth bypass",
 		},
 	}
 

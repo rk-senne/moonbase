@@ -281,11 +281,11 @@ func displayTokenCostInsights(entries []pipeline.FlywheelEntry) {
 
 	// Per-agent breakdown
 	type agentStats struct {
-		name             string
-		totalPrompt      int
-		totalCompletion  int
-		totalCost        float64
-		count            int
+		name            string
+		totalPrompt     int
+		totalCompletion int
+		totalCost       float64
+		count           int
 	}
 	agentMap := make(map[string]*agentStats)
 	for _, e := range withTokens {
@@ -321,9 +321,9 @@ func displayTokenCostInsights(entries []pipeline.FlywheelEntry) {
 
 	// Per-mission breakdown (grouped by trace_id)
 	type missionStats struct {
-		traceID    string
-		tokens     int
-		cost       float64
+		traceID string
+		tokens  int
+		cost    float64
 	}
 	missionMap := make(map[string]*missionStats)
 	for _, e := range withTokens {

@@ -165,7 +165,7 @@ func (a App) renderSidebar(width int, maxH int) string {
 	}
 
 	// Reserve lines for tools + backend sections (shown when space permits).
-	toolsLines := 3 + 7  // header + separator + 7 tools
+	toolsLines := 3 + 7                              // header + separator + 7 tools
 	backendLines := 3 + len(a.env.Backend.Available) // header + separator + backends
 	extraLines := 2 + toolsLines + 1 + backendLines  // blanks + tools + blank + backend
 

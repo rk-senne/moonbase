@@ -174,10 +174,10 @@ func TestDisplayTokenCostInsights_WithData(t *testing.T) {
 		},
 		// Entry without tokens — should be excluded from averages
 		{
-			TraceID:  "trace-2",
-			Phase:    4,
-			Agent:    "numbuh-4",
-			Outcome:  "complete",
+			TraceID: "trace-2",
+			Phase:   4,
+			Agent:   "numbuh-4",
+			Outcome: "complete",
 		},
 	}
 

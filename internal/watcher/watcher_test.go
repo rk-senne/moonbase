@@ -624,7 +624,7 @@ func TestWatcher_AddRecursive_UnreadableDir(t *testing.T) {
 	// Create a subdir with no read permission
 	noReadDir := filepath.Join(tmpDir, "noperm")
 	os.MkdirAll(filepath.Join(noReadDir, "inner"), 0o755)
-	os.Chmod(noReadDir, 0o000) // remove all permissions
+	os.Chmod(noReadDir, 0o000)       // remove all permissions
 	defer os.Chmod(noReadDir, 0o755) // restore for cleanup
 
 	w.rootDir = tmpDir

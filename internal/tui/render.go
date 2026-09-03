@@ -11,8 +11,8 @@ import (
 // pipeline view previously created a fresh renderer AND re-rendered every agent
 // message on every frame (each spinner/anim/clock tick and stream chunk). That
 // was the dominant source of TUI lag. We now:
-//   1. reuse one glamour renderer per wrap width, and
-//   2. memoize rendered output keyed by (width, content).
+//  1. reuse one glamour renderer per wrap width, and
+//  2. memoize rendered output keyed by (width, content).
 //
 // Completed chat messages are immutable, so their render is computed once and
 // reused for the life of the process. Only the single in-flight streaming

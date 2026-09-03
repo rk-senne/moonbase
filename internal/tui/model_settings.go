@@ -14,9 +14,9 @@ const settingsActionReboot = 0
 type settingsRowKind int
 
 const (
-	rowReboot settingsRowKind = iota // the moonbase reboot/update action
-	rowInstallAll                    // an "install all" action for one OS section
-	rowTool                          // a single dev tool within an OS section
+	rowReboot     settingsRowKind = iota // the moonbase reboot/update action
+	rowInstallAll                        // an "install all" action for one OS section
+	rowTool                              // a single dev tool within an OS section
 )
 
 // settingsRow is one line in the Settings view. OS is "" for the reboot action

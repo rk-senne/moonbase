@@ -469,10 +469,10 @@ git tag v1.4.0 && git push --tags
 
 | Metric | Value |
 |--------|-------|
-| Test functions | 1559 |
-| Test LOC / production LOC | 34526 / 21235 |
+| Test functions | 1579 |
+| Test LOC / production LOC | 34950 / 21357 |
 | Packages tested | 24/24 |
-| Go LOC (production) | ~21235 |
+| Go LOC (production) | ~21357 |
 | Dependencies | 9 direct, 43 indirect |
 | Agents | 14 |
 | Curated skills | 16 |

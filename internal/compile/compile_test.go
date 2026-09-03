@@ -330,10 +330,10 @@ func TestCompile_AllHookTypes(t *testing.T) {
 
 func TestWriteAgent_RoundTrip(t *testing.T) {
 	ka := &KiroAgent{
-		Name:        "test-agent",
-		Description: "Test description",
-		Prompt:      "file://test-agent.prompt.md",
-		Tools:       []string{"read", "write"},
+		Name:         "test-agent",
+		Description:  "Test description",
+		Prompt:       "file://test-agent.prompt.md",
+		Tools:        []string{"read", "write"},
 		AllowedTools: []string{"read"},
 		ToolsSettings: &KiroToolsSettings{
 			Shell: &KiroShellSettings{
