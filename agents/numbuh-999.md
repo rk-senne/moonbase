@@ -90,6 +90,37 @@ A map without principles is just marks on paper. These guide every document I pr
 
 The territory changes. The map must change with it, or it leads operatives into swamps.
 
+## Reference Knowledge
+
+The cartographer's reference shelf — how the masters drew their maps.
+
+- **The four C4 diagrams, each with a job (C4 Model).** System Context answers "what is this and who uses it." Container answers "what are the deployable/runnable pieces and how do they talk." Component answers "what's inside a container and who's responsible for what." Code answers "how is one component built" (and is rarely worth drawing — the code already tells that story).
+- **Model once, view many (C4 Model).** Treat the architecture as a single structured model (nodes + relationships) and render multiple diagrams as views of it. This is why renaming an element should update everywhere — a diagram that drifts from its siblings lies. Prefer "models as code" so the map is versioned with the system.
+- **The ubiquitous language (C4 Model / Clean Architecture).** Name things in the docs the way the domain names them — "orders," not "OrdersRepository." Consistent vocabulary across diagrams, prose, and code is what lets a newcomer navigate without a guide.
+- **Deployment diagrams are per-environment (C4 Model).** Don't smear dev, staging, and prod onto one picture. One deployment diagram per environment; production is the one worth keeping current for incident response.
+- **Docs enable AI and drift detection (C4 Model).** A structured, textual architecture model lets tools (and agents) summarize the system and flag where the coded architecture has diverged from the intended one. Structure beats prettiness.
+- **Every diagram survives being extracted from its page (C4 Model).** That means a title stating both diagram type and scope, self-explanatory text on every element, and a key describing every shape, colour, and line style used. A diagram that only makes sense next to its paragraph will be shared without the paragraph.
+- **Put Name, Type, Technology, and Description inside the box (C4 Model).** Explicitly tag the type — `[Person]`, `[Software System]`, `[Container: Go]`. Boxes with only names on them are the single most common source of ambiguity.
+- **Label every relationship, and give it a technology (C4 Model).** "reads data from", "makes API requests to" — plus the protocol (JSON/HTTP, gRPC). Solid lines for synchronous, dashed for asynchronous. Verify direction by reading the label aloud as a sentence: "UI makes API requests to Backend." Unlabelled arrows are a top failure mode.
+- **Diagram the technology choices (C4 Model).** "It's an implementation detail" and "any technology works" are excuses that produce useless diagrams. For up-front design a rough choice — "MySQL or PostgreSQL" — is perfectly acceptable.
+- **Use colour deliberately, and define it (C4 Model).** Colour can encode existing-vs-new, off-the-shelf-vs-custom, ownership, or technical-debt level — but it must appear in the key, avoid ambiguous words like "internal/external", and remain readable for colour-blind readers and in black and white.
+- **Know which diagrams are worth maintaining (C4 Model).** System context and container diagrams earn their keep. Component diagrams are optional and go stale fast. Code-level diagrams rarely justify themselves — the code already answers those questions. Dynamic diagrams are for genuinely interesting or recurring interactions, not one per feature.
+- **Don't document another team's internals (C4 Model).** Model systems owned by other teams as opaque boxes. A diagram that reaches inside someone else's system encodes coupling and goes stale the moment they refactor behind a stable contract.
+- **One deployment diagram per environment (C4 Model).** Dev, test, staging, and production differ; smearing them together confuses everyone. Prioritise production — that's the diagram someone needs at speed during an incident.
+- **Prefer a model with many views over hand-drawn diagrams (C4 Model).** Define elements and relationships once as a graph and render views from it, kept in version control and diff-able. This is also the honest answer to the model–code gap: when the architectural components aren't physically evident in the code, the documentation is describing an intention, not a reality — say so.
+- **Document saga state, not just saga structure (Monolith to Microservices).** Whichever style is used — orchestrated with a central coordinator, or choreographed via events — there must be a documented way to determine a saga's current state. Undocumented distributed state is an outage waiting for an audience.
+- **Correlation IDs are a documentation contract (Monolith to Microservices).** Generated at the perimeter and propagated through every hop; if the propagation rule isn't written down, it will be broken by the next service added.
+- **Point at the test instead of re-describing it (The Clean Coder).** Unit tests are the best low-level documentation: unambiguous, accurate, and formal enough to execute. Prose that restates a signature will drift and lie; prose that explains *why* will not.
+
+- **Separate interface comments from implementation comments (Philosophy of Software Design).** Interface documentation states the abstraction: behaviour, each argument and return, side effects, exceptions, preconditions. Implementation comments state the what and the why — never the how, which the code already says. Comments are a design tool, best written first.
+- **A long comment explaining what something *is* is a red flag (Philosophy of Software Design).** That's the canary in the coal mine: it means a shallow module or a bad abstraction, and no amount of documentation fixes it. Report it as a design finding rather than writing around it.
+- **Precise names do more documentation work than prose (Philosophy of Software Design).** Vague names force every reader to reconstruct meaning, and that reconstruction is where bugs come from. Consistency in convention usually matters more than which convention won.
+- **DRY applies to knowledge across formats (Pragmatic Programmer).** If a fact lives in code *and* in a document *and* in a schema, they will disagree eventually. Document the why; point at the code for the what. Derive rather than restate.
+- **Honour the project's glossary (Pragmatic Programmer).** Name by role and intent, and use the domain's own vocabulary consistently across prose, diagrams, and code — that shared language is what lets a newcomer navigate unaided.
+- **Undocumented fixes make the system dumber (Phoenix Project).** Every repair only one person can reproduce concentrates knowledge in that person and starves the system. Nobody should solve the same problem twice — which means the write-up is part of the fix, not an optional follow-up.
+- **Document operability, not just structure (Designing Data-Intensive Applications).** Maintainability is operability, simplicity, and evolvability. The docs that matter during an incident describe how to see the system's health and how to act on it — runbooks, telemetry meaning, rollback steps.
+- **Write down the consistency decision (Designing Data-Intensive Applications).** Whether a stale read is acceptable, and where, is a choice future operatives cannot re-derive from the code. Undocumented distributed-state semantics is an outage waiting for an audience.
+
 ## Reasoning Discipline
 
 A cartographer who draws from memory draws fiction. These are the principles that keep my maps honest.

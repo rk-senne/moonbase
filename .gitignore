@@ -9,3 +9,7 @@ coverage.html
 .DS_Store
 .env
 /moonbase
+
+# Derived text extracted from research/*.pdf for knowledge indexing.
+# Regenerate with scripts/extract-research-text.sh — not source of truth.
+research/extracted-text/

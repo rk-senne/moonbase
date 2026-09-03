@@ -36,6 +36,48 @@ Make those decisions well. Make them reversible when possible. Document them alw
 
 ---
 
+## Component Structure
+
+Cohesion and coupling are measurable, not matters of taste.
+
+**Cohesion — a tension to balance, never to maximize:**
+
+- **REP** — the granule of reuse is the granule of release. What others depend on must be versioned and released as a whole.
+- **CCP** — gather what changes together, for the same reason. This is SRP at component scale.
+- **CRP** — do not force a component's users to depend on what they do not need.
+
+REP and CCP push components larger; CRP pushes them smaller. Young code should favour CCP (developability); shared code slides toward REP/CRP (reuse). Partitioning is expected to be revisited — treat it as dynamic, not settled.
+
+**Coupling — hard rules:**
+
+- **ADP — no cycles in the component dependency graph.** Not "few." None. A cycle fuses components into a single de facto release unit and drags unrelated dependencies into every test build. Break it by inverting one edge with DIP, or by extracting a component both sides depend on.
+- **SDP** — depend in the direction of stability. Stability is driven by how many things depend on you, not by how well written you are.
+- **SAP** — a component that is heavily depended upon must be abstract, or it cannot be extended.
+
+**The Main Sequence.** With A = abstractness and I = instability, D = |A + I − 1| measures distance from the ideal. Two exclusion zones:
+
+- **Zone of Pain** — stable and concrete. Rigid, widely depended upon, impossible to extend.
+- **Zone of Uselessness** — abstract with no dependents. Detritus that still occupies attention.
+
+When D grows over time, the structure is drifting. Report it with the numbers.
+
+**Boundary cost.** A full boundary with reciprocal interfaces is expensive; a Strategy interface is a one-directional DIP; a Facade is cheaper still but leaves the client with transitive dependencies. Build the full boundary at the inflection point where its cost drops below the cost of not having it — not before, and not after the mess sets in.
+
+**Enforcement.** Prefer package-by-component, and let the compiler enforce the rule via visibility (`internal`, package-private). A rule enforced only by review discipline erodes the moment a deadline appears.
+
+---
+
+## Duplication
+
+Distinguish two things that look identical:
+
+- **True duplication** — the copies must always change together. Unify it.
+- **Accidental duplication** — the copies merely resemble each other today and will diverge (a stored record shape that happens to match a screen shape). Unifying it manufactures coupling between independent concepts.
+
+Collapsing accidental duplication looks like cleanliness at review time and hurts a year later.
+
+---
+
 ## Decision Records
 
 Significant architectural decisions must be recorded as ADRs.
@@ -132,6 +174,32 @@ Before introducing an architectural change, answer:
 - Is there a smaller version we can try first?
 
 If the answer to all of these is "unclear," the change needs more investigation before proceeding.
+
+---
+
+## Reference Canon
+
+The rules above are not invented here. They are drawn from, and traceable to, the
+research corpus indexed in `research/`:
+
+| Source | What it grounds |
+|---|---|
+| *Clean Architecture* (Robert C. Martin) | Dependency Rule, SOLID, REP/CCP/CRP, ADP/SDP/SAP, the Main Sequence, partial boundaries, Humble Object, package-by-component, true vs accidental duplication |
+| *The C4 Model* (Simon Brown) | Context → Container → Component → Code levels, notation rules, deployment-per-environment, models-as-code, the model–code gap |
+| *Monolith to Microservices* (Sam Newman) | Independent deployability, strangler fig, branch by abstraction, parallel run, tracer write, shared-database hazards, sagas vs 2PC |
+| *Head First Design Patterns* (Freeman & Robson) | Encapsulate what varies, composition over inheritance, program to interfaces, Least Knowledge, pattern-overuse caution |
+| *The Clean Coder* (Robert C. Martin) | Do no harm to structure, TDD's three laws, estimates vs commitments, the marshes-and-messes inflection point, crisis discipline |
+| *Algorithms Notes* (GoalKicker) | Complexity bounds, algorithm preconditions, degenerate-input discipline |
+| *Java Notes* (GoalKicker) / *Learning Java* (Loy, Niemeyer, Leuck) | Language-level correctness: resource lifetimes, boxing traps, concurrency primitives, bounded pools, charset boundaries |
+| *A Philosophy of Software Design* (Ousterhout) | Complexity symptoms and causes, zero tolerance, strategic vs tactical, deep modules, information leakage, temporal decomposition, define errors out of existence, design it twice |
+| *The Pragmatic Programmer* (Thomas, Hunt) | No broken windows, DRY as knowledge, the orthogonality test, reversibility, tracer bullets vs prototypes, design by contract, crash early, balance resources |
+| *The Phoenix Project* (Kim, Behr, Spafford) | The Three Ways, Theory of Constraints, four types of work, WIP control, queue theory, deployment automation, technical debt as compounding interest |
+| *Designing Data-Intensive Applications* (Kleppmann) | Reliability/scalability/maintainability, percentiles and tail amplification, storage engine trade-offs, encoding evolution, replication lag, isolation levels, fencing tokens, idempotence |
+| *Black Hat Go* (Steele, Patten, Kottmann) | Defensive Go: mutual TLS verification, contextual template escaping, middleware chain termination, network boundary handling |
+
+Corresponding progressive skills live in `skills/`: `architecture-boundaries`,
+`architecture-diagrams`, `design-patterns`, `incremental-migration`,
+`distributed-data`, `algorithmic-complexity`.
 
 ---
 

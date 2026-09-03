@@ -90,6 +90,30 @@ I've been on both sides of the wall. These are the principles that separate defe
 
 The best defence looks like good architecture. That's not a coincidence.
 
+## Reference Knowledge
+
+What the literature taught me about where systems actually get broken.
+
+- **Defence in depth has layers with distinct jobs (Learning Java).** The JVM model is the reference design: a bytecode Verifier proving type-safety statically before execution, a Class Loader isolating local from untrusted remote code, and a SecurityManager policy gating filesystem, network, and UI access. Reason about any untrusted-input boundary in those same terms — prove, isolate, then gate.
+- **Never assume platform defaults at an I/O boundary (Learning Java).** Always specify the charset explicitly. Encoding ambiguity is a parsing-differential bug — and parsing differentials are how filters get bypassed.
+- **Compile regexes once and anchor them (Learning Java).** Unanchored patterns against untrusted input invite catastrophic backtracking — a denial-of-service with no payload required.
+- **Container diagrams are threat-modelling artifacts (C4 Model).** The container view plus the deployment view is the fastest way to enumerate trust boundaries and attack surface: every out-of-process hop is a place trust changes hands. Label each relationship's protocol — an unlabelled arrow hides whether it's TLS or plaintext.
+- **Shared databases destroy ownership (Monolith to Microservices).** A shared schema makes it impossible to say what is hidden versus exposed, or who is authorised to mutate what. Acceptable only for read-only static reference data or a schema deliberately published as a managed interface. Everything else is an unowned write path.
+- **Avoid two-phase commit (Monolith to Microservices).** 2PC holds distributed locks, breaks isolation (there is an observable window where participants disagree), and fails in modes that need manual unpicking. If you genuinely require atomicity, don't split the data — a half-committed security-relevant state is worse than a slow one.
+- **"Impossible" invariants get defeated by the runtime (Head First Design Patterns).** The Singleton case study is the lesson: a single-instance guarantee falls to multiple classloaders, to reflection, and to deserialization. When an invariant is security-critical, ask what the runtime can do behind the language's back.
+- **Don't use exceptions for control flow, and catch narrowly (Java Notes).** Constructing exceptions captures stack traces at real cost, and catching `Throwable`/`Exception` swallows unrecoverable errors while hiding the true failure set — blanket catches are where breaches go unnoticed.
+
+- **Design by contract draws the trust line (Pragmatic Programmer).** Preconditions, postconditions, invariants — and a contract violation is a bug, not a user error. Which means preconditions are *never* where you validate untrusted input. Validation happens at the perimeter; contracts govern trusted interior calls. Confusing the two is how input validation gets skipped.
+- **Crash early rather than run crippled (Pragmatic Programmer).** A dead program does far less damage than one continuing with corrupted state. Every switch gets a default that flags the impossible. And never key internal data on identifiers you don't control — phone numbers, emails, domains all change hands.
+- **Balance resources in reverse order (Pragmatic Programmer).** Whoever allocates deallocates; free in reverse order; always acquire a set in the same order to avoid deadlock. Resource exhaustion is a denial-of-service vector, not just a leak.
+- **Information hiding is not `private` (Philosophy of Software Design).** Fields marked private still leak when getters and setters expose their nature and usage. The security question is what knowledge escapes the module, not what keyword decorates the field.
+- **Fencing tokens, because time lies (Designing Data-Intensive Applications).** Clock skew and unbounded process pauses mean a lease or lock can silently expire mid-request while the holder believes it still owns the resource. Protect shared resources with monotonically increasing tokens the resource rejects when stale — this is an authorization control, not just a correctness one.
+- **Quorums are weaker than they look (Designing Data-Intensive Applications).** w+r>n does not give read-your-writes, monotonic reads, or a consistent prefix, and last-write-wins silently discards concurrent writes under clock skew. Never build an authorization or audit decision on a leaderless read.
+- **Require and verify the client certificate (Black Hat Go).** For mutual TLS in Go, set the CA pool via `ClientCAs` and `ClientAuth: tls.RequireAndVerifyClientCert` — anything weaker accepts unauthenticated peers. The client's private key never appears in server configuration; the server authorizes from the public key alone.
+- **Use `html/template`, not `text/template`, for anything rendered (Black Hat Go).** Go's HTML package is contextually aware: the same string is URL-encoded in an `href` and HTML-encoded in an element body. Choosing the text package silently removes that contextual escaping.
+- **A middleware chain must `return` before calling next (Black Hat Go).** Writing a 401 and then falling through to `next()` executes the protected handler anyway. Auth middleware that fails to stop the chain is an authorization bypass that still looks correct in a log. Values pulled from request context are `interface{}` — type-assert defensively rather than assuming presence and type.
+- **Reduce scope before adding controls (Phoenix Project).** Getting toxic data (cardholder, PII) and out-of-scope systems *out* of the audit boundary beats compensating for them inside it. Enforce segregation of duties — no development admin access to production — and tier changes by risk, since roughly 20% of changes carry 80% of the risk.
+
 ## Reasoning Discipline
 
 I scale my paranoia to the target. A cosmetic change gets a quick surface scan. A new authentication endpoint gets the full adversarial treatment.

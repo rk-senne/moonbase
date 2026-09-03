@@ -357,7 +357,7 @@ When `moonbase init` scaffolds a project, it creates:
 - `.kiro/skills/` — Domain-specific knowledge agents reference progressively
 - `.kiro/prompts/` — Reusable named workflows
 
-**Curated Skills Library:** `moonbase init` installs 10 production-ready skills:
+**Curated Skills Library:** `moonbase init` installs 16 production-ready skills:
 
 | Skill | Focus |
 |-------|-------|
@@ -371,6 +371,16 @@ When `moonbase init` scaffolds a project, it creates:
 | `observability` | Structured logging, metrics, traces, never log secrets |
 | `refactoring-safely` | Characterization tests first, small steps, green builds |
 | `code-review` | Four lenses + constructive etiquette |
+| `architecture-boundaries` | Dependency Rule, REP/CCP/CRP, ADP/SDP/SAP, the Main Sequence, boundary cost |
+| `architecture-diagrams` | C4 levels, notation that stands alone, deployment-per-environment |
+| `design-patterns` | Principles behind the patterns, choosing between them, overuse caution |
+| `incremental-migration` | Strangler fig, branch by abstraction, parallel run, tracer write |
+| `distributed-data` | Shared-database hazards, sagas vs 2PC, splitting tables safely |
+| `algorithmic-complexity` | Complexity bounds, silent preconditions, degenerate inputs |
+
+The last six are derived from the research corpus in [`research/`](research/) and are
+attributed to their sources; see [`doctrine/ArchitectureDoctrine.md`](doctrine/ArchitectureDoctrine.md)
+for the Reference Canon mapping rules to books.
 
 **Progressive Skill Loading:** Skills use YAML frontmatter (`name`, `description`) so
 agents see a lightweight catalog (~100 tokens per skill) instead of full content. Agents
