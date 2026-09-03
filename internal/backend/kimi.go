@@ -29,8 +29,39 @@ import (
 // API docs: https://platform.kimi.ai/docs/api/overview
 type Kimi struct{}
 
-func (k *Kimi) Name() string   { return "kimi" }
-func (k *Kimi) Available() bool { return envExists("MOONSHOT_API_KEY") }
+func (k *Kimi) Name() string    { return "kimi" }
+func (k *Kimi) Available() bool { return envHasValue("MOONSHOT_API_KEY") }
+
+// defaultKimiBaseURL is Moonshot's OpenAI-compatible API root.
+const defaultKimiBaseURL = "https://api.moonshot.ai/v1"
+
+// defaultKimiModel is used when KIMI_MODEL is unset.
+const defaultKimiModel = "kimi-k3"
+
+// kimiConfig resolves the API key, model and base URL from the environment.
+//
+// The base URL is overridable via KIMI_BASE_URL, mirroring OPENAI_BASE_URL on the
+// OpenAI backend — this keeps the two OpenAI-compatible backends consistent and
+// supports proxies or gateways in front of Moonshot. It returns an error rather
+// than a partial config so callers have a single guard to check.
+func kimiConfig() (apiKey, model, baseURL string, err error) {
+	apiKey = os.Getenv("MOONSHOT_API_KEY")
+	if apiKey == "" {
+		return "", "", "", fmt.Errorf("MOONSHOT_API_KEY not set")
+	}
+
+	model = os.Getenv("KIMI_MODEL")
+	if model == "" {
+		model = defaultKimiModel
+	}
+
+	baseURL = os.Getenv("KIMI_BASE_URL")
+	if baseURL == "" {
+		baseURL = defaultKimiBaseURL
+	}
+
+	return apiKey, model, baseURL, nil
+}
 
 // Deploy sends the agent prompt + task to Kimi's Chat Completions API with streaming.
 //
@@ -53,17 +84,12 @@ func (k *Kimi) DeployWithUsage(agent agents.Agent, context *discovery.ProjectCon
 // DeployRawWithUsage sends a pre-composed prompt and returns token usage.
 // Implements the RawUsageReporter optional interface.
 func (k *Kimi) DeployRawWithUsage(composed string, task string) (string, *UsageInfo, error) {
-	apiKey := os.Getenv("MOONSHOT_API_KEY")
-	if apiKey == "" {
-		return "", nil, fmt.Errorf("MOONSHOT_API_KEY not set")
+	apiKey, model, baseURL, err := kimiConfig()
+	if err != nil {
+		return "", nil, err
 	}
 
-	model := os.Getenv("KIMI_MODEL")
-	if model == "" {
-		model = "kimi-k3"
-	}
-
-	result, usage, err := streamChatCompletion(openaiHTTPClient, "https://api.moonshot.ai/v1", apiKey, model, composed, task)
+	result, usage, err := streamChatCompletion(openaiHTTPClient, baseURL, apiKey, model, composed, task)
 	if err != nil {
 		var deployErr *DeployError
 		if errors.As(err, &deployErr) {
@@ -76,19 +102,14 @@ func (k *Kimi) DeployRawWithUsage(composed string, task string) (string, *UsageI
 
 // deployWithUsage is the shared implementation for Deploy and DeployWithUsage.
 func (k *Kimi) deployWithUsage(agent agents.Agent, context *discovery.ProjectContext, task string) (string, *UsageInfo, error) {
-	apiKey := os.Getenv("MOONSHOT_API_KEY")
-	if apiKey == "" {
-		return "", nil, fmt.Errorf("MOONSHOT_API_KEY not set")
-	}
-
-	model := os.Getenv("KIMI_MODEL")
-	if model == "" {
-		model = "kimi-k3"
+	apiKey, model, baseURL, err := kimiConfig()
+	if err != nil {
+		return "", nil, err
 	}
 
 	composed := discovery.ComposePrompt(agent.Prompt, context, task)
 
-	result, usage, err := streamChatCompletion(openaiHTTPClient, "https://api.moonshot.ai/v1", apiKey, model, composed, task)
+	result, usage, err := streamChatCompletion(openaiHTTPClient, baseURL, apiKey, model, composed, task)
 	if err != nil {
 		var deployErr *DeployError
 		if errors.As(err, &deployErr) {

@@ -349,7 +349,7 @@ type pipelineLoopOptions struct {
 func runPipelineLoop(
 	missionCtx context.Context,
 	p *pipeline.Pipeline,
-	reg *agents.Registry,
+	reg agentLookup,
 	ctx *discovery.ProjectContext,
 	flywheel *pipeline.FlywheelLog,
 	task string,
@@ -418,12 +418,63 @@ func runPipelineLoop(
 				handleMissionInterrupt(p, phase, flywheel, task)
 				return
 			}
-			if opts.reworkOnRisk {
-				handlePhaseFailure(p, phase, err)
-			} else {
-				fmt.Printf("   ❌ Phase %d failed: %v\n", phase.Number, err)
+
+			// Auto-retry with exponential backoff before giving up.
+			retried := false
+			maxRetries := cfg.MaxRetries
+			if maxRetries <= 0 {
+				maxRetries = 3
 			}
-			break
+			backoffBase := cfg.RetryBackoffBase
+			if backoffBase <= 0 {
+				backoffBase = 1000
+			}
+			for attempt := 1; attempt <= maxRetries; attempt++ {
+				backoff := time.Duration(backoffBase*(1<<(attempt-1))) * time.Millisecond
+				fmt.Printf("   ⚠️ Phase %d failed: %v\n", phase.Number, err)
+				fmt.Printf("   🔄 Auto-retrying (%d/%d) in %s...\n", attempt, maxRetries, backoff.Round(time.Millisecond))
+
+				// Log the retry to flywheel
+				flywheel.Append(pipeline.FlywheelEntry{
+					Timestamp:   time.Now().UTC(),
+					TraceID:     p.TraceID,
+					Phase:       phase.Number,
+					Agent:       phase.AgentName,
+					Task:        task,
+					Outcome:     "retried",
+					DurationMs:  phase.ElapsedTime().Milliseconds(),
+					OutputSize:  0,
+					ReworkCount: p.Context.ReworkCount,
+				})
+
+				// Wait for backoff (or interrupt)
+				select {
+				case <-missionCtx.Done():
+					handleMissionInterrupt(p, phase, flywheel, task)
+					return
+				case <-time.After(backoff):
+				}
+
+				// Re-execute the phase
+				output, usage, err = executeAndRecordPhase(missionCtx, p, phase, agent, ctx, flywheel, task, pricing)
+				if err == nil {
+					retried = true
+					break
+				}
+				if missionCtx.Err() != nil {
+					handleMissionInterrupt(p, phase, flywheel, task)
+					return
+				}
+			}
+
+			if !retried {
+				if opts.reworkOnRisk {
+					handlePhaseFailure(p, phase, err)
+				} else {
+					fmt.Printf("   ❌ Phase %d failed after %d retries: %v\n", phase.Number, maxRetries, err)
+				}
+				break
+			}
 		}
 
 		// Budget enforcement (AC-6): check cumulative tokens after each phase.
@@ -567,7 +618,7 @@ func runPipelineLoop(
 
 // runConditionalPhasesParallel executes phases 6, 7, 8 concurrently.
 // Enhancement 6: These phases are independent and can run in parallel.
-func runConditionalPhasesParallel(p *pipeline.Pipeline, reg *agents.Registry, ctx *discovery.ProjectContext, missionCtx context.Context) {
+func runConditionalPhasesParallel(p *pipeline.Pipeline, reg agentLookup, ctx *discovery.ProjectContext, missionCtx context.Context) {
 	// Collect conditional phases that should trigger
 	type conditionalWork struct {
 		phase *pipeline.Phase
@@ -669,8 +720,6 @@ func injectFileContext(pCtx *pipeline.PipelineContext) string {
 	sb.WriteString("--- END PRE-FLIGHT FILE CONTEXT ---\n")
 	return sb.String()
 }
-
-
 
 // handlePhaseFailure prints the failure message, marks the phase as failed, and stops the pipeline.
 // Centralizes phase failure handling for consistent error reporting across mission types.

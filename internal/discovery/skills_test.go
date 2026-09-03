@@ -3,6 +3,7 @@ package discovery
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -253,11 +254,8 @@ func TestSkillRegistry_LoadContent_StripsFrontmatter(t *testing.T) {
 func TestSkillRegistry_LoadContent_Truncates(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "big.md")
-	// Create content larger than maxSkillSize
-	body := ""
-	for i := 0; i < maxSkillSize+500; i++ {
-		body += "x"
-	}
+	// Create content larger than maxSkillContentSize
+	body := strings.Repeat("x", maxSkillContentSize+500)
 	content := "---\nname: big\ndescription: Big\n---\n\n" + body + "\n"
 	os.WriteFile(path, []byte(content), 0o644)
 
@@ -268,11 +266,37 @@ func TestSkillRegistry_LoadContent_Truncates(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load failed: %v", err)
 	}
-	if len(loaded) > maxSkillSize+50 {
-		t.Errorf("expected content truncated to ~maxSkillSize, got length %d", len(loaded))
+	if len([]rune(loaded)) > maxSkillContentSize+50 {
+		t.Errorf("expected content truncated to ~maxSkillContentSize, got length %d", len([]rune(loaded)))
 	}
-	if loaded[len(loaded)-len("...(truncated)"):] != "...(truncated)" {
+	if !strings.HasSuffix(loaded, "...(truncated)") {
 		t.Error("expected truncation suffix")
+	}
+}
+
+// Regression: a realistically sized curated skill must load in full. Every
+// skill in the library previously exceeded the 2,000-rune budget and had its
+// closing sections silently dropped.
+func TestSkillRegistry_LoadContent_CuratedSizeNotTruncated(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "curated.md")
+	// 3,100 runes matches the largest skill in the curated library.
+	body := strings.Repeat("a", 3100)
+	content := "---\nname: curated\ndescription: Curated\n---\n\n" + body + "\n"
+	os.WriteFile(path, []byte(content), 0o644)
+
+	r := NewSkillRegistry()
+	r.Register(SkillMeta{Name: "curated", Path: path})
+
+	loaded, err := r.LoadContent("curated")
+	if err != nil {
+		t.Fatalf("load failed: %v", err)
+	}
+	if strings.Contains(loaded, "...(truncated)") {
+		t.Error("curated-size skill was truncated; progressive loads must deliver full content")
+	}
+	if len([]rune(loaded)) != 3100 {
+		t.Errorf("expected all 3100 runes, got %d", len([]rune(loaded)))
 	}
 }
 

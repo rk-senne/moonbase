@@ -1,8 +1,13 @@
-package tui
+// Package fuzzy provides subsequence fuzzy matching with relevance scoring.
+//
+// It lives outside internal/tui because matching is a pure algorithm with no
+// presentation concerns — it changes for different reasons than the UI does, and
+// is useful to any caller that needs to rank candidates against a query.
+package fuzzy
 
 import "unicode"
 
-// fuzzyMatch performs a subsequence fuzzy match of pattern against target.
+// Match performs a subsequence fuzzy match of pattern against target.
 // It returns matched=true if every rune of pattern appears in target in order
 // (case-insensitive). Score reflects match quality using a Sublime-Text-inspired
 // heuristic.
@@ -16,7 +21,7 @@ import "unicode"
 //   - Base score: +1 per matched rune
 //
 // Empty pattern always matches with score 0. O(len(target)) greedy scan.
-func fuzzyMatch(pattern, target string) (score int, matched bool) {
+func Match(pattern, target string) (score int, matched bool) {
 	if pattern == "" {
 		return 0, true
 	}

@@ -56,6 +56,12 @@ jobs:
       - name: Agent lint
         run: go run ./cmd/moonbase lint
 
+      - name: File-size rule (ratchet)
+        run: ./scripts/check-file-size.sh
+
+      - name: README metrics up to date
+        run: ./scripts/update-readme-metrics.sh --check
+
       - name: Staticcheck
         run: |
           go install honnef.co/go/tools/cmd/staticcheck@latest

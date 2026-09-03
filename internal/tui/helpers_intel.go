@@ -5,6 +5,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/rk-senne/moonbase/internal/fuzzy"
 )
 
 func (a *App) addIntel(format string, args ...any) {
@@ -36,8 +38,8 @@ func (a *App) filterAgents() {
 		name := strings.ToLower(agent.Name)
 		desc := strings.ToLower(agent.Description)
 
-		nameScore, nameHit := fuzzyMatch(query, name)
-		descScore, descHit := fuzzyMatch(query, desc)
+		nameScore, nameHit := fuzzy.Match(query, name)
+		descScore, descHit := fuzzy.Match(query, desc)
 
 		if nameHit || descHit {
 			best := nameScore

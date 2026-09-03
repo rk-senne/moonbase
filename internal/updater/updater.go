@@ -10,10 +10,7 @@
 package updater
 
 import (
-	"crypto/sha256"
 	"crypto/tls"
-	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -40,6 +37,11 @@ const (
 
 	// Maximum binary size to download (100MB safety cap).
 	maxBinarySize = 100 << 20
+
+	// githubAPIBase is the GitHub REST API root. It is passed explicitly down to
+	// fetchLatestRelease rather than hardcoded there, so tests can point the
+	// updater at an httptest server without a mutable package-level override.
+	githubAPIBase = "https://api.github.com"
 )
 
 // updaterHTTPClient is a shared HTTP client with TLS 1.2 minimum for all updater
@@ -110,7 +112,13 @@ type UpdateResult struct {
 // CheckForUpdate queries GitHub Releases API for the latest version.
 // Returns update info without downloading anything.
 func CheckForUpdate(currentVersion string) (*UpdateResult, error) {
-	release, err := fetchLatestRelease()
+	return checkForUpdate(currentVersion, githubAPIBase)
+}
+
+// checkForUpdate is CheckForUpdate with the API root injected so tests can
+// exercise every branch against an httptest server.
+func checkForUpdate(currentVersion, baseURL string) (*UpdateResult, error) {
+	release, err := fetchLatestRelease(baseURL)
 	if err != nil {
 		return nil, fmt.Errorf("checking for updates: %w", err)
 	}
@@ -138,10 +146,46 @@ func CheckForUpdate(currentVersion string) (*UpdateResult, error) {
 	return result, nil
 }
 
+// selectReleaseAssets picks the platform binary archive and the optional
+// checksums file out of a release's asset list.
+//
+// This is deliberately a pure function: it is the part of the update decision
+// that can be exercised exhaustively in tests, separated from the filesystem and
+// network work in update() which cannot be (that path replaces the running
+// executable). Errors here describe exactly what was expected versus available.
+func selectReleaseAssets(release *Release) (assetName, downloadURL, checksumURL string, err error) {
+	assetName = expectedAssetName()
+	for _, asset := range release.Assets {
+		if asset.Name == assetName {
+			downloadURL = asset.BrowserDownloadURL
+			break
+		}
+	}
+	if downloadURL == "" {
+		return "", "", "", fmt.Errorf("no binary found for %s/%s in release %s\n  Expected: %s\n  Available: %s",
+			runtime.GOOS, runtime.GOARCH, release.TagName, assetName, listAssets(release.Assets))
+	}
+
+	for _, asset := range release.Assets {
+		if asset.Name == "checksums.txt" {
+			checksumURL = asset.BrowserDownloadURL
+			break
+		}
+	}
+	return assetName, downloadURL, checksumURL, nil
+}
+
 // Update downloads and installs the latest release, replacing the current binary.
 // Returns the new version string on success.
 func Update(currentVersion string) (string, error) {
-	release, err := fetchLatestRelease()
+	return update(currentVersion, githubAPIBase)
+}
+
+// update is Update with the API root injected for testing. Note that the tail of
+// this function replaces the running executable, so tests only exercise the
+// paths that return before that point.
+func update(currentVersion, baseURL string) (string, error) {
+	release, err := fetchLatestRelease(baseURL)
 	if err != nil {
 		return "", fmt.Errorf("fetching latest release: %w", err)
 	}
@@ -157,28 +201,9 @@ func Update(currentVersion string) (string, error) {
 		return "", fmt.Errorf("cannot update a development build — install a release binary first")
 	}
 
-	// Find the binary asset for this platform
-	assetName := expectedAssetName()
-	var downloadURL string
-	for _, asset := range release.Assets {
-		if asset.Name == assetName {
-			downloadURL = asset.BrowserDownloadURL
-			break
-		}
-	}
-
-	if downloadURL == "" {
-		return "", fmt.Errorf("no binary found for %s/%s in release %s\n  Expected: %s\n  Available: %s",
-			runtime.GOOS, runtime.GOARCH, release.TagName, assetName, listAssets(release.Assets))
-	}
-
-	// Find checksums if available
-	var checksumURL string
-	for _, asset := range release.Assets {
-		if asset.Name == "checksums.txt" {
-			checksumURL = asset.BrowserDownloadURL
-			break
-		}
+	assetName, downloadURL, checksumURL, err := selectReleaseAssets(release)
+	if err != nil {
+		return "", err
 	}
 
 	// Get the current binary path
@@ -232,164 +257,41 @@ func Update(currentVersion string) (string, error) {
 		return "", fmt.Errorf("setting permissions: %w", err)
 	}
 
-	// Atomic replace: rename old → .bak, copy new → target, remove .bak
-	// We copy instead of rename because the extracted file may be on a different filesystem.
-	backupPath := execPath + ".bak"
-	os.Remove(backupPath) // Remove any stale backup
-
-	if err := os.Rename(execPath, backupPath); err != nil {
-		return "", fmt.Errorf("backing up current binary: %w", err)
+	// Atomic-ish replace with rollback. Extracted so the backup/restore logic can
+	// be tested against temp files rather than the running executable.
+	if err := replaceBinary(execPath, extractedPath, originalMode); err != nil {
+		return "", err
 	}
-
-	if err := copyBinary(extractedPath, execPath, originalMode); err != nil {
-		// Restore backup on failure
-		os.Rename(backupPath, execPath)
-		return "", fmt.Errorf("installing new binary: %w", err)
-	}
-
-	// Clean up backup
-	os.Remove(backupPath)
 
 	return latest, nil
 }
 
-// fetchLatestRelease gets the latest non-draft, non-prerelease from GitHub.
-func fetchLatestRelease() (*Release, error) {
-	owner, name := repoCoordinates()
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", owner, name)
+// replaceBinary swaps newBinaryPath into execPath, keeping a backup so a failed
+// install can be rolled back.
+//
+// We copy rather than rename the new binary because the extracted file may live
+// on a different filesystem. If the copy fails, the backup is restored so the
+// caller is left with a working binary rather than a missing one — that rollback
+// is the reason this is a separate, tested function.
+func replaceBinary(execPath, newBinaryPath string, mode os.FileMode) error {
+	backupPath := execPath + ".bak"
+	os.Remove(backupPath) // Remove any stale backup
 
-	client := &http.Client{Timeout: apiTimeout, Transport: updaterTransport}
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("creating request: %w", err)
-	}
-	req.Header.Set("Accept", "application/vnd.github+json")
-	req.Header.Set("User-Agent", "moonbase-updater")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("connecting to GitHub: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == 404 {
-		return nil, fmt.Errorf("no releases found (repo may be private or not exist)")
-	}
-	if resp.StatusCode == 403 {
-		return nil, fmt.Errorf("rate limited by GitHub API — try again later")
-	}
-	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("GitHub API returned status %d", resp.StatusCode)
+	if err := os.Rename(execPath, backupPath); err != nil {
+		return fmt.Errorf("backing up current binary: %w", err)
 	}
 
-	var release Release
-	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
-		return nil, fmt.Errorf("parsing release: %w", err)
-	}
-
-	return &release, nil
-}
-
-// expectedAssetName returns the archive name for the current platform.
-// Must match goreleaser's name_template: "moonbase_{{ .Os }}_{{ .Arch }}"
-func expectedAssetName() string {
-	return fmt.Sprintf("moonbase_%s_%s.tar.gz", runtime.GOOS, runtime.GOARCH)
-}
-
-// downloadFile downloads a URL to the given file with size limits.
-func downloadFile(url string, dest *os.File) error {
-	client := &http.Client{Timeout: downloadTimeout, Transport: updaterTransport}
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return fmt.Errorf("creating download request: %w", err)
-	}
-	req.Header.Set("User-Agent", "moonbase-updater")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("download request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		return fmt.Errorf("download returned status %d", resp.StatusCode)
-	}
-
-	// Size-limited copy to prevent DoS
-	limited := io.LimitReader(resp.Body, maxBinarySize)
-	written, err := io.Copy(dest, limited)
-	if err != nil {
-		return fmt.Errorf("writing binary: %w", err)
-	}
-	if written == 0 {
-		return fmt.Errorf("downloaded file is empty")
-	}
-
-	return nil
-}
-
-// verifyChecksum downloads checksums.txt and verifies the downloaded file matches.
-func verifyChecksum(filePath, assetName, checksumURL string) error {
-	// Download checksums
-	client := &http.Client{Timeout: apiTimeout, Transport: updaterTransport}
-	resp, err := client.Get(checksumURL)
-	if err != nil {
-		return fmt.Errorf("downloading checksums: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		// Checksums not available — skip verification with warning
-		return nil
-	}
-
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<16)) // 64KB max
-	if err != nil {
-		return fmt.Errorf("reading checksums: %w", err)
-	}
-
-	// Parse checksums.txt (format: "sha256hash  filename")
-	var expectedHash string
-	for _, line := range strings.Split(string(body), "\n") {
-		parts := strings.Fields(line)
-		if len(parts) == 2 && parts[1] == assetName {
-			expectedHash = parts[0]
-			break
+	if err := copyBinary(newBinaryPath, execPath, mode); err != nil {
+		// Restore backup on failure so the install is not left half-applied.
+		if restoreErr := os.Rename(backupPath, execPath); restoreErr != nil {
+			return fmt.Errorf("installing new binary: %w (and restoring backup failed: %v)", err, restoreErr)
 		}
+		return fmt.Errorf("installing new binary: %w", err)
 	}
 
-	if expectedHash == "" {
-		// No checksum for this asset — can't verify
-		return nil
-	}
-
-	// Compute SHA256 of downloaded file
-	f, err := os.Open(filePath)
-	if err != nil {
-		return fmt.Errorf("opening file for checksum: %w", err)
-	}
-	defer f.Close()
-
-	h := sha256.New()
-	if _, err := io.Copy(h, f); err != nil {
-		return fmt.Errorf("reading file for checksum: %w", err)
-	}
-	actualHash := hex.EncodeToString(h.Sum(nil))
-
-	if actualHash != expectedHash {
-		return fmt.Errorf("SHA256 mismatch:\n  expected: %s\n  got:      %s\n  This may indicate a corrupted download or tampering", expectedHash, actualHash)
-	}
-
+	// Clean up backup
+	os.Remove(backupPath)
 	return nil
-}
-
-// listAssets returns a comma-separated list of asset names for error messages.
-func listAssets(assets []Asset) string {
-	names := make([]string, 0, len(assets))
-	for _, a := range assets {
-		names = append(names, a.Name)
-	}
-	return strings.Join(names, ", ")
 }
 
 // copyBinary copies a file from src to dst with explicit permissions.

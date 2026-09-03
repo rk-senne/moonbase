@@ -14,14 +14,14 @@ import (
 
 // ProjectContext holds discovered information about the project an agent is working in.
 type ProjectContext struct {
-	Specs          []SpecFile     // Spec documents found in .kiro/specs/{feature}/
-	Steering       []SteeringFile // Steering rules from .kiro/steering/ (manual-inclusion files excluded)
-	Skills         []SkillFile    // Skill definitions from .kiro/skills/ (legacy: no-frontmatter only)
-	Prompts        []PromptFile   // Stored prompts from .kiro/prompts/
-	SkillRegistry  *SkillRegistry // Progressive skill registry (metadata-only at startup)
-	Stack          StackInfo      // Detected technology stack from build config files
-	README         string         // Project README content (truncated to 2000 chars)
-	RootDir        string         // Absolute path to the project root directory
+	Specs         []SpecFile     // Spec documents found in .kiro/specs/{feature}/
+	Steering      []SteeringFile // Steering rules from .kiro/steering/ (manual-inclusion files excluded)
+	Skills        []SkillFile    // Skill definitions from .kiro/skills/ (legacy: no-frontmatter only)
+	Prompts       []PromptFile   // Stored prompts from .kiro/prompts/
+	SkillRegistry *SkillRegistry // Progressive skill registry (metadata-only at startup)
+	Stack         StackInfo      // Detected technology stack from build config files
+	README        string         // Project README content (truncated to 2000 chars)
+	RootDir       string         // Absolute path to the project root directory
 }
 
 // SpecFile represents a spec document from .kiro/specs/{feature}/.
@@ -253,14 +253,7 @@ func readREADME(projectDir string) string {
 		path := filepath.Join(projectDir, name)
 		content, err := os.ReadFile(path)
 		if err == nil {
-			s := string(content)
-			// Rune-safe truncation: slicing by bytes can cut a multi-byte UTF-8
-			// character in half, producing an invalid string that downstream
-			// arg-parsers (e.g. kiro-cli) reject with "invalid UTF-8".
-			if r := []rune(s); len(r) > 2000 {
-				s = string(r[:2000]) + "\n...(truncated)"
-			}
-			return s
+			return truncateRunes(string(content), maxReadmeSize)
 		}
 	}
 

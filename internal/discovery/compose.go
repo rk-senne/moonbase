@@ -13,9 +13,20 @@ const maxSteeringSize = 8000
 // maxSpecSize is the maximum bytes of spec content included per file.
 const maxSpecSize = 1500
 
-// maxSkillSize is the maximum bytes of skill content included per file.
-// Keeps individual skills from dominating the context window.
-const maxSkillSize = 2000
+// maxEagerSkillSize is the maximum runes of a legacy (no-frontmatter) skill
+// injected eagerly into every prompt. These are not requested by the agent, so
+// they stay tightly bounded to protect the context window.
+const maxEagerSkillSize = 2000
+
+// maxSkillContentSize is the maximum runes of a skill loaded on demand through
+// the progressive registry (via @skill(name)). The agent explicitly asked for
+// this content, so silently cutting it defeats the purpose of the request; the
+// budget matches maxSteeringSize. The curated library's largest skill is ~3,100
+// runes, so this leaves substantial headroom.
+const maxSkillContentSize = 8000
+
+// maxReadmeSize is the maximum runes of README content included as stack context.
+const maxReadmeSize = 2000
 
 // maxSkills is the maximum number of skills included in a prompt.
 // Prevents context bloat when many skills are defined.
@@ -43,12 +54,12 @@ const maxTotalComposedSize = 512 * 1024
 // theoretically attempt to override agent instructions via prompt injection.
 //
 // Mitigations:
-// 1. Content is wrapped in clearly delimited sections (--- PROJECT RULES --- etc.)
-// 2. The agent prompt (identity/instructions) comes AFTER steering, so the agent's
-//    core directives have final authority in the prompt order
-// 3. Content is size-limited to prevent context window exhaustion
-// 4. Frontmatter is stripped to avoid YAML injection into the prompt
-// 5. Total composed size is capped to prevent OOM
+//  1. Content is wrapped in clearly delimited sections (--- PROJECT RULES --- etc.)
+//  2. The agent prompt (identity/instructions) comes AFTER steering, so the agent's
+//     core directives have final authority in the prompt order
+//  3. Content is size-limited to prevent context window exhaustion
+//  4. Frontmatter is stripped to avoid YAML injection into the prompt
+//  5. Total composed size is capped to prevent OOM
 func ComposePrompt(agentPrompt string, context *ProjectContext, task string) string {
 	var sections []string
 
@@ -138,11 +149,7 @@ func ComposePrompt(agentPrompt string, context *ProjectContext, task string) str
 			}
 			for _, skill := range context.Skills[:limit] {
 				skillBlock.WriteString(fmt.Sprintf("### %s\n", skill.Name))
-				content := skill.Content
-				if len(content) > maxSkillSize {
-					content = content[:maxSkillSize] + "\n...(truncated)"
-				}
-				skillBlock.WriteString(content)
+				skillBlock.WriteString(truncateRunes(skill.Content, maxEagerSkillSize))
 				skillBlock.WriteString("\n\n")
 			}
 			skillBlock.WriteString("--- END PROJECT SKILLS ---\n")

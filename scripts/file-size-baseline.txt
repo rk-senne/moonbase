@@ -1,0 +1,21 @@
+# Files exceeding 300 lines at the time this baseline was taken.
+# Format: <lines> <path>. These may shrink but never grow.
+# Regenerate with: scripts/check-file-size.sh --update
+428 cmd/moonbase/flywheel_cmd.go
+340 cmd/moonbase/guide.go
+385 cmd/moonbase/init.go
+461 cmd/moonbase/main.go
+796 cmd/moonbase/mission.go
+312 internal/agents/registry.go
+328 internal/backend/backends.go
+477 internal/discovery/discovery.go
+324 internal/pipeline/pipeline.go
+670 internal/templates/steering.go
+427 internal/tools/tools.go
+436 internal/tui/app.go
+302 internal/tui/helpers_commands.go
+415 internal/tui/keys.go
+639 internal/tui/pipeline_exec.go
+393 internal/tui/update_common.go
+506 internal/tui/views_components.go
+316 internal/updater/updater.go

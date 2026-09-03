@@ -7,7 +7,7 @@ COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
 DATE := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 LDFLAGS := -ldflags "-X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(DATE)"
 
-.PHONY: run build test clean install setup release lint coverage hooks
+.PHONY: run build test clean install setup release lint coverage hooks metrics
 
 run:
 	go run $(MAIN)
@@ -21,6 +21,12 @@ test:
 lint:
 	go vet ./...
 	go run ./cmd/moonbase lint
+	./scripts/check-file-size.sh
+	./scripts/update-readme-metrics.sh --check
+
+# Regenerate the README metrics table from the codebase.
+metrics:
+	./scripts/update-readme-metrics.sh
 
 coverage:
 	go test ./... -coverprofile=coverage.out -timeout 60s

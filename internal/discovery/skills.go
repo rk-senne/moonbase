@@ -33,7 +33,7 @@ type skillEntry struct {
 type SkillRegistry struct {
 	mu     sync.RWMutex
 	skills map[string]*skillEntry // keyed by normalized name
-	order  []string              // insertion order for deterministic listing
+	order  []string               // insertion order for deterministic listing
 }
 
 // skillFrontmatter is the YAML structure expected in skill file frontmatter.
@@ -141,9 +141,7 @@ func (r *SkillRegistry) LoadContent(name string) (string, error) {
 
 	body := stripFrontmatter(string(data))
 	body = strings.TrimSpace(body)
-	if r := []rune(body); len(r) > maxSkillSize {
-		body = string(r[:maxSkillSize]) + "\n...(truncated)"
-	}
+	body = truncateRunes(body, maxSkillContentSize)
 
 	entry.content = body
 	entry.loaded = true

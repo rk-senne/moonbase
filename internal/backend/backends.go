@@ -15,12 +15,12 @@ import (
 )
 
 // Kiro deploys agents via kiro-cli
-type Kiro struct{
+type Kiro struct {
 	// TrustTools enables --trust-all-tools and --no-interactive for headless execution.
 	TrustTools bool
 }
 
-func (k *Kiro) Name() string   { return "kiro-cli" }
+func (k *Kiro) Name() string    { return "kiro-cli" }
 func (k *Kiro) Available() bool { _, err := exec.LookPath("kiro-cli"); return err == nil }
 
 func (k *Kiro) Deploy(agent agents.Agent, context *discovery.ProjectContext, task string) (string, error) {
@@ -143,7 +143,7 @@ var _ StreamingBackend = (*Kiro)(nil)
 // Codex deploys agents via OpenAI Codex CLI
 type Codex struct{}
 
-func (c *Codex) Name() string   { return "codex" }
+func (c *Codex) Name() string    { return "codex" }
 func (c *Codex) Available() bool { _, err := exec.LookPath("codex"); return err == nil }
 
 func (c *Codex) Deploy(agent agents.Agent, context *discovery.ProjectContext, task string) (string, error) {
@@ -168,15 +168,15 @@ func (c *Codex) Deploy(agent agents.Agent, context *discovery.ProjectContext, ta
 // Configuration: OPENAI_API_KEY (required), OPENAI_BASE_URL (optional), OPENAI_MODEL (optional).
 type OpenAI struct{}
 
-func (o *OpenAI) Name() string   { return "openai" }
-func (o *OpenAI) Available() bool { return envExists("OPENAI_API_KEY") }
+func (o *OpenAI) Name() string    { return "openai" }
+func (o *OpenAI) Available() bool { return envHasValue("OPENAI_API_KEY") }
 
 // Anthropic deploys agents via Anthropic Messages API with streaming.
 // Uses the same HTTP streaming code as the comms system (internal/chat).
 type Anthropic struct{}
 
-func (a *Anthropic) Name() string   { return "anthropic" }
-func (a *Anthropic) Available() bool { return envExists("ANTHROPIC_API_KEY") }
+func (a *Anthropic) Name() string    { return "anthropic" }
+func (a *Anthropic) Available() bool { return envHasValue("ANTHROPIC_API_KEY") }
 
 // Deploy sends the agent prompt + task to Anthropic's Messages API via streaming,
 // collects all response chunks, and returns the full response text.
@@ -235,7 +235,7 @@ var _ UsageReporter = (*Anthropic)(nil)
 // Ollama deploys agents via local Ollama
 type Ollama struct{}
 
-func (o *Ollama) Name() string   { return "ollama" }
+func (o *Ollama) Name() string    { return "ollama" }
 func (o *Ollama) Available() bool { _, err := exec.LookPath("ollama"); return err == nil }
 
 func (o *Ollama) Deploy(agent agents.Agent, context *discovery.ProjectContext, task string) (string, error) {
@@ -256,7 +256,7 @@ func (o *Ollama) Deploy(agent agents.Agent, context *discovery.ProjectContext, t
 // Clipboard copies the composed prompt to clipboard as a universal fallback.
 type Clipboard struct{}
 
-func (c *Clipboard) Name() string   { return "clipboard" }
+func (c *Clipboard) Name() string    { return "clipboard" }
 func (c *Clipboard) Available() bool { return clip.Available() }
 
 func (c *Clipboard) Deploy(agent agents.Agent, context *discovery.ProjectContext, task string) (string, error) {
@@ -307,7 +307,22 @@ func SafeEnv() []string {
 	return env
 }
 
+// envExists reports whether an environment variable is set, regardless of value.
+// An exported-but-empty variable counts as existing — see envHasValue when what
+// you need is a usable value.
 func envExists(key string) bool {
 	_, ok := os.LookupEnv(key)
 	return ok
+}
+
+// envHasValue reports whether an environment variable is set to a non-empty,
+// non-whitespace value.
+//
+// Backend availability must use this rather than envExists. An exported-but-empty
+// API key (MOONSHOT_API_KEY= in a shell profile, or a blank CI secret) can never
+// authenticate, so reporting the backend as available made auto-detection select
+// it and then fail every deploy with "not set". Failing closed here keeps
+// Available() consistent with the deploy-time credential check.
+func envHasValue(key string) bool {
+	return strings.TrimSpace(os.Getenv(key)) != ""
 }
