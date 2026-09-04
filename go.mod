@@ -8,7 +8,7 @@ require (
 	charm.land/glamour/v2 v2.0.1
 	charm.land/lipgloss/v2 v2.0.5
 	github.com/charmbracelet/huh v1.0.0
-	github.com/fsnotify/fsnotify v1.7.0
+	github.com/fsnotify/fsnotify v1.10.1
 	github.com/spf13/cobra v1.10.2
 	go.uber.org/goleak v1.3.0
 	gopkg.in/yaml.v3 v3.0.1
