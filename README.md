@@ -476,7 +476,7 @@ git tag v1.4.0 && git push --tags
 | Dependencies | 9 direct, 43 indirect |
 | Agents | 14 |
 | Curated skills | 16 |
-| Go version | 1.26.5 |
+| Go version | 1.26.6 |
 | CI | GitHub Actions (vet + build + `govulncheck` + `staticcheck` + file-size ratchet + `-race` tests) |
 | Releases | goreleaser (4 platform binaries on tag) |
 | Agent lint | `moonbase lint` validates all 14 agents |
