@@ -51,13 +51,21 @@ func DeployComposed(ctx context.Context, composed, task string, timeout time.Dur
 			var result string
 			var deployErr error
 
-			// Prefer RawUsageReporter > RawDeployer > UsageReporter > Backend.Deploy
+			// Prefer RawUsageReporter > RawContextDeployer > RawDeployer > UsageReporter > Backend.Deploy.
+			//
+			// RawContextDeployer sits above RawDeployer because it is the only
+			// non-streaming path that can honour attemptCtx: without a context the
+			// backend's subprocess cannot be killed, so the deadline below can only
+			// be observed after the child exits on its own.
 			if raw, ok := be.(RawUsageReporter); ok {
 				var usage *UsageInfo
 				result, usage, deployErr = raw.DeployRawWithUsage(composed, task)
 				if deployErr == nil {
 					capturedUsage = usage
 				}
+			} else if raw, ok := be.(RawContextDeployer); ok {
+				result, deployErr = raw.DeployRawCtx(attemptCtx, composed, task)
+				// usage stays nil
 			} else if raw, ok := be.(RawDeployer); ok {
 				result, deployErr = raw.DeployRaw(composed, task)
 				// usage stays nil

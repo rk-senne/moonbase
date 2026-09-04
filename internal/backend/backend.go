@@ -29,6 +29,24 @@ type RawDeployer interface {
 	DeployRaw(composed string, task string) (string, error)
 }
 
+// RawContextDeployer is an optional interface backends can implement to accept a
+// pre-composed prompt *and* a context, so the caller's deadline can actually
+// cancel in-flight work.
+//
+// Why this exists: Backend.Deploy and RawDeployer take no context, so a backend
+// that shells out with exec.Command cannot be interrupted. DeployComposed would
+// create a phase deadline that the subprocess never observed — the call blocked
+// until the child exited on its own, and only then did the expired context
+// surface as an error. A 5-minute phase timeout was measured taking 11 minutes,
+// and with auto-retry enabled a single stuck phase could occupy the pipeline for
+// the better part of an hour.
+//
+// Backends implementing this are preferred by DeployComposed. Those that don't
+// keep working exactly as before, so this is additive.
+type RawContextDeployer interface {
+	DeployRawCtx(ctx context.Context, composed string, task string) (string, error)
+}
+
 // StreamingBackend is an optional interface backends can implement to provide
 // incremental output as a channel of chat.StreamChunk. The pipeline uses this
 // for live-streaming agent output to the TUI.

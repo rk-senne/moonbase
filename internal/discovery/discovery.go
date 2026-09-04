@@ -22,6 +22,7 @@ type ProjectContext struct {
 	Stack         StackInfo      // Detected technology stack from build config files
 	README        string         // Project README content (truncated to 2000 chars)
 	RootDir       string         // Absolute path to the project root directory
+	DepGraph      *DepGraph      // File-level import graph (Go only; nil when unavailable)
 }
 
 // SpecFile represents a spec document from .kiro/specs/{feature}/.
@@ -98,6 +99,10 @@ func Discover(projectDir string) *ProjectContext {
 	// Detect stack
 	ctx.Stack = detectStack(projectDir)
 
+	// Build the file-level dependency graph (Go only; nil otherwise, leaving
+	// existing behaviour unchanged).
+	ctx.DepGraph = discoverDepGraph(projectDir, ctx.Stack)
+
 	// Read README (truncated)
 	ctx.README = readREADME(projectDir)
 
@@ -162,6 +167,9 @@ func (pc *ProjectContext) Summary() string {
 	}
 	if pc.Stack.Language != "" {
 		parts = append(parts, fmt.Sprintf("Stack: %s/%s", pc.Stack.Language, pc.Stack.BuildTool))
+	}
+	if pc.HasDepGraph() {
+		parts = append(parts, fmt.Sprintf("Graph: %d files", pc.DepGraph.Len()))
 	}
 	if len(parts) == 0 {
 		return "No project context discovered"

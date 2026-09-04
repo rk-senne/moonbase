@@ -6,8 +6,7 @@
 385 cmd/moonbase/init.go
 459 cmd/moonbase/main.go
 312 internal/agents/registry.go
-328 internal/backend/backends.go
-477 internal/discovery/discovery.go
+485 internal/discovery/discovery.go
 324 internal/pipeline/pipeline.go
 670 internal/templates/steering.go
 427 internal/tools/tools.go

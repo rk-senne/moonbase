@@ -127,7 +127,7 @@ func TestKiroDeployStream_MissingBinaryReturnsStartError(t *testing.T) {
 // TUI cancels in-flight phases when a mission is interrupted.
 func TestKiroDeployStream_ContextCancellationClosesStream(t *testing.T) {
 	// Emit a line, then sleep well past the test's patience.
-	fakeKiroCLI(t, `printf 'before cancel\n'; sleep 30`)
+	fakeKiroCLI(t, `printf 'before cancel\n'; /bin/sleep 30`)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	ch, err := (&Kiro{}).DeployStream(ctx, testAgent(), &discovery.ProjectContext{}, "the task")
