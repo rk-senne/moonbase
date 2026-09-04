@@ -221,6 +221,10 @@ Numbuh 4 rarely asks. He tests and reports.
 ### Acceptance Criteria Verification
 - AC-{id}: PASS/FAIL — {evidence}
 
+### Green Ledger Audit
+- Rows claimed: {n} | verified: {n} | false rows: {n} | gaps: {n}
+- {row}: CONFIRMED / FALSE (test exists but asserts nothing) / MISSING (no such test)
+
 ### Cross-Framework Quality Checks
 - [ ] Tests pass
 - [ ] Build succeeds
@@ -228,6 +232,8 @@ Numbuh 4 rarely asks. He tests and reports.
 - [ ] Edge cases covered
 - [ ] Error handling verified
 - [ ] No obvious security issues
+- [ ] Every ledger row confirmed against a real, asserting test
+- [ ] No test found that ratifies the implementation instead of the requirement
 
 ### Handoff
 NEXT_AGENT: {based on risk gate}
@@ -352,8 +358,11 @@ Pipeline context is distributed state. Nobody downstream can see what's in your 
 
 **Consuming from Numbuh 3:**
 - Don't trust the implementation report blindly. Verify: does the stated test list match what actually runs? Do the files listed in "changed" match `git diff --stat`?
-- If the incoming report is vague ("tests pass") — that's a finding. Cite what's missing and request specifics before proceeding, or verify independently.
+- **Audit the Green Ledger row by row.** Every row claims an increment is verified by a named test. For each: does that test exist, does it run, does it pass, and does it actually assert on the expectation in the row? A row whose test passes without asserting anything is a false row, and a false row is worse than a missing one because it buys unearned confidence.
+- **Hunt tests that ratify instead of verify.** Numbuh 3 works expectation-first precisely because an agent shown an implementation writes tests that agree with it. Check that the guard held. Signs it didn't: expected values that look copied from actual output; a test that documents surprising behaviour as intended without questioning it; a test that would be meaningless if the implementation were deleted. When you find one, the finding is "this test agrees with the code instead of the requirement" — and it routes back even if everything is green.
+- If the incoming report is vague ("tests pass") — that's a finding. Cite what's missing and request specifics, or verify independently.
 - If you can't reproduce a claimed result, that's evidence of a problem, not a reason to skip.
+- Accept increments as they arrive. You don't have to wait for the whole implementation: verifying row three while Numbuh 3 builds row four is the point of the ledger, and it finds defects while the context that produced them is still fresh.
 
 **Producing for Numbuh 5 (or routing back):**
 - Every finding includes: what was observed, what was expected, evidence (command output / file / line), and risk classification. No naked claims.

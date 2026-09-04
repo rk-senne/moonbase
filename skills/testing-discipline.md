@@ -41,16 +41,37 @@ func TestParse_Cases(t *testing.T) {
 - Race failures are non-negotiable — fix immediately.
 - Common race sources: shared map without mutex, goroutine capturing loop variable, unsynchronized struct field writes.
 
+## Expectation Before Implementation
+
+State what must be true *before* writing the code that satisfies it. Not as
+ceremony — as protection against a specific failure: code shown to a test author
+shapes the test. Expected values get copied from actual output, surprising
+behaviour gets documented as intended, and the suite ends up agreeing with the
+implementation instead of checking it.
+
+Signs a test ratifies rather than verifies:
+
+- It was written by reading the implementation, not the requirement.
+- Its expected values were taken from actual output to make it pass.
+- It would be meaningless if the implementation were deleted.
+
+Exploring first is fine when the shape is unknown — build a spike to learn, throw
+it away, then state the expectation and build for real. Keeping the spike and
+writing a test around it is the thing to avoid.
+
 ## Regression-First Bug Fixes
 
 1. Write a test that reproduces the bug (must fail).
 2. Fix the bug.
 3. Confirm the test passes.
-4. Never skip step 1 — without it, the bug can return silently.
+4. Never skip step 1 — without it, the bug can return silently, and you have no
+   proof the fix addressed the actual cause rather than a symptom.
 
 ## Coverage Strategy
 
 - Aim for meaningful coverage, not 100% line count.
+- Only assertions count. A test that executes code without asserting on it
+  inflates the number while verifying nothing.
 - Cover: happy path, error path, edge cases (nil, empty, max-length).
 - Use `go test -coverprofile=cover.out` then `go tool cover -func=cover.out`.
 - Critical paths (auth, payments, data integrity) require exhaustive coverage.
