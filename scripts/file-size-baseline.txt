@@ -11,10 +11,10 @@
 324 internal/pipeline/pipeline.go
 670 internal/templates/steering.go
 427 internal/tools/tools.go
-436 internal/tui/app.go
+435 internal/tui/app.go
 302 internal/tui/helpers_commands.go
 415 internal/tui/keys.go
-639 internal/tui/pipeline_exec.go
+568 internal/tui/pipeline_exec.go
 393 internal/tui/update_common.go
 506 internal/tui/views_components.go
 316 internal/updater/updater.go

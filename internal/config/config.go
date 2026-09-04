@@ -18,12 +18,12 @@ import (
 //
 // SECURITY: YAML deserialization safety
 // gopkg.in/yaml.v3 is safe against YAML deserialization attacks because:
-// 1. It does NOT support custom constructors or !!python/object-style tags
-// 2. It does NOT execute code during unmarshaling
-// 3. It only maps YAML scalars/sequences/mappings to Go struct fields
-// 4. Unknown fields are silently ignored (no gadget chains possible)
-// 5. The Config struct uses only primitive types (string, []string) —
-//    no interfaces, func fields, or unsafe.Pointer that could be exploited
+//  1. It does NOT support custom constructors or !!python/object-style tags
+//  2. It does NOT execute code during unmarshaling
+//  3. It only maps YAML scalars/sequences/mappings to Go struct fields
+//  4. Unknown fields are silently ignored (no gadget chains possible)
+//  5. The Config struct uses only primitive types (string, []string) —
+//     no interfaces, func fields, or unsafe.Pointer that could be exploited
 //
 // Unlike PyYAML's yaml.load() or Java's SnakeYAML, Go's yaml.v3 has no
 // known deserialization vulnerabilities. The strict typing of Go structs
@@ -43,10 +43,11 @@ type Config struct {
 	// Pipeline orchestration options.
 	// These control resilience and observability for multi-phase mission execution.
 	// Derived from production agent patterns (LangGraph state machines, AWS AgentCore).
-	PhaseTimeout  int  `yaml:"phase_timeout_seconds,omitempty"` // Max seconds per phase (default 300 = 5 min)
-	MaxOutputSize int  `yaml:"max_output_size,omitempty"`       // Max output bytes per phase (default 100000)
-	EnableTrace   bool `yaml:"enable_trace,omitempty"`          // Enable trace ID generation for pipeline runs
-	MaxRetries    int  `yaml:"max_retries,omitempty"`           // Max retries per phase before failure (default 1)
+	PhaseTimeout     int  `yaml:"phase_timeout_seconds,omitempty"` // Max seconds per phase (default 300 = 5 min)
+	MaxOutputSize    int  `yaml:"max_output_size,omitempty"`       // Max output bytes per phase (default 100000)
+	EnableTrace      bool `yaml:"enable_trace,omitempty"`          // Enable trace ID generation for pipeline runs
+	MaxRetries       int  `yaml:"max_retries,omitempty"`           // Max retries per phase before failure (default 3)
+	RetryBackoffBase int  `yaml:"retry_backoff_base_ms,omitempty"` // Base backoff duration in ms, doubles each retry (default 1000)
 
 	// cmux integration (manaflow-ai/cmux macOS terminal for AI agents).
 	UseCmux bool `yaml:"use_cmux,omitempty"` // Auto-enable cmux features when true (notifications, split panes)
@@ -96,16 +97,17 @@ func DefaultConfig() Config {
 		DefaultBackend:           "kiro-cli",
 		Theme:                    "moonbase",
 		AgentsDir:                "",
-		TrustTools:               true, // Enable headless execution by default
-		PipelineBackend:          "",   // Empty = use default_backend for all phases
-		FastThreshold:            0,    // 0 = disabled (user must pass --fast explicitly)
-		PhaseTimeout:             300,  // 5 minutes per phase
+		TrustTools:               true,   // Enable headless execution by default
+		PipelineBackend:          "",     // Empty = use default_backend for all phases
+		FastThreshold:            0,      // 0 = disabled (user must pass --fast explicitly)
+		PhaseTimeout:             300,    // 5 minutes per phase
 		MaxOutputSize:            100000, // 100KB max output per phase
 		EnableTrace:              true,   // Trace IDs enabled by default for observability
-		MaxRetries:               1,      // One retry per phase before failure
+		MaxRetries:               3,      // Three retries per phase before asking human
+		RetryBackoffBase:         1000,   // 1s base backoff (doubles each retry: 1s, 2s, 4s)
 		ParallelSpecialists:      true,   // Fan-out specialists concurrently by default
 		MaxSpecialistConcurrency: 4,      // Conservative default concurrency cap
-		AgentOrder: agents.DefaultAgentOrder,
+		AgentOrder:               agents.DefaultAgentOrder,
 	}
 }
 

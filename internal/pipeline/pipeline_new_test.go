@@ -407,15 +407,15 @@ func TestParseMeta_TableDriven(t *testing.T) {
 			expectACKeys: 2,
 		},
 		{
-			name:      "double occurrence picks last",
-			output:    `{"__moonbase_meta": {"risk": "LOW"}} more text {"__moonbase_meta": {"risk": "CRITICAL"}}`,
-			expectNil: false,
+			name:       "double occurrence picks last",
+			output:     `{"__moonbase_meta": {"risk": "LOW"}} more text {"__moonbase_meta": {"risk": "CRITICAL"}}`,
+			expectNil:  false,
 			expectRisk: "CRITICAL",
 		},
 		{
-			name:      "nested JSON before meta",
-			output:    `{"config": {"nested": {"deep": true}}} and then {"__moonbase_meta": {"risk": "MEDIUM"}}`,
-			expectNil: false,
+			name:       "nested JSON before meta",
+			output:     `{"config": {"nested": {"deep": true}}} and then {"__moonbase_meta": {"risk": "MEDIUM"}}`,
+			expectNil:  false,
 			expectRisk: "MEDIUM",
 		},
 	}
@@ -459,8 +459,8 @@ func TestPipeline_New_Defaults(t *testing.T) {
 	if p.MaxOutputSize != 100000 {
 		t.Errorf("expected MaxOutputSize=100000, got %d", p.MaxOutputSize)
 	}
-	if p.MaxRetries != 1 {
-		t.Errorf("expected MaxRetries=1, got %d", p.MaxRetries)
+	if p.MaxRetries != 3 {
+		t.Errorf("expected MaxRetries=3, got %d", p.MaxRetries)
 	}
 	if p.MaxRework != 2 {
 		t.Errorf("expected MaxRework=2, got %d", p.MaxRework)

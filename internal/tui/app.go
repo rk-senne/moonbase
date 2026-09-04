@@ -37,9 +37,9 @@ const (
 
 // Buffer size limits for TUI state
 const (
-	maxIntelEntries   = 50
-	maxTerminalLines  = 100
-	maxSummaryChars   = 300
+	maxIntelEntries  = 50
+	maxTerminalLines = 100
+	maxSummaryChars  = 300
 )
 
 type IntelEntry struct {
@@ -66,26 +66,25 @@ type PipelineMsg struct {
 var testMode = false
 
 type App struct {
-	keys           KeyMap
-	view           View
-	registry       *agents.Registry
-	env            EnvModel
-	views          ViewsModel
-	width          int
-	height         int
-	boot           BootModel
-	spinner        spinner.Model
-	intel          []IntelEntry
-	theme          ThemeModel
-	chrome         ChromeModel
-	projectCtx     *discovery.ProjectContext
+	keys       KeyMap
+	view       View
+	registry   *agents.Registry
+	env        EnvModel
+	views      ViewsModel
+	width      int
+	height     int
+	boot       BootModel
+	spinner    spinner.Model
+	intel      []IntelEntry
+	theme      ThemeModel
+	chrome     ChromeModel
+	projectCtx *discovery.ProjectContext
 }
 
 type MissionEntry struct {
 	Name   string
 	Status string
 }
-
 
 func NewApp() App {
 	initialTheme := moonbaseTheme
@@ -149,10 +148,10 @@ func NewApp() App {
 
 	dir, _ := agents.FindAgentsDir("")
 	reg := agents.NewRegistry(dir)
-	
+
 	// Discover project context for pipeline execution
 	projectCtx := discovery.Discover(cwd)
-	
+
 	// Select preferred backend
 	activeBackend := backend.Preferred()
 
@@ -160,12 +159,12 @@ func NewApp() App {
 	term.Cwd = cwd
 
 	return App{
-		keys:          DefaultKeyMap(),
-		view:          ViewBoot,
-		registry:      reg,
-		spinner:       s,
-		intel:         []IntelEntry{},
-		projectCtx:    projectCtx,
+		keys:       DefaultKeyMap(),
+		view:       ViewBoot,
+		registry:   reg,
+		spinner:    s,
+		intel:      []IntelEntry{},
+		projectCtx: projectCtx,
 		env: EnvModel{
 			Backend: BackendModel{Active: activeBackend},
 			Infra: InfraModel{
@@ -183,7 +182,7 @@ func NewApp() App {
 			Terminal: term,
 			Browser:  BrowserModel{FileBrowser: newFileBrowser(), Active: false}, // opt-in via ` from the dashboard
 		},
-		theme:        ThemeModel{Name: "moonbase", Data: initialTheme, Styles: initialStyles},
+		theme: ThemeModel{Name: "moonbase", Data: initialTheme, Styles: initialStyles},
 		chrome: ChromeModel{
 			Clock:     time.Now().Format("15:04:05"),
 			StartTime: time.Now(),
@@ -223,6 +222,9 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case PhaseResultMsg:
 		return a.handlePhaseResultUpdate(msg)
+
+	case PhaseRetryMsg:
+		return a.handlePhaseRetryMsg(msg)
 
 	case phaseStreamStartedMsg:
 		return a.handlePhaseStreamStarted(msg)

@@ -44,6 +44,7 @@ func TestPhaseResultMsg_Error(t *testing.T) {
 	app.view = ViewPipeline
 	app.boot.Ready = true
 	app.views.Pipeline.State = pipeline.New("test task")
+	app.views.Pipeline.State.MaxRetries = 0 // Disable auto-retry for this test
 	app.views.Pipeline.State.Phases[0].Status = pipeline.StatusRunning
 	app.views.Pipeline.Running = true
 
@@ -216,4 +217,158 @@ func containsSubstr(s, sub string) bool {
 		}
 	}
 	return false
+}
+
+func TestPhaseResultMsg_Error_AutoRetry(t *testing.T) {
+	app := NewApp()
+	app.view = ViewPipeline
+	app.boot.Ready = true
+	app.views.Pipeline.State = pipeline.New("test task")
+	app.views.Pipeline.State.MaxRetries = 3
+	app.views.Pipeline.State.Phases[0].Status = pipeline.StatusRunning
+	app.views.Pipeline.Running = true
+
+	msg := PhaseResultMsg{
+		Phase:   1,
+		Output:  "",
+		Err:     fmt.Errorf("backend connection timeout"),
+		Elapsed: 5 * time.Second,
+		Gen:     0,
+	}
+
+	cmd := app.handlePhaseResult(msg)
+
+	// Auto-retry should return a non-nil cmd (the tea.Tick for backoff)
+	if cmd == nil {
+		t.Fatal("expected non-nil cmd for auto-retry backoff tick")
+	}
+
+	// Phase should NOT be marked as failed yet (still retrying)
+	if app.views.Pipeline.State.Phases[0].Status == pipeline.StatusFailed {
+		t.Error("phase should not be failed during auto-retry")
+	}
+
+	// Retry count should be incremented
+	if app.views.Pipeline.State.Retries[1] != 1 {
+		t.Errorf("expected Retries[1]=1, got %d", app.views.Pipeline.State.Retries[1])
+	}
+
+	// Chat should mention the retry
+	found := false
+	for _, m := range app.views.Pipeline.Chat {
+		if contains(m.Content, "Auto-retrying") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected chat to contain auto-retry message")
+	}
+}
+
+func TestPhaseResultMsg_Error_RetriesExhausted(t *testing.T) {
+	app := NewApp()
+	app.view = ViewPipeline
+	app.boot.Ready = true
+	app.views.Pipeline.State = pipeline.New("test task")
+	app.views.Pipeline.State.MaxRetries = 2
+	app.views.Pipeline.State.Phases[0].Status = pipeline.StatusRunning
+	app.views.Pipeline.Running = true
+	// Pre-set retries to max so the next failure exhausts them
+	app.views.Pipeline.State.Retries[1] = 2
+
+	msg := PhaseResultMsg{
+		Phase:   1,
+		Output:  "",
+		Err:     fmt.Errorf("persistent failure"),
+		Elapsed: 3 * time.Second,
+		Gen:     0,
+	}
+
+	cmd := app.handlePhaseResult(msg)
+
+	// Should return nil — retries exhausted, ask the human
+	if cmd != nil {
+		t.Error("expected nil cmd when retries exhausted")
+	}
+
+	// Phase should be marked as failed
+	if app.views.Pipeline.State.Phases[0].Status != pipeline.StatusFailed {
+		t.Errorf("expected StatusFailed, got %d", app.views.Pipeline.State.Phases[0].Status)
+	}
+
+	// Chat should mention "after N retries"
+	found := false
+	for _, m := range app.views.Pipeline.Chat {
+		if contains(m.Content, "after") && contains(m.Content, "retries") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected chat to mention retries exhausted")
+	}
+}
+
+func TestPhaseRetryMsg_ReExecutesPhase(t *testing.T) {
+	app := NewApp()
+	app.view = ViewPipeline
+	app.boot.Ready = true
+	app.views.Pipeline.State = pipeline.New("test task")
+	app.views.Pipeline.State.Phases[0].Status = pipeline.StatusFailed
+	app.views.Pipeline.Running = false
+	app.views.Pipeline.Gen = 5
+
+	msg := PhaseRetryMsg{
+		Phase:   1,
+		Attempt: 2,
+		Gen:     5,
+	}
+
+	model, _ := app.handlePhaseRetryMsg(msg)
+	result := model.(*App)
+
+	// Phase should be re-started
+	if result.views.Pipeline.State.Phases[0].Status != pipeline.StatusRunning {
+		t.Errorf("expected phase to be running after retry msg, got %d", result.views.Pipeline.State.Phases[0].Status)
+	}
+
+	// Chat should mention the retry attempt
+	found := false
+	for _, m := range result.views.Pipeline.Chat {
+		if contains(m.Content, "Retry 2") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected chat to mention retry attempt")
+	}
+}
+
+func TestPhaseRetryMsg_StaleGenIgnored(t *testing.T) {
+	app := NewApp()
+	app.view = ViewPipeline
+	app.boot.Ready = true
+	app.views.Pipeline.State = pipeline.New("test task")
+	app.views.Pipeline.State.Phases[0].Status = pipeline.StatusFailed
+	app.views.Pipeline.Running = false
+	app.views.Pipeline.Gen = 5
+
+	msg := PhaseRetryMsg{
+		Phase:   1,
+		Attempt: 1,
+		Gen:     4, // Stale generation
+	}
+
+	model, cmd := app.handlePhaseRetryMsg(msg)
+	result := model.(*App)
+
+	// Phase should NOT be restarted (stale gen)
+	if result.views.Pipeline.State.Phases[0].Status != pipeline.StatusFailed {
+		t.Error("expected phase to remain failed for stale gen retry msg")
+	}
+	if cmd != nil {
+		t.Error("expected nil cmd for stale gen retry msg")
+	}
 }

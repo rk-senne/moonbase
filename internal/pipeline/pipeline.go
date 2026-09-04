@@ -105,7 +105,7 @@ func New(task string) *Pipeline {
 		TraceID:                  generateTraceID(),
 		PhaseTimeout:             5 * time.Minute,
 		MaxOutputSize:            100000,
-		MaxRetries:               1,
+		MaxRetries:               3,
 		Retries:                  make(map[int]int),
 		ParallelSpecialists:      true,
 		MaxSpecialistConcurrency: 4,

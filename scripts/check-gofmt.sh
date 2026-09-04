@@ -7,19 +7,16 @@
 #
 # EXCEPTIONS
 #
-# The files listed in EXCEPTIONS below were already unformatted at HEAD *and*
-# carry uncommitted work in progress. Formatting them would have meant either
-# committing someone else's unreviewed changes or gambling with a `git stash pop`
-# conflict against their work, so they are excepted instead.
+# Empty, and it should stay that way. It previously held four files that were
+# unformatted at HEAD while carrying uncommitted work; those landed formatted, so
+# the list shrank to zero as intended.
 #
-# This list is a ratchet and should only ever shrink. When the work in progress on
-# one of these files lands, run `gofmt -w` on it and delete its line here — the
-# check prints a reminder when an excepted file is already clean, so a stale
-# exception cannot hide.
+# If an entry ever has to be added, treat it as temporary: the check prints a
+# reminder once an excepted file is clean, so a stale exception cannot hide.
 #
 # Usage:
 #   scripts/check-gofmt.sh          # check (used by CI)
-#   scripts/check-gofmt.sh --fix    # format everything, exceptions included
+#   scripts/check-gofmt.sh --fix    # format everything
 #
 # Exit status: 0 when clean, 1 when an unexcepted file is unformatted.
 
@@ -28,12 +25,7 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${repo_root}"
 
-EXCEPTIONS="
-internal/config/config.go
-internal/pipeline/pipeline_new_test.go
-internal/tui/app.go
-internal/tui/coverage4_test.go
-"
+EXCEPTIONS=""
 
 is_excepted() {
   local candidate="$1" e
@@ -97,5 +89,5 @@ EOF
 fi
 
 excepted_count=$(printf '%s' "${EXCEPTIONS}" | grep -c . || true)
-echo "gofmt check passed (${excepted_count} file(s) excepted pending in-progress work)."
+echo "gofmt check passed."
 exit 0

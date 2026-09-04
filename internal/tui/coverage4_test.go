@@ -23,8 +23,8 @@ type mockBackend struct {
 	delay     time.Duration
 }
 
-func (m *mockBackend) Name() string      { return m.name }
-func (m *mockBackend) Available() bool    { return m.available }
+func (m *mockBackend) Name() string    { return m.name }
+func (m *mockBackend) Available() bool { return m.available }
 func (m *mockBackend) Deploy(agent agents.Agent, ctx *discovery.ProjectContext, task string) (string, error) {
 	if m.delay > 0 {
 		time.Sleep(m.delay)
@@ -485,6 +485,7 @@ func TestHandlePhaseResult_PipelineComplete(t *testing.T) {
 func TestHandlePhaseResult_ErrorSetsFailedStatus(t *testing.T) {
 	app := NewApp()
 	app.views.Pipeline.State = pipeline.New("test")
+	app.views.Pipeline.State.MaxRetries = 0 // Disable auto-retry for this test
 	app.views.Pipeline.State.Phases[0].Status = pipeline.StatusRunning
 	app.views.Pipeline.Running = true
 

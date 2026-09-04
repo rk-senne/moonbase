@@ -251,7 +251,8 @@ func (a *App) handlePhaseResult(msg PhaseResultMsg) tea.Cmd {
 	a.views.Pipeline.Running = false
 
 	if msg.Err != nil {
-		// Phase failed
+		// Phase failed — attempt auto-retry with exponential backoff before
+		// stopping and asking the human.
 		if logging.Logger != nil {
 			logging.Logger.Error("pipeline phase failed",
 				"phase", msg.Phase,
@@ -259,12 +260,30 @@ func (a *App) handlePhaseResult(msg PhaseResultMsg) tea.Cmd {
 				"elapsed", msg.Elapsed.String(),
 			)
 		}
+
+		state := a.views.Pipeline.State
+
+		// Auto-retry with backoff before giving up. Returns nil once the retry
+		// budget is spent, at which point the human is asked.
+		if cmd := a.scheduleRetry(msg); cmd != nil {
+			return cmd
+		}
+
+		// All retries exhausted — stop and ask the human.
+		//
+		// maxRetries is read via a guarded local because state may be nil here:
+		// scheduleRetry only acts when state is non-nil, so this line is reachable
+		// with a nil state and previously panicked on it.
+		maxRetries := 0
+		if state != nil {
+			maxRetries = state.MaxRetries
+		}
 		a.views.Pipeline.Chat = append(a.views.Pipeline.Chat,
-			PipelineMsg{"", fmt.Sprintf("❌ Phase %d failed: %v", msg.Phase, msg.Err)},
+			PipelineMsg{"", fmt.Sprintf("❌ Phase %d failed after %d retries: %v", msg.Phase, maxRetries, msg.Err)},
 			PipelineMsg{"", "Press [r] to retry or [s] to skip."},
 		)
-		if a.views.Pipeline.State != nil && a.views.Pipeline.State.CurrentPhase() != nil {
-			a.views.Pipeline.State.CurrentPhase().Status = pipeline.StatusFailed
+		if state != nil && state.CurrentPhase() != nil {
+			state.CurrentPhase().Status = pipeline.StatusFailed
 		}
 		return nil
 	}

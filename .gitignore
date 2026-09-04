@@ -13,3 +13,9 @@ coverage.html
 # Derived text extracted from research/*.pdf for knowledge indexing.
 # Regenerate with scripts/extract-research-text.sh — not source of truth.
 research/extracted-text/
+
+# Output of `moonbase compile` — Kiro-native agent JSON and the flattened prompt
+# bodies. Generated from agents/*.md, which is the source of truth, so these are
+# rebuilt on demand rather than tracked.
+.kiro/agents/*.json
+.kiro/agents/*.prompt.md

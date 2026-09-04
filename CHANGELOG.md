@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- feat(pipeline): failed phases are retried automatically with exponential backoff before the pipeline stops to ask you. `max_retries` now defaults to 3 (was 1) and the new `retry_backoff_base_ms` sets the base delay, doubling per attempt (1s, 2s, 4s). Retries are recorded to the flywheel with a `retried` outcome, and a retry belonging to a superseded mission is discarded rather than re-running an abandoned phase.
 - feat(ci): `scripts/check-gofmt.sh` gates formatting. 33 previously-unformatted files were formatted; four that were unformatted at HEAD *and* carry uncommitted work are held in a shrinking exception list, and the check prints a reminder once an excepted file is clean so a stale entry cannot hide. `make fmt` formats everything.
 - feat(ci): `scripts/check-file-size.sh` enforces the ~300-line file guideline from `dev-rules.md` as a **ratchet** rather than a cliff — 18 files already exceeded it, so the current sizes are frozen in `scripts/file-size-baseline.txt`: a file may shrink but never grow, and a file not in the baseline may not exceed the limit at all. Wired into CI and `make lint`.
 - feat(ci): `scripts/update-readme-metrics.sh` generates the README Quality table from the codebase, with a `--check` mode that fails CI when it drifts. Also available as `make metrics`. The previous hand-maintained numbers were badly stale (claimed ~15,300 Go LOC against an actual 21,212, and 8 dependencies against 9 direct + 43 indirect).
@@ -35,6 +36,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - feat(tui): always-visible "mission in progress" indicator in the header (`⚡ <phase> P<done>/<total>`) so a running mission stays visible from any view.
 
 ### Fixed
+- fix(tui): the auto-retry path no longer panics on a partially initialised pipeline. It dereferenced `state.MaxRetries` on a branch reachable with a nil state, and read `CurrentPhase()` and `Context` unguarded while writing the flywheel entry — a crash on the failure path would have replaced a recoverable retry with a dead TUI.
+- refactor(tui): retry and backoff moved out of `pipeline_exec.go` into `pipeline_retry.go` (658 → 568 lines), keeping the file below its size baseline.
+- chore(git): `moonbase compile` output under `.kiro/agents/` (`*.json`, `*.prompt.md`) is now ignored — it is generated from `agents/*.md`, which remains the source of truth.
 - fix(pipeline): `SaveCheckpoint` returns an error instead of panicking on an incomplete pipeline. It runs on failure paths — a blown token budget, an aborted phase — where a nil dereference turned a graceful stop into a crash that also lost the checkpoint being written.
 - fix(ci): the file-size ratchet now inspects untracked files too. It used `git ls-files`, so a newly written oversized file passed the check until it was committed — found when the `mission.go` split produced a 307-line file that slipped through.
 - test(backend): coverage raised to 82.3% with **no zero-coverage functions remaining**. `DeployStream` (0% → 84%) is now exercised against a fake `kiro-cli` placed on `PATH`, covering line streaming, stderr folding, non-zero exit reporting, a missing binary, and context cancellation — the last matters because the TUI cancels in-flight phases. `clipboardFallback` (0% → 84%) and Anthropic's `DeployWithUsage` (0% → 100%) are also covered.
