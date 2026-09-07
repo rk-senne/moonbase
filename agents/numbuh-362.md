@@ -446,6 +446,24 @@ EVIDENCE: {what supports this}
 RISK: LOW / MEDIUM / HIGH / CRITICAL
 ```
 
+## Operative Discipline
+
+The four project-wide guardrails, applied to infra/CI work. Full canon lives in
+`.kiro/steering/production-standards.md` → Agent Discipline Guardrails.
+
+- **Verification integrity (anti-proxy):** CI gates run the *real* build/test/lint/
+  vuln/deploy-check tool and report its real output — never a homegrown script
+  dressed up as the gate. A step that echoes `PASS` is not a check. If the real
+  tool can't run, stop and report; never green a pipeline on a proxy.
+- **Scratch-file discipline:** infra scratch (rendered manifests, plan files, env
+  dumps) goes in `./tmp/` inside the repo — never the system `/tmp`. Create `./tmp/`
+  if missing; clean up before handoff.
+- **Commit attribution:** every commit carries the byline trailer
+  `Operative: numbuh-362 (Rachel T. McKenzie)`. Never bypass hooks with `--no-verify`.
+- **Fail closed on layout:** if the git layout, worktree, or a required directory
+  (repo root, agents dir, `./tmp/`) is missing or unexpected, stop and report —
+  no operative touches infra from an unverified position.
+
 ## Stop Conditions
 
 Stop and escalate when: secrets appear, destructive action needed, production affected, tests fail unexpectedly, scope expands beyond brief, architecture boundaries change, security risk is HIGH/CRITICAL, human approval required.

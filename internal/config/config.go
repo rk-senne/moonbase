@@ -43,7 +43,7 @@ type Config struct {
 	// Pipeline orchestration options.
 	// These control resilience and observability for multi-phase mission execution.
 	// Derived from production agent patterns (LangGraph state machines, AWS AgentCore).
-	PhaseTimeout     int  `yaml:"phase_timeout_seconds,omitempty"` // Max seconds per phase (default 300 = 5 min)
+	PhaseTimeout     int  `yaml:"phase_timeout_seconds,omitempty"` // Max seconds per phase (default 1200 = 20 min)
 	MaxOutputSize    int  `yaml:"max_output_size,omitempty"`       // Max output bytes per phase (default 100000)
 	EnableTrace      bool `yaml:"enable_trace,omitempty"`          // Enable trace ID generation for pipeline runs
 	MaxRetries       int  `yaml:"max_retries,omitempty"`           // Max retries per phase before failure (default 3)
@@ -100,7 +100,7 @@ func DefaultConfig() Config {
 		TrustTools:               true,   // Enable headless execution by default
 		PipelineBackend:          "",     // Empty = use default_backend for all phases
 		FastThreshold:            0,      // 0 = disabled (user must pass --fast explicitly)
-		PhaseTimeout:             300,    // 5 minutes per phase
+		PhaseTimeout:             1200,   // 20 min/phase; 5 was too low once timeouts became enforceable
 		MaxOutputSize:            100000, // 100KB max output per phase
 		EnableTrace:              true,   // Trace IDs enabled by default for observability
 		MaxRetries:               3,      // Three retries per phase before asking human

@@ -47,13 +47,8 @@ func runMission(task string) {
 	p := pipeline.New(task)
 	p.Depth = "override:full"
 
-	// Apply parallel specialist configuration from config and CLI flags.
-	cfg := config.Load()
-	p.ParallelSpecialists = cfg.ParallelSpecialists
-	p.MaxSpecialistConcurrency = cfg.MaxSpecialistConcurrency
-	if missionSequential {
-		p.ParallelSpecialists = false
-	}
+	// Apply configuration (timeouts, output caps, retries, specialist fan-out).
+	applyPipelineConfig(p, config.Load(), missionSequential)
 
 	// Create flywheel logger
 	flywheel := pipeline.NewFlywheelLog()
@@ -118,6 +113,10 @@ func runMissionFast(task string) {
 	p := pipeline.NewFast(task)
 	p.Depth = "override:fast"
 
+	// Apply configuration. --fast previously ignored config entirely, so even
+	// parallel_specialists and max_specialist_concurrency were dropped here.
+	applyPipelineConfig(p, config.Load(), missionSequential)
+
 	// Create flywheel logger
 	flywheel := pipeline.NewFlywheelLog()
 
@@ -170,13 +169,8 @@ func runMissionAdaptive(task string, depth pipeline.Depth, reason string) {
 	// Create adaptive pipeline
 	p := pipeline.NewAdaptive(task, depth, reason)
 
-	// Apply parallel specialist configuration from config and CLI flags.
-	cfg := config.Load()
-	p.ParallelSpecialists = cfg.ParallelSpecialists
-	p.MaxSpecialistConcurrency = cfg.MaxSpecialistConcurrency
-	if missionSequential {
-		p.ParallelSpecialists = false
-	}
+	// Apply configuration (timeouts, output caps, retries, specialist fan-out).
+	applyPipelineConfig(p, config.Load(), missionSequential)
 
 	// Create flywheel logger
 	flywheel := pipeline.NewFlywheelLog()

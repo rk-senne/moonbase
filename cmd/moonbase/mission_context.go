@@ -4,11 +4,43 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
+	"github.com/rk-senne/moonbase/internal/config"
 	"github.com/rk-senne/moonbase/internal/pipeline"
 )
 
 // Context injection and pricing resolution for missions.
+
+// applyPipelineConfig copies configuration onto a freshly constructed pipeline.
+//
+// pipeline.New and friends set hardcoded defaults, and nothing previously copied
+// config over them, so several documented keys were inert: phase_timeout_seconds,
+// max_output_size and max_retries were all settable and described in Config but
+// never read. Raising phase_timeout_seconds had no effect, and --trace printed the
+// hardcoded default, which made it look as though the setting was honoured.
+//
+// Zero values are ignored so an unset key keeps the pipeline default rather than
+// clamping it to zero — a zero PhaseTimeout would fail every phase instantly.
+func applyPipelineConfig(p *pipeline.Pipeline, cfg config.Config, sequential bool) {
+	if cfg.PhaseTimeout > 0 {
+		p.PhaseTimeout = time.Duration(cfg.PhaseTimeout) * time.Second
+	}
+	if cfg.MaxOutputSize > 0 {
+		p.MaxOutputSize = cfg.MaxOutputSize
+	}
+	if cfg.MaxRetries > 0 {
+		p.MaxRetries = cfg.MaxRetries
+	}
+
+	p.ParallelSpecialists = cfg.ParallelSpecialists
+	if cfg.MaxSpecialistConcurrency > 0 {
+		p.MaxSpecialistConcurrency = cfg.MaxSpecialistConcurrency
+	}
+	if sequential {
+		p.ParallelSpecialists = false
+	}
+}
 
 // injectFileContext reads files mentioned in the Architecture output and injects
 // their contents into the prompt. Enhancement 3: Pre-flight file injection.

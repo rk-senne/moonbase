@@ -56,3 +56,40 @@
 - SafeEnv for child processes — allowlist, don't denylist.
 - Validate all external input (CLI args, file content, agent frontmatter).
 - Fail closed — if validation is ambiguous, reject.
+
+## Agent Discipline Guardrails
+
+The canonical, project-wide rules every operative applies. Agent prompt bodies
+carry a short, role-scoped pointer to this section rather than a full copy.
+
+### 1. Verification Integrity (Anti-Proxy)
+
+- Never substitute a homegrown task, script, or stub for a required real
+  verification tool (build, test, lint, coverage, vulnerability scan, static
+  analysis). Run the real tool and cite its real output.
+- A self-written coverage/lint/analysis script is **never** the gate. A script
+  that prints `PASS` is not a test run.
+- If the real tool cannot run (missing, misconfigured, environment blocked),
+  **stop and report** — never fake a pass or claim green from a proxy.
+
+### 2. Scratch-File Discipline
+
+- Temporary and scratch files go in `./tmp/` **inside the repo** — visible,
+  cleanable, and git-ignorable — never the system `/tmp`.
+- Create `./tmp/` if it is missing (it is a required working directory, not a
+  silent fallback); clean up scratch before handoff.
+
+### 3. Commit Attribution
+
+- Every commit an operative makes carries a byline trailer naming the operative:
+  `Operative: numbuh-<N> (<Designation>)` (e.g. `Operative: numbuh-3 (Kuki Sanban)`).
+- **Never** bypass hooks with `--no-verify`. Hooks are a gate, not an obstacle
+  (aligns with git-safety: preserve hooks).
+
+### 4. Fail Closed on Unexpected Layout
+
+- If the expected git layout, worktree, or a required directory (repo root, the
+  agents dir, `./tmp/`) is missing or unexpected, **stop and report** — never
+  silently create files in, or work from, the wrong place.
+- Fail closed: when the environment is ambiguous, reject and escalate rather
+  than guessing a location.

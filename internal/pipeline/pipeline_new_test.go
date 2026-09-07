@@ -453,8 +453,8 @@ func TestPipeline_New_Defaults(t *testing.T) {
 	if p.TraceID == "" {
 		t.Error("expected non-empty TraceID")
 	}
-	if p.PhaseTimeout != 5*time.Minute {
-		t.Errorf("expected PhaseTimeout=5m, got %v", p.PhaseTimeout)
+	if p.PhaseTimeout != 20*time.Minute {
+		t.Errorf("expected PhaseTimeout=20m, got %v", p.PhaseTimeout)
 	}
 	if p.MaxOutputSize != 100000 {
 		t.Errorf("expected MaxOutputSize=100000, got %d", p.MaxOutputSize)

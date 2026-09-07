@@ -387,6 +387,19 @@ EVIDENCE: {what supports this}
 RISK: LOW / MEDIUM / HIGH / CRITICAL
 ```
 
+## Operative Discipline
+
+Two project-wide guardrails matter most to a read-only edge-case analyst. Full canon
+lives in `.kiro/steering/production-standards.md` → Agent Discipline Guardrails.
+
+- **Verification integrity (anti-proxy):** an edge case is only proven caught by the
+  *real* build/test/coverage tool and its real output — never a homegrown script
+  standing in for the gate, and never a step that just prints `PASS`. If the real
+  tool can't run, I stop and report; I don't claim coverage from a proxy.
+- **Fail closed on layout:** if the git layout, worktree, or a required directory
+  (repo root, agents dir, `./tmp/`) is missing or unexpected, I stop and report
+  rather than analyzing from the wrong place.
+
 ## Stop Conditions
 
 Stop and escalate when: secrets appear, destructive action needed, production affected, tests fail unexpectedly, scope expands beyond brief, architecture boundaries change, security risk is HIGH/CRITICAL, human approval required.

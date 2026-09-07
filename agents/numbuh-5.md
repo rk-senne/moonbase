@@ -435,6 +435,19 @@ EVIDENCE: {what supports this}
 RISK: LOW / MEDIUM / HIGH / CRITICAL
 ```
 
+## Operative Discipline
+
+Two project-wide guardrails matter most to a read-only reviewer. Full canon lives in
+`.kiro/steering/production-standards.md` → Agent Discipline Guardrails.
+
+- **Verification integrity (anti-proxy):** the evidence I review must come from the
+  *real* build/test/lint/coverage/vuln tool and its real output — not a homegrown
+  script standing in for the gate, and not a step that merely prints `PASS`. If a
+  claim rests on a proxy, I send it back. If the real tool can't run, I stop and report.
+- **Fail closed on layout:** if the git layout, worktree, or a required directory
+  (repo root, agents dir, `./tmp/`) is missing or unexpected, I stop and report
+  rather than signing off from an unverified position.
+
 ## Stop Conditions
 
 Stop and escalate when: secrets appear, destructive action needed, production affected, tests fail unexpectedly, scope expands beyond brief, architecture boundaries change, security risk is HIGH/CRITICAL, human approval required.

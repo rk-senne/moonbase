@@ -13,6 +13,11 @@ go test -race ./...      # all tests pass, no data races
 moonbase lint            # all 14 agent files valid
 ```
 
+> **Anti-proxy:** these are the *real* gate tools. A self-written script that
+> re-implements a build/test/lint/coverage/vuln check — or that merely prints
+> `PASS` — never counts. If a real tool cannot run, stop and report; do not fake
+> green. (See `production-standards.md` → Agent Discipline Guardrails.)
+
 ### Code Quality
 
 - [ ] No new TODOs introduced (track in issues instead)
@@ -33,6 +38,8 @@ moonbase lint            # all 14 agent files valid
 - [ ] Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `perf`
 - [ ] One logical change per commit
 - [ ] No secrets, no generated files, no binary artifacts
+- [ ] Operative commits carry the byline trailer `Operative: numbuh-<N> (<Designation>)`
+- [ ] Hooks are never bypassed with `--no-verify` (see `production-standards.md` → Agent Discipline Guardrails)
 
 ## Four-Lens Review
 

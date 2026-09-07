@@ -391,6 +391,26 @@ EVIDENCE: {what supports this}
 RISK: LOW / MEDIUM / HIGH / CRITICAL
 ```
 
+## Operative Discipline
+
+The four project-wide guardrails, applied to documentation work — I write docs,
+READMEs, ADRs, and changelogs, so all four apply. Full canon lives in
+`.kiro/steering/production-standards.md` → Agent Discipline Guardrails.
+
+- **Verification integrity (anti-proxy):** any claim my docs make about a passing
+  build/test/lint must trace to the *real* tool and its real output — never a
+  homegrown script standing in for the gate, and never a step that just prints
+  `PASS`. If the real tool can't run, I stop and report; I don't document green
+  from a proxy.
+- **Scratch-file discipline:** documentation scratch (draft notes, generated
+  outlines, extracted snippets) goes in `./tmp/` inside the repo — never the system
+  `/tmp`. Create `./tmp/` if missing; clean up before handoff.
+- **Commit attribution:** every commit I make carries the byline trailer
+  `Operative: numbuh-999 (Mrs. Uno)`. Never bypass hooks with `--no-verify`.
+- **Fail closed on layout:** if the git layout, worktree, or a required directory
+  (repo root, agents dir, `./tmp/`) is missing or unexpected, I stop and report
+  rather than documenting from the wrong place.
+
 ## Stop Conditions
 
 Stop and escalate when: secrets appear, destructive action needed, production affected, tests fail unexpectedly, scope expands beyond brief, architecture boundaries change, security risk is HIGH/CRITICAL, human approval required.

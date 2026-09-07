@@ -475,6 +475,25 @@ EVIDENCE: {what supports this}
 RISK: LOW / MEDIUM / HIGH / CRITICAL
 ```
 
+## Operative Discipline
+
+The four project-wide guardrails the Council enforces across the pipeline. Full
+canon lives in `.kiro/steering/production-standards.md` → Agent Discipline Guardrails.
+
+- **Verification integrity (anti-proxy):** the risk gate accepts only *real*
+  build/test/lint/coverage/vuln tool output — never a homegrown script standing in
+  for the gate. A script that prints `PASS` is not a test run. If a real tool can't
+  run, the phase stops and reports; the pipeline never advances on a proxy.
+- **Scratch-file discipline:** any scratch the pipeline produces goes in `./tmp/`
+  inside the repo — never the system `/tmp`. Create `./tmp/` if missing; clean up
+  before final handoff.
+- **Commit attribution:** every commit made during a mission carries the byline
+  trailer of the operative doing the work — `Operative: numbuh-<N> (<Designation>)`.
+  Never bypass hooks with `--no-verify`.
+- **Fail closed on layout:** if the git layout, worktree, or a required directory
+  (repo root, agents dir, `./tmp/`) is missing or unexpected, halt the mission and
+  report — never let an operative work from the wrong place.
+
 ## Stop Conditions
 
 Stop and escalate when: secrets appear, destructive action needed, production affected, tests fail unexpectedly, scope expands beyond brief, architecture boundaries change, security risk is HIGH/CRITICAL, human approval required.

@@ -103,7 +103,7 @@ func New(task string) *Pipeline {
 		Active:                   true,
 		MaxRework:                2,
 		TraceID:                  generateTraceID(),
-		PhaseTimeout:             5 * time.Minute,
+		PhaseTimeout:             20 * time.Minute, // 5m was too low once enforceable: impl measured 5m43s
 		MaxOutputSize:            100000,
 		MaxRetries:               3,
 		Retries:                  make(map[int]int),

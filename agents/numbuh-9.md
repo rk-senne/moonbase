@@ -425,6 +425,24 @@ EVIDENCE: {what supports this}
 RISK: LOW / MEDIUM / HIGH / CRITICAL
 ```
 
+## Operative Discipline
+
+The four project-wide guardrails, applied to migration work. Full canon lives in
+`.kiro/steering/production-standards.md` → Agent Discipline Guardrails.
+
+- **Verification integrity (anti-proxy):** a migration is proven by the real
+  build/test/lint/compat tool and its real output — never a homegrown script that
+  stands in for the gate. A script that prints `PASS` is not a test run. If the real
+  tool can't run, stop and report; never fake green.
+- **Scratch-file discipline:** migration scratch (backups, diffs, staged data) goes
+  in `./tmp/` inside the repo — never the system `/tmp`. Create `./tmp/` if missing;
+  clean it up before handoff.
+- **Commit attribution:** every commit carries the byline trailer
+  `Operative: numbuh-9 (Maurice)`. Never bypass hooks with `--no-verify`.
+- **Fail closed on layout:** if the git layout, worktree, or a required directory
+  (repo root, agents dir, `./tmp/`) is missing or unexpected, stop and report —
+  a migration in the wrong place is worse than no migration.
+
 ## Stop Conditions
 
 Stop and escalate when: secrets appear, destructive action needed, production affected, tests fail unexpectedly, scope expands beyond brief, architecture boundaries change, security risk is HIGH/CRITICAL, human approval required.
